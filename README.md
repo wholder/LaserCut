@@ -1,4 +1,4 @@
-# LaserCut
+## LaserCut
 LaserCut is an experimental, "swiss army knife" type of program for creating 2D designs using primitive shapes and constructive geometry and then sending them to a laser cutter to be cut.  It started out of my frustration with Epilog over their lack of support for Mac OS X and then slowly grew as I added features.  Here's is a short list of what LaserCut can do:
 
 - Create and place simple 2D shapes such as rectangles, rounded rectangles, ovals, circles, n-sided polygons and text outlines
@@ -32,3 +32,10 @@ I'm working on more comprehensive documentation to be built into the code, but h
 - Select a shape and select Edit->Move Selected (or press the CMD-M shortcut key) to reposition a shape, or a group of shapes.
 - Select a shape and select Edit->Delete Selected (or press the CMD-X shortcut key) to delete a shape, or a group of shapes.
 - Select a shape and select Edit->Duplicate Selected (or press the CMD-D shortcut key) to create a duplicate shape you can then reposition.
+
+## Dependencies
+LaserCut uses the following Java code to perform some of its functions:
+- Apache PDFBox 2.0.7 (used by the "Export PDF" feature)
+- Java Simple Serial Connector "JSSC" (used to commuicate with GRBL-based laser cutters)
+- LibLaserCutter (used to drive Zing Laser Cutter)
+- Apache commons-logging 1.2 (used by Apache PDFBox 2.0.7)
