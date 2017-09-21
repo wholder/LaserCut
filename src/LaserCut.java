@@ -593,6 +593,10 @@ public class LaserCut extends JFrame {
     // Add "Send to Zing" Menu Item
     JMenuItem sendToZing = new JMenuItem("Send Job to Zing");
     sendToZing.addActionListener(ev -> {
+      if (zingIpAddress == null ||  zingIpAddress.length() == 0) {
+        showErrorDialog("Please set the Zing's IP Address in Export->Zing Settings");
+        return;
+      }
       if (showWarningDialog("Press OK to Send Job to Zing")) {
         surface.optimizePath();
         EpilogZing lasercutter = new EpilogZing(zingIpAddress);
