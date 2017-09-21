@@ -87,6 +87,7 @@ public class LaserCut extends JFrame {
   private JSSCPort              jPort;
   private DrawSurface           surface;
   private JTextField            itemInfo = new JTextField();
+  private String                zingIpAddress = prefs.get("zing.ip", "10.0.1.201");
   private int                   zingCutPower = prefs.getInt("zing.power", 85);
   private int                   zingCutSpeed = prefs.getInt("zing.speed", 55);
   private int                   zingCutFreq = prefs.getInt("zing.freq", 500);
@@ -594,7 +595,7 @@ public class LaserCut extends JFrame {
     sendToZing.addActionListener(ev -> {
       if (showWarningDialog("Press OK to Send Job to Zing")) {
         surface.optimizePath();
-        EpilogZing lasercutter = new EpilogZing("10.0.1.201");
+        EpilogZing lasercutter = new EpilogZing(zingIpAddress);
         // Set Properties for Materla, such as for 3 mm birch plywood, Set: 60% speed, 80% power, 0 focus, 500 Hz.
         PowerSpeedFocusFrequencyProperty cutProperties = new PowerSpeedFocusFrequencyProperty();
         cutProperties.setProperty("speed", zingCutSpeed);
@@ -606,7 +607,7 @@ public class LaserCut extends JFrame {
         engraveProperties.setProperty("power", zingEngravePower);
         engraveProperties.setProperty("frequency", zingEngraveFreq);
         engraveProperties.setProperty("focus", 0.0f);
-        LaserJob job = new LaserJob("laserCut", "123", "wholder");   // title, name, user
+        LaserJob job = new LaserJob("laserCut", "laserCut", "laserCut");   // title, name, user
         for (int ii = 0; ii < 2; ii++) {
           boolean doCut = ii == 1;
           // Transform all the shapesInGroup into a series of line segments
@@ -662,6 +663,7 @@ public class LaserCut extends JFrame {
     JMenuItem zingSettings = new JMenuItem("Zing Settings");
     zingSettings.addActionListener(ev -> {
       ParameterDialog.ParmItem[] parmSet = {
+          new ParameterDialog.ParmItem("Zing IP Add", zingIpAddress),
           new ParameterDialog.ParmItem("Cut Power|%", zingCutPower),
           new ParameterDialog.ParmItem("Cut Speed", zingCutSpeed),
           new ParameterDialog.ParmItem("Cut Freq|Hz", zingCutFreq),
@@ -670,12 +672,13 @@ public class LaserCut extends JFrame {
           new ParameterDialog.ParmItem("Engrave Freq|Hz", zingEngraveFreq),
       };
       if (ParameterDialog.showSaveCancelParameterDialog(parmSet, this)) {
-        prefs.putInt("zing.power", zingCutPower = (Integer) parmSet[0].value);
-        prefs.putInt("zing.speed", zingCutSpeed = (Integer) parmSet[1].value);
-        prefs.putInt("zing.freq",  zingCutFreq =  (Integer) parmSet[2].value);
-        prefs.putInt("zing.epower", zingCutPower = (Integer) parmSet[3].value);
-        prefs.putInt("zing.espeed", zingCutSpeed = (Integer) parmSet[4].value);
-        prefs.putInt("zing.efreq",  zingCutFreq =  (Integer) parmSet[5].value);
+        prefs.put("zing.ip", zingIpAddress = (String) parmSet[0].value);
+        prefs.putInt("zing.power", zingCutPower = (Integer) parmSet[1].value);
+        prefs.putInt("zing.speed", zingCutSpeed = (Integer) parmSet[2].value);
+        prefs.putInt("zing.freq",  zingCutFreq =  (Integer) parmSet[3].value);
+        prefs.putInt("zing.epower", zingCutPower = (Integer) parmSet[4].value);
+        prefs.putInt("zing.espeed", zingCutSpeed = (Integer) parmSet[5].value);
+        prefs.putInt("zing.efreq",  zingCutFreq =  (Integer) parmSet[6].value);
       }
     });
     zingMenu.add(zingSettings);
