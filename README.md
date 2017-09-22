@@ -1,6 +1,5 @@
-<p align="center">
-  <img src="https://github.com/wholder/LaserCut/blob/master/images/LaserCut%20Screenshot.png">
-</p>
+<p align="center"><img src="https://github.com/wholder/LaserCut/blob/master/images/LaserCut%20Screenshot.png"></p>
+
 ## LaserCut
 LaserCut is an experimental, "swiss army knife" type of program for creating 2D designs using primitive shapes and constructive geometry and then sending them to a laser cutter to be cut.  It started out of my frustration with Epilog over their lack of support for Mac OS X and then slowly grew as I added features.  Here's is a short list of what LaserCut can do:
 
