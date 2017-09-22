@@ -2284,21 +2284,22 @@ public class LaserCut extends JFrame {
           } else if (ev.isShiftDown()) {
             if (selected != null) {
               /*
-                  Cases:
-                    shape to add is in an existing group
-                      remove shape from old group
-                      delete old group if this leaves it with only one member
-                      add shape to selected's group
-                    shape to add is not in an existing group
-                      add shape to selected's group
-                    shape is selected shape
-                      remove shape from its group
-                      make one remaining member of group the new selected shape, or
-                      delete group if this leaves it with only one member
+                Cases:
+                  shape to add is in an existing group
+                    remove shape from old group
+                    delete old group if this leaves it with only one member
+                    add shape to selected's group
+                  shape to add is not in an existing group
+                    add shape to selected's group
+                  shape is selected shape
+                    remove shape from its group
+                    make one remaining member of group the new selected shape, or
+                    delete group if this leaves it with only one member
                */
               CADShapeGroup selGroup = selected.getGroup();
               for (CADShape shape : shapes) {
                 if (shape.isShapeClicked(point, getScreenScale())) {
+                  pushToUndoStack();
                   CADShapeGroup shapeGroup = shape.getGroup();
                   if (shape == selected) {
                     // clicked shape is selected shape, so remove from group and
@@ -2342,7 +2343,7 @@ public class LaserCut extends JFrame {
                 // Check for click and drag of shape's position
                 if (shape.isSelected() && shape.isPositionClicked(point, getScreenScale())) {
                   dragged = shape;
-                  itemInfo.setText("x: " + dragged.xLoc + ", y: " + dragged.yLoc);
+                  itemInfo.setText("xLoc: " + dragged.xLoc + ", yLoc: " + dragged.yLoc);
                   return;
                 }
               }
@@ -2350,18 +2351,23 @@ public class LaserCut extends JFrame {
             for (CADShape shape : shapes) {
               // Check for selection or deselection of shapes
               if (shape.isShapeClicked(point, getScreenScale())) {
+                pushToUndoStack();
                 setSelected(shape);
+                itemInfo.setText(shape.getInfo());
                 break;
               } else if (shape instanceof CADReference && shape.isPositionClicked(point, getScreenScale())) {
+                pushToUndoStack();
                 setSelected(shape);
                 dragged = shape;
+                itemInfo.setText("");
                 break;
               } else if (shape.isSelected()) {
+                pushToUndoStack();
                 setSelected(null);
+                itemInfo.setText("");
                 break;
               }
             }
-            itemInfo.setText("");
           }
           repaint();
           dirty = true;
@@ -2371,32 +2377,15 @@ public class LaserCut extends JFrame {
         public void mouseReleased (MouseEvent ev) {
           dragged = null;
           pushedToStack = false;
+          CADShape shape = getSelected();
+          if (shape != null) {
+            itemInfo.setText(shape.getInfo());
+          } else {
+            itemInfo.setText("");
+          }
         }
       });
       addMouseMotionListener(new MouseMotionAdapter() {
-        @Override
-        public void mouseMoved (MouseEvent ev) {
-          if (ev.isShiftDown()) {
-            Point2D.Double point = new Point2D.Double(ev.getX(), ev.getY());
-            //System.out.println("Mouse moved to: " + point.x + ", " + point.y);
-            for (CADShape shape : shapes) {
-              // Check for mouse pointing to shape
-              if (shape.isPositionClicked(point, getScreenScale()) || shape.isShapeClicked(point, getScreenScale())) {
-                if (shape != lastPointedShape) {
-                  lastPointedShape = shape;
-                  itemInfo.setText(shape.getInfo());
-                }
-                return;
-              }
-            }
-          } else {
-            if (lastPointedShape != null) {
-              itemInfo.setText("");
-            }
-            lastPointedShape = null;
-          }
-        }
-
         @Override
         public void mouseDragged (MouseEvent ev) {
           if (dragged != null) {
@@ -2412,7 +2401,7 @@ public class LaserCut extends JFrame {
             } else {
               delta = dragged.setPosition(newX, newY);
             }
-            itemInfo.setText("x: " + dragged.xLoc + ", y: " + dragged.yLoc);
+            itemInfo.setText("xLoc: " + dragged.xLoc + ", yLoc: " + dragged.yLoc);
             CADShapeGroup group = dragged.getGroup();
             if (group != null) {
               for (CADShape shape : group.shapesInGroup) {
@@ -2490,6 +2479,7 @@ public class LaserCut extends JFrame {
       // Use ObjectOutputStream to make a deep copy
       ByteArrayOutputStream bOut = new ByteArrayOutputStream();
       ObjectOutputStream out = new ObjectOutputStream(bOut);
+      out.writeObject(selected);
       out.writeObject(shapes);
       out.close();
       bOut.close();
@@ -2499,6 +2489,10 @@ public class LaserCut extends JFrame {
     private ArrayList<CADShape> bytesToShapeList(byte[] bytes) throws Exception {
       ByteArrayInputStream bIn = new ByteArrayInputStream(bytes);
       ObjectInputStream in = new ObjectInputStream(bIn);
+      CADShape sel = (CADShape) in.readObject();
+      if (sel != null) {
+        setSelected(sel);
+      }
       return (ArrayList<CADShape>) in.readObject();
     }
 
