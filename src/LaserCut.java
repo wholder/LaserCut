@@ -978,7 +978,6 @@ public class LaserCut extends JFrame {
     for (Point2D.Double qq : quadrant) {
       Point2D.Double RectPnt = new Point2D.Double(qq.x * .4, qq.y * .4);
       Point2D.Double RndPnt = new Point2D.Double(qq.x * .5, qq.y * .5);
-
       Rectangle2D.Double t1 = new Rectangle2D.Double(RectPnt.x - sqWid / 2, RectPnt.y - sqWid / 2, sqWid, sqWid);
       a1.add(new Area(t1));
       RoundRectangle2D.Double t2 = new RoundRectangle2D.Double(RndPnt.x - radius, RndPnt.y - radius, .40, .40, .20, .20);
@@ -1239,16 +1238,14 @@ public class LaserCut extends JFrame {
           String gcode = cmds[ii];
           progress.setValue(ii);
           grbl.append(gcode + '\n');
-            jPort.sendString(gcode + '\n');
-            stepWait();
-        }
-        if (doAbort) {
-          //jPort.sendByte((byte) 0x18);      // Locks up GRBL (can't jog after issued)
-          jPort.sendString("M5\n");           // Set Laser Off
-          stepWait();
-          jPort.sendString("G00 X0 Y0\n");    // Move back to Origin
+          jPort.sendString(gcode + '\n');
           stepWait();
         }
+        //jPort.sendByte((byte) 0x18);      // Locks up GRBL (can't jog after issued)
+        jPort.sendString("M5\n");           // Set Laser Off
+        stepWait();
+        jPort.sendString("G00 X0 Y0\n");    // Move back to Origin
+        stepWait();
       } catch (Exception ex) {
         ex.printStackTrace();
       }
