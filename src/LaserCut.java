@@ -812,22 +812,22 @@ public class LaserCut extends JFrame {
           JLabel tmp;
           Font font2 = new Font("Monospaced", Font.PLAIN, 20);
           // Row 1
-          buttons.add(new JogButton(new Arrow(135), jPort, speed, "Y- X-"));   // Up Left
-          buttons.add(new JogButton(new Arrow(180), jPort, speed, "Y-"));      // Up
-          buttons.add(new JogButton(new Arrow(225), jPort, speed, "Y- X+"));   // Up Right
-          buttons.add(new JogButton(new Arrow(180), jPort, speed, "Z+"));      // Up
+          buttons.add(new JogButton(new Arrow(135), jPort, speed, "Y-% X-%"));   // Up Left
+          buttons.add(new JogButton(new Arrow(180), jPort, speed, "Y-%"));       // Up
+          buttons.add(new JogButton(new Arrow(225), jPort, speed, "Y-% X+%"));   // Up Right
+          buttons.add(new JogButton(new Arrow(180), jPort, speed, "Z+%"));       // Up
           // Row 2
-          buttons.add(new JogButton(new Arrow(90), jPort, speed, "X-"));       // Left
+          buttons.add(new JogButton(new Arrow(90), jPort, speed, "X-%"));        // Left
           buttons.add(tmp = new JLabel("X/Y", JLabel.CENTER));
           tmp.setFont(font2);
-          buttons.add(new JogButton(new Arrow(270), jPort, speed, "X+"));      // Right
+          buttons.add(new JogButton(new Arrow(270), jPort, speed, "X+%"));       // Right
           buttons.add(tmp = new JLabel("Z", JLabel.CENTER));
           tmp.setFont(font2);
           // Row 3
-          buttons.add(new JogButton(new Arrow(45), jPort, speed, "Y+ X-"));    // Down Left
-          buttons.add(new JogButton(new Arrow(0), jPort, speed, "Y+"));        // Down
-          buttons.add(new JogButton(new Arrow(315), jPort, speed, "Y+ X+"));   // Down Right
-          buttons.add(new JogButton(new Arrow(0), jPort, speed, "Z-"));        // Down
+          buttons.add(new JogButton(new Arrow(45), jPort, speed, "Y+% X-%"));    // Down Left
+          buttons.add(new JogButton(new Arrow(0), jPort, speed, "Y+%"));         // Down
+          buttons.add(new JogButton(new Arrow(315), jPort, speed, "Y+% X+%"));   // Down Right
+          buttons.add(new JogButton(new Arrow(0), jPort, speed, "Z-%"));         // Down
           frame.add(buttons, BorderLayout.CENTER);
           // Bring up Jog Controls
           Object[] options = {"Set Origin", "Cancel"};
@@ -1094,8 +1094,10 @@ public class LaserCut extends JFrame {
         double ratio = sp / 100.0;
         String fRate = "F" + (int) Math.max(75 * ratio, 5);
         String sDist = LaserCut.df.format(.1 * ratio);
+        String jogCmd = "$J=G91 G20 " + fRate + " " + cmd + "\n";
+        jogCmd = jogCmd.replaceAll("\\%", sDist);
         while (running) {
-          jPort.sendString("$J=G91 G20 " + fRate + " " + cmd + sDist + "\n");
+          jPort.sendString(jogCmd);
           nextStep++;
           synchronized (lock) {
             while (step < nextStep) {
