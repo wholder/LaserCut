@@ -1,7 +1,7 @@
 <p align="center"><img src="https://github.com/wholder/LaserCut/blob/master/images/LaserCut%20Screenshot.png"></p>
 
 ## LaserCut
-LaserCut is an experimental, "swiss army knife" type of program for creating 2D designs using primitive shapes and constructive geometry and then sending them to a laser cutter to be cut.  It started out of my frustration with Epilog over their lack of support for Mac OS X and then slowly grew as I added features.  Here's is a short list of what LaserCut can do:
+LaserCut is an experimental, "swiss army knife" type of program for creating 2D designs using primitive shapes and constructive geometry and then sending them to a laser cutter to be cut.  It started out of my frustration with Epilog™ over their lack of support for Mac OS X drivers.  After that, it slowly grew as I added features.  Here's is a short list of what LaserCut can do:
 
 - Create and place simple 2D shapes such as rectangles, rounded rectangles, ovals, circles, n-sided polygons and text outlines
 - Create and place Reference Point objects which are display-only oblects you can use as reference points or group with other shapes to provide a common origin point.
@@ -17,7 +17,7 @@ LaserCut is an experimental, "swiss army knife" type of program for creating 2D 
 - Zoom and pan support
 - Generate Spur Gears of various sizes and parameters
 - All shapes can be set to be cut or engraved by the laser cutter (Zing only)
-- Send jobs to an Eplilog Zing over an Ethernet connection (USB not supported)
+- Send jobs to an Eplilog™ Zing™ over an Ethernet connection (USB not supported)
 - Send jobs to a GRBL-based laser cutter (experimental)
 - Import vector outlines from SVG files (experimental)
 - Import drill holes and outlines from a Geber file (experimental)
