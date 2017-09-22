@@ -21,8 +21,8 @@ LaserCut is an experimental, "swiss army knife" type of program for creating 2D 
 - Import drill holes and outlines from a Geber file (experimental)
 - Export to designs to a PDF file (experimental)
 
-I'm working on more comprehensive documentation to be built into the code, but here are some basics:
-
+## Documentation
+I'm working on more comprehensive documentation to be built into the code but, in the meantime, here are some basics:
 - Select a shape from the "Shapes" menu, fill in the parameters, as needed, press "Place" and then click the mouse point where you want the shape to be located.  Note: select "centered" for the origin of the shape to be its center, otherwise it will the the upper left point.
 - Click the outline of a shape to select it (turns blue) and display the origin as a small (+)
 - Click and drag the (+) origin to reposition a shape
