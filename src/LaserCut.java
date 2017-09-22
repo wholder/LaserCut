@@ -1095,7 +1095,7 @@ public class LaserCut extends JFrame {
         String fRate = "F" + (int) Math.max(75 * ratio, 5);
         String sDist = LaserCut.df.format(.1 * ratio);
         String jogCmd = "$J=G91 G20 " + fRate + " " + cmd + "\n";
-        jogCmd = jogCmd.replaceAll("\\%", sDist);
+        jogCmd = jogCmd.replaceAll("%", sDist);
         while (running) {
           jPort.sendString(jogCmd);
           nextStep++;
