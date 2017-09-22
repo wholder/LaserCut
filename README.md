@@ -30,10 +30,10 @@ I'm working on more comprehensive documentation to be built into the code but, i
 - Click and drag the (+) origin to reposition a shape
 - With one shape selected, press and hold down the shift key while you click on the outline of another shape to group the two objects together (both show as blue).  Shift click again to ungroup a shape.
 - Click one shape in a group to display its origin and then reposition the whole group by clicking and dragging its (+) origin.
-- Select a shape and select Edit->Edit Selected (or press the CMD-E shortcut key) to bring up the shape parameter dialog.
-- Select a shape and select Edit->Move Selected (or press the CMD-M shortcut key) to reposition a shape, or a group of shapes.
-- Select a shape and select Edit->Delete Selected (or press the CMD-X shortcut key) to delete a shape, or a group of shapes.
-- Select a shape and select Edit->Duplicate Selected (or press the CMD-D shortcut key) to create a duplicate shape you can then reposition.
+- Select a shape and select **Edit->Edit Selected** (or press the **CMD-E** shortcut key) to bring up the shape parameter dialog.
+- Select a shape and select **Edit->Move Selected** (or press the **CMD-M** shortcut key) to reposition a shape, or a group of shapes.
+- Select a shape and select **Edit->Delete Selected** (or press the **CMD-X** shortcut key) to delete a shape, or a group of shapes.
+- Select a shape and select **Edit->Duplicate Selected** (or press the **CMD-D** shortcut key) to create a duplicate shape you can then reposition.
 
 ## Dependencies
 LaserCut uses the following Java code to perform some of its functions:
