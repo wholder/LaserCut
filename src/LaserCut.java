@@ -141,7 +141,7 @@ public class LaserCut extends JFrame {
 
   private LaserCut () {
     setTitle("LaserCut");
-    surface = new DrawSurface(new Dimension(prefs.getInt("window.width", zingFullSize.width), prefs.getInt("window.height", zingFullSize.height)));
+    surface = new DrawSurface();
     add(new JScrollPane(surface), BorderLayout.CENTER);
     JPanel bottomPane = new JPanel(new BorderLayout());
     bottomPane.setBorder(new EmptyBorder(1, 4, 1, 1));
@@ -330,9 +330,7 @@ public class LaserCut extends JFrame {
       zItem.setSelected(zoom == surface.getZoom());
       zoomMenu.add(zItem);
       zoomGroup.add(zItem);
-      zItem.addActionListener(ev -> {
-        surface.setZoom(zoom);
-      });
+      zItem.addActionListener(ev -> surface.setZoom(zoom));
     }
     menuBar.add(zoomMenu);
     // Add "Edit" Menu
@@ -412,7 +410,7 @@ public class LaserCut extends JFrame {
       if (dialog.doAction()) {
         surface.pushToUndoStack();
         double val = (Double) parms[0].value;
-        surface.roundSelected(0.125);
+        surface.roundSelected(val);
         surface.setDirty();
       }
     });
@@ -1291,8 +1289,8 @@ public class LaserCut extends JFrame {
 
   static class CADShape implements Serializable, Comparable<CADShape> {
     private static final long serialVersionUID = 3716741066289930874L;
-    public double     xLoc, yLoc, rotation;
-    public boolean    centered, engrave;
+    public double     xLoc, yLoc, rotation;   // Note: must pubic for reflection
+    public boolean    centered, engrave;      // Note: must pubic for reflection
     CADShapeGroup     group;
     Shape             shape;
     transient Shape   builtShape;
@@ -1569,7 +1567,7 @@ public class LaserCut extends JFrame {
     /**
      * Check if 'point' is close to shape's xLoc/yLoc position
      * @param point point on screen at scale
-     * @scale scale factor
+     * @param scale factor
      * @return true if close enough to consider a 'touch'
      */
     boolean isPositionClicked (Point2D.Double point, double scale) {
@@ -1580,7 +1578,7 @@ public class LaserCut extends JFrame {
     /**
      * Check if 'point' is close to one of the segments that make up the shape
      * @param point point on screen at scale
-     * @scale scale factor
+     * @param scale factor
      * @return true if close enough to consider a 'touch'
      */
     boolean isShapeClicked (Point2D.Double point, double scale) {
@@ -1688,7 +1686,7 @@ public class LaserCut extends JFrame {
           buf.append(": ");
           Field fld = this.getClass().getField(item.name);
           Object value = fld.get(this);
-          if (item.valueType != null  && item.valueType instanceof String) {
+          if (item.valueType != null  && item.valueType instanceof String[]) {
             String[] labels = ParameterDialog.getLabels((String[]) item.valueType);
             String[] values = ParameterDialog.getValues((String[]) item.valueType);
             value = labels[Arrays.asList(values).indexOf(value)];
@@ -1940,7 +1938,6 @@ public class LaserCut extends JFrame {
 
   static class CADNemaMotor extends CADShape implements Serializable {
     private static final long serialVersionUID = 2518641166287730832L;
-    private static final double S4_40 = 1;
     private static final double M2 = mmToInches(2);
     private static final double M2_5 = mmToInches(2.5);
     private static final double M3 = mmToInches(3);
@@ -1978,7 +1975,6 @@ public class LaserCut extends JFrame {
       double off = holeSpacing[idx] / 2;
       double hd = holeDiameter[idx];
       double hr = hd / 2;
-      Ellipse2D.Double c2 = new Ellipse2D.Double(-off - hr, -off - hr, hd, hd);
       Area a1 = new Area(new Ellipse2D.Double(-diameter / 2, -diameter / 2, diameter, diameter));
       a1.add(new Area(new Ellipse2D.Double(-off - hr, -off - hr, hd, hd)));
       a1.add(new Area(new Ellipse2D.Double(+off - hr, -off - hr, hd, hd)));
@@ -2203,15 +2199,15 @@ public class LaserCut extends JFrame {
     }
   }
 
-  interface DrawSurfaceSelectListener {
+  interface ShapeSelectListener {
     void shapeSelected (CADShape shape, boolean selected);
   }
 
-  interface DrawSurfaceUndoListener {
+  interface ActionUndoListener {
     void undoEnable (boolean enable);
   }
 
-  interface DrawSurfaceRedoListener {
+  interface ActionRedoListener {
     void redoEnable (boolean enable);
   }
 
@@ -2219,17 +2215,17 @@ public class LaserCut extends JFrame {
     private transient BufferedImage         offScr;
     private Dimension                       lastDim,  workSize;
     private ArrayList<CADShape>             shapes = new ArrayList<>(), shapesToPlace;
-    private CADShape                        selected, dragged, lastPointedShape, shapeToPlace;
+    private CADShape                        selected, dragged, shapeToPlace;
     private double                          gridSpacing = prefs.getDouble("gridSpacing", 0);
     private double                          zoomFactor = 1;
-    private ArrayList<DrawSurfaceSelectListener>  selectListerners = new ArrayList<>();
-    private ArrayList<DrawSurfaceUndoListener>  undoListerners = new ArrayList<>();
-    private ArrayList<DrawSurfaceRedoListener>  redoListerners = new ArrayList<>();
+    private ArrayList<ShapeSelectListener>  selectListerners = new ArrayList<>();
+    private ArrayList<ActionUndoListener>   undoListerners = new ArrayList<>();
+    private ArrayList<ActionRedoListener>   redoListerners = new ArrayList<>();
     private LinkedList<byte[]>              undoStack = new LinkedList<>();
     private LinkedList<byte[]>              redoStack = new LinkedList<>();
     private boolean                         pushedToStack, dirty = true;
 
-    DrawSurface (Dimension size) {
+    DrawSurface () {
       // Set JPanel size for Zing's maximum work area, or other, if resized by user
       setPreferredSize(getSize());
       addMouseListener(new MouseAdapter() {
@@ -2240,7 +2236,6 @@ public class LaserCut extends JFrame {
           if (shapeToPlace != null || shapesToPlace != null) {
             double newX = ev.getX() / getScreenScale();
             double newY = ev.getY() / getScreenScale();
-            Point2D.Double delta;
             if (gridSpacing > 0) {
               newX = toGrid(newX);
               newY = toGrid(newY);
@@ -2465,11 +2460,11 @@ public class LaserCut extends JFrame {
       return gridSpacing * Math.floor((coord / gridSpacing) + 0.5);
     }
 
-    void addUndoListener (DrawSurfaceUndoListener lst) {
+    void addUndoListener (ActionUndoListener lst) {
       undoListerners.add(lst);
     }
 
-    void addRedoListener (DrawSurfaceRedoListener lst) {
+    void addRedoListener (ActionRedoListener lst) {
       redoListerners.add(lst);
     }
 
@@ -2502,10 +2497,10 @@ public class LaserCut extends JFrame {
         if (undoStack.size() > 200) {
           undoStack.removeLast();
         }
-        for (DrawSurfaceUndoListener lst : undoListerners) {
+        for (ActionUndoListener lst : undoListerners) {
           lst.undoEnable(undoStack.size() > 0);
         }
-        for (DrawSurfaceRedoListener lst : redoListerners) {
+        for (ActionRedoListener lst : redoListerners) {
           lst.redoEnable(redoStack.size() > 0);
         }
       } catch (IOException ex) {
@@ -2518,10 +2513,10 @@ public class LaserCut extends JFrame {
         try {
           redoStack.addFirst(shapesListToBytes());
           shapes = bytesToShapeList(undoStack.pollFirst());
-          for (DrawSurfaceUndoListener lst : undoListerners) {
+          for (ActionUndoListener lst : undoListerners) {
             lst.undoEnable(undoStack.size() > 0);
           }
-          for (DrawSurfaceRedoListener lst : redoListerners) {
+          for (ActionRedoListener lst : redoListerners) {
             lst.redoEnable(redoStack.size() > 0);
           }
           repaint();
@@ -2536,10 +2531,10 @@ public class LaserCut extends JFrame {
       try {
         undoStack.addFirst(shapesListToBytes());
         shapes = bytesToShapeList(redoStack.pollFirst());
-        for (DrawSurfaceUndoListener lst : undoListerners) {
+        for (ActionUndoListener lst : undoListerners) {
           lst.undoEnable(undoStack.size() > 0);
         }
-        for (DrawSurfaceRedoListener lst : redoListerners) {
+        for (ActionRedoListener lst : redoListerners) {
           lst.redoEnable(redoStack.size() > 0);
         }
         repaint();
@@ -2602,8 +2597,6 @@ public class LaserCut extends JFrame {
       repaint();
     }
 
-    // TODO Rework to fix offset issue after Add
-    // TODO Fix Subtract when more than 2 shape are grouped
     void addOrSubtractSelectedShapes (boolean add) {
       CADShapeGroup group = selected.getGroup();
       if (group != null) {
@@ -2724,7 +2717,7 @@ public class LaserCut extends JFrame {
       }
     }
 
-    void addSelectListener (DrawSurfaceSelectListener listener) {
+    void addSelectListener (ShapeSelectListener listener) {
       selectListerners.add(listener);
     }
 
@@ -2736,7 +2729,7 @@ public class LaserCut extends JFrame {
         if (group != null) {
           shapes.removeAll(group.getGroupList());
         }
-        for (DrawSurfaceSelectListener listener : selectListerners) {
+        for (ShapeSelectListener listener : selectListerners) {
           listener.shapeSelected(selected, false);
         }
         selected = null;
@@ -2787,7 +2780,7 @@ public class LaserCut extends JFrame {
       if (selected != null) {
         selected.setSelected(true);
       }
-      for (DrawSurfaceSelectListener listener : selectListerners) {
+      for (ShapeSelectListener listener : selectListerners) {
         listener.shapeSelected(selected, true);
       }
       repaint();
@@ -2897,7 +2890,6 @@ public class LaserCut extends JFrame {
         while (!pi.isDone()) {
           float[] coords = new float[6];      // p1.x, p1.y, p2.x, p2.y, p3.x, p3.y
           int type = pi.currentSegment(coords);
-          //System.out.println("{" + type + "f, " + coords[0] + "f, " + coords[1] + "f},");
           switch (type) {
             case PathIterator.SEG_MOVETO:   // 0
               // Move to start of a line, or bezier curve segment
@@ -2934,7 +2926,6 @@ public class LaserCut extends JFrame {
   }
 
   public static void main (String[] s) {
-    JFrame frm = new LaserCut();
-    //frm.createBufferStrategy(2);
+    java.awt.EventQueue.invokeLater(LaserCut::new);
   }
 }
