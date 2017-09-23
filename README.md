@@ -1,8 +1,8 @@
 <p align="center"><img src="https://github.com/wholder/LaserCut/blob/master/images/LaserCut%20Screenshot.png"></p>
 
-## LaserCut
-LaserCut is an experimental, "swiss army knife" type of program for creating 2D designs using primitive shapes and constructive geometry and then sending them to a laser cutter to be cut.  It started out of my frustration with Epilog™ over their lack of support for Mac OS X drivers.  After that, it slowly grew as I added features.  Here's is a short list of what LaserCut can do:
-
+# LaserCut
+LaserCut is an experimental, "swiss army knife" type of program for creating 2D designs using primitive shapes and constructive geometry and then sending them to a laser cutter for vector cutting or engraving.  It began over my frustration with Epilog™ over their lack of support for Mac OS X drivers and having to purchase and constantly update both MS Windows™ and Parallels™ just to use the Zing.  Then, on day, I discovered a wonderful Java library named [LibLaserCut](https://github.com/t-oster/LibLaserCut) (originally create by Thomas Oster for his [VisiCut](http://hci.rwth-aachen.de/visicut) program) and used it to begin coding my own solution.  After that, LaserCut slowly grew as I added more and more features.  This means that the feature set of LaserCut happens to be things that I needed it to do and not the result of some well-thought-out plan.  However, I tried to make the design as modular as possible.  For example, you can add new 2D shapes by subclassing the superclass `CADShape` and writing a few overloaded methods.
+## Basic Features
 - Create and place simple 2D shapes such as rectangles, rounded rectangles, ovals, circles, n-sided polygons and text outlines
 - Create and place Reference Point objects which are display-only oblects you can use as reference points or group with other shapes to provide a common origin point.
 - Specify position and dimensions in inches (default) or millimeters
@@ -12,32 +12,32 @@ LaserCut is an experimental, "swiss army knife" type of program for creating 2D 
 - Move (translate) 2D shapes and groups of 2D shapes
 - Rotate grouped shapes around the location of one of the grouped shapes
 - Align the position of a shape, or a group of shapes to the position of another shape
-- Add one or more simple 2D shapes to another shape to create a new shape
-- Subtract one or more shapes from another shape to get a new shape
-- Zoom and pan support
+- Edit shape parameters and set to either cut, or engrave the vector outline of the shape
+- Uses Java's geom package to perform 2D, constructive geometry-like operations on shapes, such as:
+  - Add/Merge one or more simple 2D shapes to another shape to create a new shape
+  - Subtract/Remove one or more shapes from another shape to get a new shape
+- Zoom and Pan support
 - Generate Spur Gears of various sizes and parameters
 - All shapes can be set to be cut or engraved by the laser cutter (Zing only)
 - Send jobs to an Eplilog™ Zing™ over an Ethernet connection (USB not supported)
-- Send jobs to a GRBL-based laser cutter (experimental)
-- Import vector outlines from SVG files (experimental)
+- Send jobs to a GRBL-based laser cutter with support for jogging position of laser head (experimental)
+- Import vector outlines from an SVG files (experimental)
 - Import drill holes and outlines from a Geber file (experimental)
-- Export to designs to a PDF file (experimental)
-
-## Documentation
-I'm working on more comprehensive documentation to be built into the code but, in the meantime, here are some basics:
-- Select a shape from the "Shapes" menu, fill in the parameters, as needed, press "Place" and then click the mouse point where you want the shape to be located.  Note: select "centered" for the origin of the shape to be its center, otherwise it will the the upper left point.
-- Click the outline of a shape to select it (turns blue) and display the origin as a small (+)
+- Export vector designs to a PDF file (experimental)
+## Basic Operations
+I'm working on more comprehensive documentation to be built into the code but, in the meantime, here are some basic operations you can do:
+- Select a shape from the "**Shapes**" menu, fill in the parameters, as needed, press "**Place**" and then click the mouse point where you want the shape to be located.  Note: select "centered" for the origin of the shape to be its center, otherwise it will the the upper left point.
+- Click the outline of a shape to select it (shape outline turns blue) and display the origin as a small (+)
 - Click and drag the (+) origin to reposition a shape
-- With one shape selected, press and hold down the shift key while you click on the outline of another shape to group the two objects together (both show as blue).  Shift click again to ungroup a shape.
+- With one shape selected, press and hold down the shift key while you click on the outline of another shape to group the two objects together (both outlines show as blue).  Shift click again to ungroup a shape.
 - Click one shape in a group to display its origin and then reposition the whole group by clicking and dragging its (+) origin.
 - Select a shape and select **Edit->Edit Selected** (or press the **CMD-E** shortcut key) to bring up the shape parameter dialog.
 - Select a shape and select **Edit->Move Selected** (or press the **CMD-M** shortcut key) to reposition a shape, or a group of shapes.
 - Select a shape and select **Edit->Delete Selected** (or press the **CMD-X** shortcut key) to delete a shape, or a group of shapes.
 - Select a shape and select **Edit->Duplicate Selected** (or press the **CMD-D** shortcut key) to create a duplicate shape you can then reposition.
-
-## Dependencies
+## Credit
 LaserCut uses the following Java code to perform some of its functions:
-- Apache PDFBox 2.0.7 (used by the "Export PDF" feature)
-- Java Simple Serial Connector "JSSC" (used to commuicate with GRBL-based laser cutters)
-- LibLaserCutter (used to drive Zing Laser Cutter)
-- Apache commons-logging 1.2 (used by Apache PDFBox 2.0.7)
+- [LibLaserCut](https://github.com/t-oster/LibLaserCut) (used to drive Zing Laser)
+- [Java Simple Serial Connector 2.8.0](https://github.com/scream3r/java-simple-serial-connector) "JSSC" (used to commuicate with GRBL-based laser cutters)
+- [Apache PDFBox® 2.0.7](https://pdfbox.apache.org) (used by the "Export PDF" feature)
+- [Apache commons-logging 1.2](https://commons.apache.org/proper/commons-logging/) (needed by Apache PDFBox 2.0.7)

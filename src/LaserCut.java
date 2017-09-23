@@ -170,9 +170,9 @@ public class LaserCut extends JFrame {
       JOptionPane.showMessageDialog(this,
           "By: Wayne Holder\n" +
               "  Java Runtime  " + System.getProperty("java.version") + "\n" +
-              "  Apache PDFBox " + org.apache.pdfbox.util.Version.getVersion() + "\n" +
-              "  JSSC " + SerialNativeInterface.getLibraryVersion() + "\n" +
-              "  LibLaserCut " + com.t_oster.liblasercut.LibInfo.getVersion(),
+              "  LibLaserCut " + com.t_oster.liblasercut.LibInfo.getVersion() + "\n" +
+              "  Java Simple Serial Connector " + SerialNativeInterface.getLibraryVersion() + "\n" +
+              "  Apache PDFBox " + org.apache.pdfbox.util.Version.getVersion(),
           "LaserCut " + VERSION,
           JOptionPane.INFORMATION_MESSAGE,
           new ImageIcon(getClass().getResource("/images/laser_wip_black.png")));
@@ -1497,13 +1497,12 @@ public class LaserCut extends JFrame {
       if (this instanceof CADReference) {
         if (this instanceof CADReference) {
           final float dash1[] = {3.0f};
-          final BasicStroke dashed = new BasicStroke(highlight ? 1.5f : 1.0f, BasicStroke.CAP_SQUARE, BasicStroke.JOIN_MITER, 1.0f, dash1, 0.5f);
-          g2.setStroke(dashed);
+          g2.setStroke(new BasicStroke(highlight ? isSelected ? 1.8f : 1.4f : 1.0f, BasicStroke.CAP_SQUARE, BasicStroke.JOIN_MITER, 1.0f, dash1, 0.5f));
         }
         g2.setColor(new Color(0, 128, 0));
       } else {
         g2.setColor(highlight ? engrave ? Color.RED : Color.blue : engrave ? Color.ORANGE : Color.black);
-        g2.setStroke(new BasicStroke(highlight ? 1.2f : 1.0f));
+        g2.setStroke(new BasicStroke(highlight ? isSelected ? 1.8f : 1.4f : 1.0f));
       }
       // Scale Shape to scale and draw it
       if (true) {
@@ -1521,7 +1520,7 @@ public class LaserCut extends JFrame {
         double my = yLoc * SCREEN_PPI;
         double mWid = 3;
         if (this instanceof CADReference) {
-          g2.setStroke(new BasicStroke(highlight ? 1.5f : 1.0f));
+          g2.setStroke(new BasicStroke(highlight ? isSelected ? 1.8f : 1.4f : 0.8f));
         }
         g2.draw(new Line2D.Double(mx - mWid, my, mx + mWid, my));
         g2.draw(new Line2D.Double(mx, my - mWid, mx, my + mWid));
@@ -1728,7 +1727,6 @@ public class LaserCut extends JFrame {
 
     @Override
     Shape buildShape () {
-      //return new Ellipse2D.Double(-.125, -.125, .25, .25);
       return new Rectangle2D.Double(-.1, -.1, .2, .2);
     }
   }
@@ -2341,32 +2339,30 @@ public class LaserCut extends JFrame {
             if (selected != null) {
               for (CADShape shape : shapes) {
                 // Check for click and drag of shape's position
-                if (shape.isSelected() && shape.isPositionClicked(point, getScreenScale())) {
+                if (shape.isPositionClicked(point, getScreenScale())) {
                   dragged = shape;
+                  setSelected(shape);
                   itemInfo.setText("xLoc: " + dragged.xLoc + ", yLoc: " + dragged.yLoc);
                   return;
                 }
               }
             }
+            boolean processed = false;
             for (CADShape shape : shapes) {
               // Check for selection or deselection of shapes
-              if (shape.isShapeClicked(point, getScreenScale())) {
+              if (shape.isShapeClicked(point, getScreenScale()) ||
+                  (shape instanceof CADReference && shape.isPositionClicked(point, getScreenScale())) ) {
                 pushToUndoStack();
                 setSelected(shape);
                 itemInfo.setText(shape.getInfo());
-                break;
-              } else if (shape instanceof CADReference && shape.isPositionClicked(point, getScreenScale())) {
-                pushToUndoStack();
-                setSelected(shape);
-                dragged = shape;
-                itemInfo.setText("");
-                break;
-              } else if (shape.isSelected()) {
-                pushToUndoStack();
-                setSelected(null);
-                itemInfo.setText("");
+                processed = true;
                 break;
               }
+            }
+            if (!processed) {
+              pushToUndoStack();
+              setSelected(null);
+              itemInfo.setText("");
             }
           }
           repaint();
