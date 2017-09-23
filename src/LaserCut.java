@@ -98,45 +98,45 @@ public class LaserCut extends JFrame {
   private int                   miniSpeed = prefs.getInt("mini.speed", 10);
   private boolean               miniDynamicLaser = prefs.getBoolean("mini.dynamicLaser", true);
   private static final boolean  enableMiniLazer = true;
-  private static Map<String,String>     settingsMap = new LinkedHashMap<>();
+  private static Map<String,String> grblSettings = new LinkedHashMap<>();
 
   static {
     // Settings map for GRBL .9, or later
-    settingsMap.put("$0", "Step pulse, usec");
-    settingsMap.put("$1", "Step idle delay, msec");
-    settingsMap.put("$2", "Step port invert, mask");
-    settingsMap.put("$3", "Direction port invert, mask");
-    settingsMap.put("$4", "Step enable invert, boolean");
-    settingsMap.put("$5", "Limit pins invert, boolean");
-    settingsMap.put("$6", "Probe pin invert, boolean");
-    settingsMap.put("$10", "Status report, mask");
-    settingsMap.put("$11", "Junction deviation, mm");
-    settingsMap.put("$12", "Arc tolerance, mm");
-    settingsMap.put("$13", "Report inches, boolean");
-    settingsMap.put("$20", "Soft limits, boolean");
-    settingsMap.put("$21", "Hard limits, boolean");
-    settingsMap.put("$22", "Homing cycle, boolean");
-    settingsMap.put("$23", "Homing dir invert, mask");
-    settingsMap.put("$24", "Homing feed, mm/min");
-    settingsMap.put("$25", "Homing seek, mm/min");
-    settingsMap.put("$26", "Homing debounce, msec");
-    settingsMap.put("$27", "Homing pull-off, mm");
-    settingsMap.put("$30", "Max spindle speed, RPM");
-    settingsMap.put("$31", "Min spindle speed, RPM");
-    settingsMap.put("$32", "Laser mode, boolean");
-    settingsMap.put("$100", "X steps/mm");
-    settingsMap.put("$101", "Y steps/mm");
-    settingsMap.put("$102", "Z steps/mm");
-    settingsMap.put("$110", "X Max rate, mm/min");
-    settingsMap.put("$111", "Y Max rate, mm/min");
-    settingsMap.put("$112", "Z Max rate, mm/min");
-    settingsMap.put("$120", "X Acceleration, mm/sec^2");
-    settingsMap.put("$121", "Y Acceleration, mm/sec^2");
-    settingsMap.put("$122", "Z Acceleration, mm/sec^2");
-    settingsMap.put("$130", "X Max travel, mm");
-    settingsMap.put("$131", "Y Max travel, mm");
-    settingsMap.put("$132", "Z Max travel, mm");
-    settingsMap.put("$132", "Z Max travel, mm");
+    grblSettings.put("$0", "Step pulse, usec");
+    grblSettings.put("$1", "Step idle delay, msec");
+    grblSettings.put("$2", "Step port invert, mask");
+    grblSettings.put("$3", "Direction port invert, mask");
+    grblSettings.put("$4", "Step enable invert, boolean");
+    grblSettings.put("$5", "Limit pins invert, boolean");
+    grblSettings.put("$6", "Probe pin invert, boolean");
+    grblSettings.put("$10", "Status report, mask");
+    grblSettings.put("$11", "Junction deviation, mm");
+    grblSettings.put("$12", "Arc tolerance, mm");
+    grblSettings.put("$13", "Report inches, boolean");
+    grblSettings.put("$20", "Soft limits, boolean");
+    grblSettings.put("$21", "Hard limits, boolean");
+    grblSettings.put("$22", "Homing cycle, boolean");
+    grblSettings.put("$23", "Homing dir invert, mask");
+    grblSettings.put("$24", "Homing feed, mm/min");
+    grblSettings.put("$25", "Homing seek, mm/min");
+    grblSettings.put("$26", "Homing debounce, msec");
+    grblSettings.put("$27", "Homing pull-off, mm");
+    grblSettings.put("$30", "Max spindle speed, RPM");
+    grblSettings.put("$31", "Min spindle speed, RPM");
+    grblSettings.put("$32", "Laser mode, boolean");
+    grblSettings.put("$100", "X steps/mm");
+    grblSettings.put("$101", "Y steps/mm");
+    grblSettings.put("$102", "Z steps/mm");
+    grblSettings.put("$110", "X Max rate, mm/min");
+    grblSettings.put("$111", "Y Max rate, mm/min");
+    grblSettings.put("$112", "Z Max rate, mm/min");
+    grblSettings.put("$120", "X Acceleration, mm/sec^2");
+    grblSettings.put("$121", "Y Acceleration, mm/sec^2");
+    grblSettings.put("$122", "Z Acceleration, mm/sec^2");
+    grblSettings.put("$130", "X Max travel, mm");
+    grblSettings.put("$131", "Y Max travel, mm");
+    grblSettings.put("$132", "Z Max travel, mm");
+    grblSettings.put("$132", "Z Max travel, mm");
   }
 
   private LaserCut () {
@@ -886,13 +886,13 @@ public class LaserCut extends JFrame {
           }
           JPanel sPanel;
           if (grblVersion != null) {
-            sPanel = new JPanel(new GridLayout(settingsMap.size() + 2, 2, 4, 0));
+            sPanel = new JPanel(new GridLayout(grblSettings.size() + 2, 2, 4, 0));
             sPanel.add(new JLabel("GRBL Version: "));
             sPanel.add(new JLabel(grblVersion));
             sPanel.add(new JLabel("GRBL Options: "));
             sPanel.add(new JLabel(grblOptions));
-            for (String key : settingsMap.keySet()) {
-              sPanel.add(new JLabel(key + " - " + settingsMap.get(key) + ": "));
+            for (String key : grblSettings.keySet()) {
+              sPanel.add(new JLabel(key + " - " + grblSettings.get(key) + ": "));
               sPanel.add(new JLabel(map.get(key)));
             }
           } else {
@@ -1614,12 +1614,8 @@ public class LaserCut extends JFrame {
      * @return true if used clicked OK to save
      */
     boolean placeParameterDialog (DrawSurface surface) {
-        if (this instanceof CADReference) {
-          return displayShapeParameterDialog(surface, new ArrayList<>(), "Save");
-        } else {
-          return displayShapeParameterDialog(surface, new ArrayList<>(Arrays.asList("rotation|deg", "centered", "engrave")), "Place");
-        }
-      }
+      return displayShapeParameterDialog(surface, new ArrayList<>(Arrays.asList("rotation|deg", "centered", "engrave")), "Place");
+    }
 
     /**
      * Bring up editable parameter dialog box do user can edit fields.  Uses reflection to read and save
@@ -1627,11 +1623,7 @@ public class LaserCut extends JFrame {
      * @return true if used clicked OK to save
      */
     boolean editParameterDialog (DrawSurface surface) {
-        if (this instanceof CADReference) {
-          return displayShapeParameterDialog(surface, new ArrayList<>(Arrays.asList("xLoc|in", "yLoc|in")), "Place");
-        } else {
-          return displayShapeParameterDialog(surface, new ArrayList<>(Arrays.asList("xLoc|in", "yLoc|in", "rotation|deg", "centered", "engrave")), "Save");
-        }
+      return displayShapeParameterDialog(surface, new ArrayList<>(Arrays.asList("xLoc|in", "yLoc|in", "rotation|deg", "centered", "engrave")), "Save");
     }
 
     /**
@@ -1641,7 +1633,7 @@ public class LaserCut extends JFrame {
      * @param actionButton Text for action button, such as "Save" or "Place"
      * @return true if used clicked action button, else false if they clicked cancel.
      */
-    private boolean displayShapeParameterDialog (DrawSurface surface, ArrayList<String> parmNames, String actionButton) {
+    boolean displayShapeParameterDialog (DrawSurface surface, ArrayList<String> parmNames, String actionButton) {
       parmNames.addAll(Arrays.asList(getParameterNames()));
       ParameterDialog.ParmItem[] parmSet = new ParameterDialog.ParmItem[parmNames.size()];
       for (int ii = 0; ii < parmSet.length; ii++) {
@@ -1728,6 +1720,15 @@ public class LaserCut extends JFrame {
     @Override
     Shape buildShape () {
       return new Rectangle2D.Double(-.1, -.1, .2, .2);
+    }
+
+    @Override
+    boolean placeParameterDialog (DrawSurface surface) {
+      return displayShapeParameterDialog(surface, new ArrayList<>(), "Save");
+    }
+
+    boolean editParameterDialog (DrawSurface surface) {
+      return displayShapeParameterDialog(surface, new ArrayList<>(Arrays.asList("xLoc|in", "yLoc|in")), "Place");
     }
   }
 
@@ -2217,8 +2218,8 @@ public class LaserCut extends JFrame {
   public class DrawSurface extends JPanel {
     private transient BufferedImage         offScr;
     private Dimension                       lastDim,  workSize;
-    private ArrayList<CADShape>             shapes = new ArrayList<>(), placeShapes;
-    private CADShape                        selected, dragged, lastPointedShape, placeShape;
+    private ArrayList<CADShape>             shapes = new ArrayList<>(), shapesToPlace;
+    private CADShape                        selected, dragged, lastPointedShape, shapeToPlace;
     private double                          gridSpacing = prefs.getDouble("gridSpacing", 0);
     private double                          zoomFactor = 1;
     private ArrayList<DrawSurfaceSelectListener>  selectListerners = new ArrayList<>();
@@ -2236,7 +2237,7 @@ public class LaserCut extends JFrame {
         public void mousePressed (MouseEvent ev) {
           requestFocus();
           Point2D.Double point = new Point2D.Double(ev.getX(), ev.getY());
-          if (placeShape != null || placeShapes != null) {
+          if (shapeToPlace != null || shapesToPlace != null) {
             double newX = ev.getX() / getScreenScale();
             double newY = ev.getY() / getScreenScale();
             Point2D.Double delta;
@@ -2244,25 +2245,26 @@ public class LaserCut extends JFrame {
               newX = toGrid(newX);
               newY = toGrid(newY);
             }
-            if (placeShape != null) {
+            if (shapeToPlace != null) {
               // Set location of shape to location user clicked
-              placeShape.setPosition(newX, newY);
-              addShape(placeShape);
-              placeShape = null;
+              shapeToPlace.setPosition(newX, newY);
+              addShape(shapeToPlace);
+              setSelected(shapeToPlace);
+              shapeToPlace = null;
             } else {
               // Determine upper left offset to set of import shapes
               double minX = Double.MAX_VALUE;
               double minY = Double.MAX_VALUE;
-              for (CADShape shape : placeShapes) {
+              for (CADShape shape : shapesToPlace) {
                 minX = Math.min(minX, shape.xLoc);
                 minY = Math.min(minY, shape.yLoc);
               }
               // Place all imported shapes so upper left position of set is now where used clicked
-              for (CADShape shape : placeShapes) {
+              for (CADShape shape : shapesToPlace) {
                 shape.xLoc = shape.xLoc - minX + newX;
                 shape.yLoc = shape.yLoc - minY + newY;
                 addShape(shape);
-                placeShapes = null;
+                shapesToPlace = null;
               }
             }
           } else if (ev.isControlDown()) {
@@ -2565,12 +2567,12 @@ public class LaserCut extends JFrame {
     }
 
     void placeShape (CADShape shape) {
-      placeShape = shape;
+      shapeToPlace = shape;
       itemInfo.setText("Click to place Shape");
     }
 
     void placeShapes (ArrayList<CADShape> shapes) {
-      placeShapes = shapes;
+      shapesToPlace = shapes;
       itemInfo.setText("Click to place imported Shapes");
     }
 

@@ -1,19 +1,16 @@
 import java.awt.*;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
-import java.text.DecimalFormat;
 import java.util.Arrays;
 import javax.swing.*;
-
 
 class ParameterDialog extends JDialog {
   private boolean         cancelled = true;
 
-
   static class ParmItem {
     String      name, units = "", hint;
     Object      value, valueType;
-    JComponent   field;
+    JComponent  field;
     boolean     readOnly;
 
     ParmItem (String name, Object value) {
