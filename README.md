@@ -1,10 +1,14 @@
 <p align="center"><img src="https://github.com/wholder/LaserCut/blob/master/images/LaserCut%20Screenshot.png"></p>
 
 # LaserCut
-LaserCut is an experimental, "swiss army knife" type of program for creating 2D designs using primitive shapes and constructive geometry and then sending them to a laser cutter for vector cutting or engraving.  It began over my frustration with Epilog™ over their lack of support for Mac OS X drivers and having to purchase and constantly update both MS Windows™ and Parallels™ just to use the Zing.  Then, on day, I discovered a wonderful Java library named [LibLaserCut](https://github.com/t-oster/LibLaserCut) (originally create by Thomas Oster for his [VisiCut](http://hci.rwth-aachen.de/visicut) program) and used it to begin coding my own solution.  After that, LaserCut slowly grew as I added more and more features.  This means that the feature set of LaserCut happens to be things that I needed it to do and not the result of some well-thought-out plan.  However, I tried to make the design as modular as possible.  For example, you can add new 2D shapes by subclassing the superclass `CADShape` and writing a few overloaded methods.
+LaserCut is an experimental, "Swiss Army Knife" type of program for creating 2D designs using primitive shapes and constructive geometry and then sending them to a laser cutter for vector cutting or engraving.  It began from my frustration with Epilog™ over their lack of support for Mac OS X drivers for the Zing and having to purchase and constantly update both MS Windows™ and [Parallels™](https://www.parallels.com) just to use the Zing.  Then, on day, I discovered a wonderful Java library named [LibLaserCut](https://github.com/t-oster/LibLaserCut) (originally created by Thomas Oster for his [VisiCut](http://hci.rwth-aachen.de/visicut) program) and used it to begin coding my own solution.  After that, LaserCut slowly grew as I added more and more features.  This means that the feature set of LaserCut happens to be things that I needed it to do and not the result of some well-thought-out plan.  However, I tried to make the design as modular as possible.  For example, you can add new 2D shapes by subclassing the superclass`CADShape`and writing a few overloaded methods.  I'm making LaserCut available under the BSD license, [as described in by Wikipedia](https://en.wikipedia.org/wiki/BSD_licenses), so feel free to adapt and use my original code, as needed.
+
+If you just want to try out the program, you don't need to download and compile the source code, as I try to maintain a pre-built, executable JAR file in the [out/artifacts/LaserCut_jar](https://github.com/wholder/LaserCut/tree/master/out/artifacts/LaserCut_jar) folder from which you can download and run LaserCut.  On a Mac, simply double click the LaserCut.jar file to run it once you've downloaded it, although you'll probably have to right click and select "Open" the  first time you run LaserCut due to the Mac OS X security check.  You should also be able to double click and run using Windows, but some versions of Windows may require you to [enable this ability](https://www.addictivetips.com/windows-tips/run-a-jar-file-on-windows/) first.  I have not investigated running the code under Linux.
+## Requirements
+LaserCut requires Java® 7, or later, but Java® 8, it strongly recommended.  I wrote JavaCut on a Mac Pro (using the _Community_ version of [IntelliJ IDEA from JetBrains](https://www.jetbrains.com/idea/)) and this the only environment where I have tested it extensively.  However, it should also run on MS Windows and Linux.  Feel free to report any issues you discover.  I'll do my best, when time permits, to investigate them, but I cannot guarantee fixes, timely or otherwise.
 ## Basic Features
 - Create and place simple 2D shapes such as rectangles, rounded rectangles, ovals, circles, n-sided polygons and text outlines
-- Create and place Reference Point objects which are display-only oblects you can use as reference points or group with other shapes to provide a common origin point.
+- Create and place Reference Point objects which are display-only objects you can use as reference points or group with other shapes to provide a common origin point.
 - Specify position and dimensions in inches (default) or millimeters
 - Enable a grid placement for more precise positioning
 - Create and place cutouts for various sizes of Nema Stepper Motors
@@ -22,8 +26,10 @@ LaserCut is an experimental, "swiss army knife" type of program for creating 2D 
 - Send jobs to an Eplilog™ Zing™ over an Ethernet connection (USB not supported)
 - Send jobs to a GRBL-based laser cutter with support for jogging position of laser head (experimental)
 - Import vector outlines from an SVG files (experimental)
-- Import drill holes and outlines from a Geber file (experimental)
+- Import drill holes and outlines from a Gerber file (experimental)
 - Export vector designs to a PDF file (experimental)
+## Under Development
+- A tool to freeform draw shapes using [Catmull-Rom Splines](https://en.wikipedia.org/wiki/Centripetal_Catmull–Rom_spline) and convert them into [Bézier Curve](https://en.wikipedia.org/wiki/Bézier_curve)-based shapes.
 ## Basic Operations
 I'm working on more comprehensive documentation to be built into the code but, in the meantime, here are some basic operations you can do:
 - Select a shape from the "**Shapes**" menu, fill in the parameters, as needed, press "**Place**" and then click the mouse point where you want the shape to be located.  Note: select "centered" for the origin of the shape to be its center, otherwise it will the the upper left point.
@@ -37,7 +43,8 @@ I'm working on more comprehensive documentation to be built into the code but, i
 - Select a shape and select **Edit->Duplicate Selected** (or press the **CMD-D** shortcut key) to create a duplicate shape you can then reposition.
 ## Credit
 LaserCut uses the following Java code to perform some of its functions:
-- [LibLaserCut](https://github.com/t-oster/LibLaserCut) (used to drive Zing Laser)
-- [Java Simple Serial Connector 2.8.0](https://github.com/scream3r/java-simple-serial-connector) "JSSC" (used to commuicate with GRBL-based laser cutters)
+- [LibLaserCut](https://github.com/t-oster/LibLaserCut) (used to control the Zing Laser)
+- [Java Simple Serial Connector 2.8.0](https://github.com/scream3r/java-simple-serial-connector) "JSSC" (used to communicate with GRBL-based laser cutters)
 - [Apache PDFBox® 2.0.7](https://pdfbox.apache.org) (used by the "Export PDF" feature)
 - [Apache commons-logging 1.2](https://commons.apache.org/proper/commons-logging/) (needed by Apache PDFBox 2.0.7)
+- [IntelliJ IDEA from JetBrains](https://www.jetbrains.com/idea/) (my favorite development environment for Java coding. Thanks JetBrains!)
