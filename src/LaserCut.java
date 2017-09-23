@@ -273,7 +273,7 @@ public class LaserCut extends JFrame {
       mItem.addActionListener(ev -> {
         try {
           Class ref = Class.forName(parts[1]);
-          CADShape shp = (CADShape) ref.newInstance();
+          CADShape shp = (CADShape) ref.getDeclaredConstructor().newInstance();
           if (shp instanceof CADReference) {
             surface.placeShape(shp);
           } else {
