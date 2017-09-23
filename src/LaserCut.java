@@ -81,7 +81,6 @@ public class LaserCut extends JFrame {
   private static Dimension      zingFullSize = new Dimension((int) (16 * SCREEN_PPI), (int) (12 * SCREEN_PPI));
   private static Dimension      zing12x12Size = new Dimension((int) (12 * SCREEN_PPI), (int) (12 * SCREEN_PPI));
   private static Dimension      miniSize = new Dimension((int) (7 * SCREEN_PPI), (int) (8 * SCREEN_PPI));
-  private static String         osName = System.getProperty("os.name").toLowerCase();
   private static int            cmdMask = Toolkit.getDefaultToolkit().getMenuShortcutKeyMask();
   private transient Preferences prefs = Preferences.userRoot().node(this.getClass().getName());
   private JSSCPort              jPort;

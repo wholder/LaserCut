@@ -29,7 +29,8 @@ LaserCut requires Java® 7, or later, but Java® 8, it strongly recommended.  I 
 - Import drill holes and outlines from a Gerber file (experimental)
 - Export vector designs to a PDF file (experimental)
 ## Under Development
-- A tool to freeform draw shapes using [Catmull-Rom Splines](https://en.wikipedia.org/wiki/Centripetal_Catmull–Rom_spline) and convert them into [Bézier Curve](https://en.wikipedia.org/wiki/Bézier_curve)-based shapes.
+- A tool to support freeform drawing of shapes using [Catmull-Rom Splines](https://en.wikipedia.org/wiki/Centripetal_Catmull–Rom_spline) and then automatically convert them into [Bézier Curve](https://en.wikipedia.org/wiki/Bézier_curve)-based shapes.
+- Support for a user-extendable library of specialized cutout shapes, such as for mounting RC Servos (to replace and extend the current Nema Stepper code)
 ## Basic Operations
 I'm working on more comprehensive documentation to be built into the code but, in the meantime, here are some basic operations you can do:
 - Select a shape from the "**Shapes**" menu, fill in the parameters, as needed, press "**Place**" and then click the mouse point where you want the shape to be located.  Note: select "centered" for the origin of the shape to be its center, otherwise it will the the upper left point.
