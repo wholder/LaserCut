@@ -2211,8 +2211,7 @@ public class LaserCut extends JFrame {
   }
 
   public class DrawSurface extends JPanel {
-    private transient BufferedImage         offScr;
-    private Dimension                       lastDim,  workSize;
+    private Dimension                       workSize;
     private ArrayList<CADShape>             shapes = new ArrayList<>(), shapesToPlace;
     private CADShape                        selected, dragged, shapeToPlace;
     private double                          gridSpacing = prefs.getDouble("gridSpacing", 0);
@@ -2222,9 +2221,10 @@ public class LaserCut extends JFrame {
     private ArrayList<ActionRedoListener>   redoListerners = new ArrayList<>();
     private LinkedList<byte[]>              undoStack = new LinkedList<>();
     private LinkedList<byte[]>              redoStack = new LinkedList<>();
-    private boolean                         pushedToStack, dirty = true;
+    private boolean                         pushedToStack;
 
     DrawSurface () {
+      super(true);
       // Set JPanel size for Zing's maximum work area, or other, if resized by user
       setPreferredSize(getSize());
       addMouseListener(new MouseAdapter() {
@@ -2362,7 +2362,6 @@ public class LaserCut extends JFrame {
             }
           }
           repaint();
-          dirty = true;
         }
 
         @Override
@@ -2403,7 +2402,6 @@ public class LaserCut extends JFrame {
               }
             }
             repaint();
-            dirty = true;
           }
         }
       });
@@ -2447,7 +2445,6 @@ public class LaserCut extends JFrame {
       gridSpacing = gridSize;
       prefs.putDouble("gridSpacing", gridSize);
       repaint();
-      dirty = true;
     }
 
     double getGridSize () {
@@ -2519,7 +2516,6 @@ public class LaserCut extends JFrame {
             lst.redoEnable(redoStack.size() > 0);
           }
           repaint();
-          dirty = true;
         } catch (Exception ex) {
           ex.printStackTrace();
         }
@@ -2537,7 +2533,6 @@ public class LaserCut extends JFrame {
           lst.redoEnable(redoStack.size() > 0);
         }
         repaint();
-        dirty = true;
       } catch (Exception ex) {
         ex.printStackTrace();
       }
@@ -2550,14 +2545,12 @@ public class LaserCut extends JFrame {
     void setDesign (ArrayList<CADShape> shapes) {
       this.shapes = shapes;
       repaint();
-      dirty = true;
     }
 
     void addShape (CADShape shape) {
       pushToUndoStack();
       shapes.add(shape);
       repaint();
-      dirty = true;
     }
 
     void placeShape (CADShape shape) {
@@ -2581,7 +2574,6 @@ public class LaserCut extends JFrame {
     void clear () {
       pushToUndoStack();
       shapes.clear();
-      dirty = true;
       repaint();
     }
 
@@ -2592,7 +2584,6 @@ public class LaserCut extends JFrame {
       shapes.remove(selected);
       shapes.add(tmp);
       setSelected(tmp);
-      dirty = true;
       repaint();
     }
 
@@ -2627,7 +2618,6 @@ public class LaserCut extends JFrame {
           shapes.add(tmp);
           setSelected(tmp);
         }
-        dirty = true;
         repaint();
       }
     }
@@ -2642,7 +2632,6 @@ public class LaserCut extends JFrame {
             gItem.yLoc = selected.yLoc;
           }
         }
-        dirty = true;
         repaint();
       }
     }
@@ -2678,7 +2667,6 @@ public class LaserCut extends JFrame {
             }
           }
         }
-        dirty = true;
         repaint();
       }
     }
@@ -2711,7 +2699,6 @@ public class LaserCut extends JFrame {
             }
           }
         }
-        dirty = true;
         repaint();
       }
     }
@@ -2732,7 +2719,6 @@ public class LaserCut extends JFrame {
           listener.shapeSelected(selected, false);
         }
         selected = null;
-        dirty = true;
         repaint();
       }
     }
@@ -2762,7 +2748,6 @@ public class LaserCut extends JFrame {
           shapes.add(dup);
           setSelected(dup);
         }
-        dirty = true;
         repaint();
       }
     }
@@ -2783,7 +2768,6 @@ public class LaserCut extends JFrame {
         listener.shapeSelected(selected, true);
       }
       repaint();
-      dirty = true;
     }
 
     void unGroupSelected () {
@@ -2791,14 +2775,12 @@ public class LaserCut extends JFrame {
         CADShapeGroup group = selected.getGroup();
         if (group != null) {
           group.removeAllFromGroup();
-          dirty = true;
           repaint();
         }
       }
     }
 
     void setDirty () {
-      dirty = true;
       repaint();
     }
 
@@ -2823,35 +2805,25 @@ public class LaserCut extends JFrame {
 
     public void paint (Graphics g) {
       Dimension d = getSize();
-      if (offScr == null  ||  (lastDim != null  &&  (d.width != lastDim.width  ||  d.height != lastDim.height))) {
-        GraphicsConfiguration gConfig = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice().getDefaultConfiguration();
-        offScr = gConfig.createCompatibleImage(d.width, d.height);
-        dirty = true;
-      }
-      lastDim = d;
-      if (dirty) {
-        Graphics2D g2 = (Graphics2D) offScr.getGraphics();
-        g2.scale(zoomFactor, zoomFactor);
-        g2.setBackground(Color.white);
-        g2.clearRect(0, 0, d.width, d.height);
-        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-        g2.setColor(new Color(235, 235, 235));
-        g2.fillRect(0, 0, (int) workSize.width, (int) workSize.height);
-        if (gridSpacing > 0) {
-          g2.setColor(Color.darkGray);
-          for (double xx = gridSpacing; xx < d.width / SCREEN_PPI; xx += gridSpacing) {
-            for (double yy = gridSpacing; yy < d.height / SCREEN_PPI; yy += gridSpacing) {
-              int gridX = (int) Math.round(xx * SCREEN_PPI + 0.5);
-              int gridY = (int) Math.round(yy * SCREEN_PPI + 0.5);
-              g2.fillRect(gridX - 1, gridY - 1, 1, 1);
-            }
+      Graphics2D g2 = (Graphics2D) g;
+      g2.scale(zoomFactor, zoomFactor);
+      g2.setBackground(Color.white);
+      g2.clearRect(0, 0, d.width, d.height);
+      g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+      g2.setColor(new Color(235, 235, 235));
+      g2.fillRect(0, 0, (int) workSize.width, (int) workSize.height);
+      if (gridSpacing > 0) {
+        g2.setColor(Color.darkGray);
+        for (double xx = gridSpacing; xx < d.width / SCREEN_PPI; xx += gridSpacing) {
+          for (double yy = gridSpacing; yy < d.height / SCREEN_PPI; yy += gridSpacing) {
+            int gridX = (int) Math.round(xx * SCREEN_PPI + 0.5);
+            int gridY = (int) Math.round(yy * SCREEN_PPI + 0.5);
+            g2.fillRect(gridX - 1, gridY - 1, 1, 1);
           }
         }
-        g2.setStroke(new BasicStroke(0.5f));
-        new ArrayList<>(shapes).forEach(shape -> shape.draw(g2));
-        dirty = false;
       }
-      g.drawImage(offScr, 0, 0, this);
+      g2.setStroke(new BasicStroke(0.5f));
+      new ArrayList<>(shapes).forEach(shape -> shape.draw(g2));
     }
 
     void writePDF (File file) throws Exception {
