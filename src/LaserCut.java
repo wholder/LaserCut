@@ -86,6 +86,7 @@ public class LaserCut extends JFrame {
   private transient Preferences prefs = Preferences.userRoot().node(this.getClass().getName());
   private JSSCPort              jPort;
   private DrawSurface           surface;
+  private JScrollPane           scrollPane;
   private JTextField            itemInfo = new JTextField();
   private String                zingIpAddress = prefs.get("zing.ip", "10.0.1.201");
   private int                   zingCutPower = prefs.getInt("zing.power", 85);
@@ -142,7 +143,7 @@ public class LaserCut extends JFrame {
   private LaserCut () {
     setTitle("LaserCut");
     surface = new DrawSurface();
-    add(new JScrollPane(surface), BorderLayout.CENTER);
+    add(scrollPane = new JScrollPane(surface), BorderLayout.CENTER);
     JPanel bottomPane = new JPanel(new BorderLayout());
     bottomPane.setBorder(new EmptyBorder(1, 4, 1, 1));
     bottomPane.add(new JLabel("Info: "), BorderLayout.WEST);
@@ -267,7 +268,7 @@ public class LaserCut extends JFrame {
     // Add options for other Shapes
     String[] sItems = new String[] {"Reference Point/LaserCut$CADReference", "Rectangle/LaserCut$CADRectangle", "Polygon/LaserCut$CADPolygon",
                                     "Oval/LaserCut$CADOval", "Gear/LaserCut$CADGear", "Text/LaserCut$CADText", "NEMA Stepper/LaserCut$CADNemaMotor",
-                                    "Bobbin/LaserCut$CADBobbin"/*, "Reference Image/LaserCut$CADReferenceImage"*/};
+                                    "Bobbin/LaserCut$CADBobbin", "Reference Image (beta)/LaserCut$CADReferenceImage"};
     for (String sItem : sItems) {
       String[] parts = sItem.split("/");
       JMenuItem mItem = new JMenuItem(parts[0]);
@@ -295,10 +296,8 @@ public class LaserCut extends JFrame {
                 ex.printStackTrace(System.out);
               }
             }
-          } else {
-            if (shp.placeParameterDialog(surface)) {
-              surface.placeShape(shp);
-            }
+          } else if (shp.placeParameterDialog(surface)) {
+            surface.placeShape(shp);
           }
         } catch (Exception ex) {
           ex.printStackTrace();
@@ -2313,6 +2312,7 @@ public class LaserCut extends JFrame {
     private CADShape                        selected, dragged, shapeToPlace;
     private double                          gridSpacing = prefs.getDouble("gridSpacing", 0);
     private double                          zoomFactor = 1;
+    private Point2D.Double scrollPoint;
     private ArrayList<ShapeSelectListener>  selectListerners = new ArrayList<>();
     private ArrayList<ActionUndoListener>   undoListerners = new ArrayList<>();
     private ArrayList<ActionRedoListener>   redoListerners = new ArrayList<>();
@@ -2456,6 +2456,8 @@ public class LaserCut extends JFrame {
               pushToUndoStack();
               setSelected(null);
               itemInfo.setText("");
+              scrollPoint = point;
+              LaserCut.this.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
             }
           }
           repaint();
@@ -2464,6 +2466,8 @@ public class LaserCut extends JFrame {
         @Override
         public void mouseReleased (MouseEvent ev) {
           dragged = null;
+          scrollPoint = null;
+          LaserCut.this.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
           pushedToStack = false;
           CADShape shape = getSelected();
           if (shape != null) {
@@ -2498,6 +2502,14 @@ public class LaserCut extends JFrame {
                 }
               }
             }
+            repaint();
+          } else if (scrollPoint != null) {
+            double deltaX = scrollPoint.x - ev.getX();
+            double deltaY = scrollPoint.y - ev.getY();
+            Rectangle view = getVisibleRect();
+            view.x += (int) deltaX;
+            view.y += (int) deltaY;
+            scrollRectToVisible(view);
             repaint();
           }
         }

@@ -7,6 +7,7 @@ import java.util.Scanner;
 
 // See: http://printobjects.me/catalogue/ujava-gear-generator-involute-and-fillet_520801/
 // Also: http://khkgears.net/gear-knowledge/gear-technical-reference/calculation-gear-dimensions/
+// And: http://fab.cba.mit.edu/classes/863.09/people/cranor/How_to_Make_(Almost)_Anything/David_Cranor/Entries/2009/10/12_Entry_1_files/module.pdf
 
 public class GearGen {
   private static final double  PPI = java.awt.Toolkit.getDefaultToolkit().getScreenResolution();
@@ -16,8 +17,6 @@ public class GearGen {
 
   /**
    * Test code for GearGen
-   * @param args
-   * @throws Exception
    */
   @SuppressWarnings("ConstantIfStatement")
   public static void main (String[] args) throws Exception {
@@ -49,13 +48,13 @@ public class GearGen {
 
   /**
    * Generate Involute Spur Gear based on provided parameters
-   * @param module
+   * @param module module = reference diameter / number of teeth (gears must have same module to mesh)
    * @param numTeeth total number of teeth in gear
    * @param numPoints number of points used when drawing tooth profile
-   * @param pressAngle
-   * @param profileShift
+   * @param pressAngle pressure angle (typically 20 degrees)
+   * @param profileShift adjusts center distance
    * @param holeSize size of hole in center of gear
-   * @return
+   * @return generated gear Shape
    */
   public static Shape generateGear (double module, int numTeeth, int numPoints, double pressAngle, double profileShift, double holeSize) {
     pressAngle = Math.PI / 180.0 * pressAngle;

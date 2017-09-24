@@ -99,7 +99,7 @@ public class JSSCPort implements SerialPortEventListener {
         byte[] inChars = serialPort.readBytes(rxCount);
         if (rxHandlers.size() > 0) {
           for (byte cc : inChars) {
-            for (RXEvent handler : new ArrayList<RXEvent>(rxHandlers)) {
+            for (RXEvent handler : new ArrayList<>(rxHandlers)) {
               handler.rxChar(cc);
             }
           }
