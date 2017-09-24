@@ -13,6 +13,7 @@ import org.apache.pdfbox.util.Matrix;
 
 import jssc.SerialNativeInterface;
 
+import javax.imageio.ImageIO;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.filechooser.FileNameExtensionFilter;
@@ -22,7 +23,7 @@ import java.awt.event.*;
 import java.awt.font.GlyphVector;
 import java.awt.font.TextAttribute;
 import java.awt.geom.*;
-import java.awt.image.BufferedImage;
+import java.awt.image.*;
 import java.io.*;
 import java.lang.reflect.Field;
 import java.text.DecimalFormat;
@@ -266,7 +267,7 @@ public class LaserCut extends JFrame {
     // Add options for other Shapes
     String[] sItems = new String[] {"Reference Point/LaserCut$CADReference", "Rectangle/LaserCut$CADRectangle", "Polygon/LaserCut$CADPolygon",
                                     "Oval/LaserCut$CADOval", "Gear/LaserCut$CADGear", "Text/LaserCut$CADText", "NEMA Stepper/LaserCut$CADNemaMotor",
-                                    "Bobbin/LaserCut$CADBobbin"};
+                                    "Bobbin/LaserCut$CADBobbin"/*, "Reference Image/LaserCut$CADReferenceImage"*/};
     for (String sItem : sItems) {
       String[] parts = sItem.split("/");
       JMenuItem mItem = new JMenuItem(parts[0]);
@@ -276,6 +277,24 @@ public class LaserCut extends JFrame {
           CADShape shp = (CADShape) ref.getDeclaredConstructor().newInstance();
           if (shp instanceof CADReference) {
             surface.placeShape(shp);
+          } else if (shp instanceof CADReferenceImage) {
+            // Prompt for Image file
+            JFileChooser fileChooser = new JFileChooser();
+            FileNameExtensionFilter nameFilter = new FileNameExtensionFilter("JPEG files (*.jpg)", "jpg");
+            fileChooser.addChoosableFileFilter(nameFilter);
+            fileChooser.setFileFilter(nameFilter);
+            fileChooser.setSelectedFile(new File(prefs.get("image.dir", "/")));
+            if (fileChooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
+              try {
+                File iFile = fileChooser.getSelectedFile();
+                prefs.put("image.dir", iFile.getAbsolutePath());
+                ((CADReferenceImage) shp).loadImage(iFile);
+                surface.placeShape(shp);
+              } catch (Exception ex) {
+                showErrorDialog("Unable to load file");
+                ex.printStackTrace(System.out);
+              }
+            }
           } else {
             if (shp.placeParameterDialog(surface)) {
               surface.placeShape(shp);
@@ -1008,7 +1027,7 @@ public class LaserCut extends JFrame {
       add(progress = new JProgressBar(), BorderLayout.NORTH);
       progress.setMaximum(100);
       JScrollPane sPane = new JScrollPane(status = new JTextArea());
-      status.append("Testing...\n");
+      status.append("Starting Job...\n");
       status.setMargin(new Insets(3, 3, 3, 3));
       DefaultCaret caret = (DefaultCaret) status.getCaret();
       caret.setUpdatePolicy(DefaultCaret.ALWAYS_UPDATE);
@@ -1491,16 +1510,8 @@ public class LaserCut extends JFrame {
       Stroke saveStroke = g2.getStroke();
       Shape dShape = getScreenTranslatedShape();
       boolean highlight = isSelected || getGroup() != null && getGroup().isGroupSelected();
-      if (this instanceof CADReference) {
-        if (this instanceof CADReference) {
-          final float dash1[] = {3.0f};
-          g2.setStroke(new BasicStroke(highlight ? isSelected ? 1.8f : 1.4f : 1.0f, BasicStroke.CAP_SQUARE, BasicStroke.JOIN_MITER, 1.0f, dash1, 0.5f));
-        }
-        g2.setColor(new Color(0, 128, 0));
-      } else {
-        g2.setColor(highlight ? engrave ? Color.RED : Color.blue : engrave ? Color.ORANGE : Color.black);
-        g2.setStroke(new BasicStroke(highlight ? isSelected ? 1.8f : 1.4f : 1.0f));
-      }
+      g2.setStroke(getShapeStroke(highlight, isSelected));
+      g2.setColor(getShapeColor (highlight, engrave));
       // Scale Shape to scale and draw it
       if (true) {
         // Use PathIterator to draw Shape line by line
@@ -1516,13 +1527,19 @@ public class LaserCut extends JFrame {
         double mx = xLoc * SCREEN_PPI;
         double my = yLoc * SCREEN_PPI;
         double mWid = 3;
-        if (this instanceof CADReference) {
-          g2.setStroke(new BasicStroke(highlight ? isSelected ? 1.8f : 1.4f : 0.8f));
-        }
+        g2.setStroke(getShapeStroke(highlight, isSelected));
         g2.draw(new Line2D.Double(mx - mWid, my, mx + mWid, my));
         g2.draw(new Line2D.Double(mx, my - mWid, mx, my + mWid));
       }
       g2.setStroke(saveStroke);
+    }
+
+    Color getShapeColor (boolean highlight, boolean engrave) {
+      return highlight ? engrave ? Color.RED : Color.blue : engrave ? Color.ORANGE : Color.black;
+    }
+
+    BasicStroke getShapeStroke (boolean highlight, boolean isSelected) {
+      return new BasicStroke(highlight ? isSelected ? 1.8f : 1.4f : 1.0f);
     }
 
     ArrayList<Line2D.Double> getScaledLines (double scale) {
@@ -1699,7 +1716,9 @@ public class LaserCut extends JFrame {
     }
   }
 
-  static class CADReference extends CADShape implements Serializable {
+  interface CADNoDraw {}  // Marker Interface
+
+  static class CADReference extends CADShape implements Serializable, CADNoDraw {
     private static final long serialVersionUID = 8204176292743368277L;
     /**
      * Default constructor used to instantiate subclasses in "Shapes" Menu
@@ -1720,12 +1739,128 @@ public class LaserCut extends JFrame {
     }
 
     @Override
+    Color getShapeColor (boolean highlight, boolean engrave) {
+      return new Color(0, 128, 0);
+    }
+
+    @Override
+    BasicStroke getShapeStroke (boolean highlight, boolean isSelected) {
+      final float dash1[] = {3.0f};
+      return new BasicStroke(highlight ? isSelected ? 1.8f : 1.4f : 1.0f, BasicStroke.CAP_SQUARE, BasicStroke.JOIN_MITER, 1.0f, dash1, 0.5f);
+    }
+
+    @Override
     boolean placeParameterDialog (DrawSurface surface) {
       return displayShapeParameterDialog(surface, new ArrayList<>(), "Save");
     }
 
+    @Override
     boolean editParameterDialog (DrawSurface surface) {
       return displayShapeParameterDialog(surface, new ArrayList<>(Arrays.asList("xLoc|in", "yLoc|in")), "Place");
+    }
+  }
+
+  static class CADReferenceImage extends CADShape implements Serializable, CADNoDraw {
+    private static final long serialVersionUID = 2309856254388651139L;
+    public double                   width, height, scale = 100.0;
+    private transient BufferedImage img;
+
+    /**
+     * Default constructor is used to instantiate subclasses in "Shapes" Menu
+     */
+    @SuppressWarnings("unused")
+    CADReferenceImage () {
+    }
+
+    void loadImage (File imgFile) throws IOException {
+      img = ImageIO.read(imgFile);
+      ColorModel cm = img.getColorModel();
+      width = img.getWidth() / SCREEN_PPI;
+      height = img.getHeight() / SCREEN_PPI;
+    }
+    @Override
+    void draw (Graphics2D g) {
+      Graphics2D g2 = (Graphics2D) g.create();
+      AffineTransform at = new AffineTransform();
+      at.translate(xLoc * SCREEN_PPI, yLoc * SCREEN_PPI);
+      at.rotate(Math.toRadians(rotation));
+      at.scale(scale / 100, scale / 100);
+      g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.2f));
+      g2.drawImage(img, at, null);
+      g2.dispose();
+      super.draw(g);
+    }
+
+    @Override
+    Shape buildShape () {
+      AffineTransform at = new AffineTransform();
+      at.scale(scale / 100, scale / 100);
+      return at.createTransformedShape(new Rectangle2D.Double(-width / 2, -height / 2, width, height));
+    }
+
+    @Override
+    Color getShapeColor (boolean highlight, boolean isSelected) {
+      return isSelected || highlight ? Color.blue : Color.lightGray;
+    }
+
+    @Override
+    BasicStroke getShapeStroke (boolean highlight, boolean isSelected) {
+      final float dash1[] = {8.0f};
+      return new BasicStroke(highlight ? isSelected ? 1.8f : 1.4f : 1.0f, BasicStroke.CAP_SQUARE, BasicStroke.JOIN_MITER, 1.0f, dash1, 0.5f);
+    }
+
+    @Override
+    boolean editParameterDialog (DrawSurface surface) {
+      return displayShapeParameterDialog(surface, new ArrayList<>(Arrays.asList("xLoc|in", "yLoc|in", "rotation|deg", "scale|%")), "Save");
+    }
+
+    // Custom write serializer for BufferedImage
+    private void writeObject(ObjectOutputStream out) throws IOException {
+      out.defaultWriteObject();
+      ImageIO.write(img, "png", out);
+    }
+
+    // Custom read serializer for BufferedImage
+    private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
+      in.defaultReadObject();
+      img = ImageIO.read(in);
+    }
+  }
+
+  static class CADRectangle extends CADShape implements Serializable {
+    private static final long serialVersionUID = 5415641155292738232L;
+    public double width, height, radius;
+
+    /**
+     * Default constructor is used to instantiate subclasses in "Shapes" Menu
+     */
+    @SuppressWarnings("unused")
+    CADRectangle () {
+      // Set typical initial values, which user can edit before saving
+      width = 1;
+      height = 1;
+    }
+
+    CADRectangle (double xLoc, double yLoc, double width, double height, double radius, double rotation, boolean centered) {
+      this.width = width;
+      this.height = height;
+      this.radius = radius;
+      setLocationAndOrientation(xLoc, yLoc, rotation, centered);
+    }
+
+    @Override
+    String[] getParameterNames () {
+      return new String[]{"width|in", "height|in", "radius|in"};
+    }
+
+    @Override
+    Shape buildShape () {
+      if (radius > 0) {
+        // Note: specifiy 2 x radius for arc height & width
+        return new RoundRectangle2D.Double(-width / 2, -height / 2, width, height, radius * 2, radius * 2);
+      } else {
+        return new Rectangle2D.Double(-width / 2, -height / 2, width, height);
+      }
     }
   }
 
@@ -1815,43 +1950,6 @@ public class LaserCut extends JFrame {
       }
       poly.closePath();
       return poly;
-    }
-  }
-
-  static class CADRectangle extends CADShape implements Serializable {
-    private static final long serialVersionUID = 5415641155292738232L;
-    public double width, height, radius;
-
-    /**
-     * Default constructor is used to instantiate subclasses in "Shapes" Menu
-     */
-    @SuppressWarnings("unused")
-    CADRectangle () {
-      // Set typical initial values, which user can edit before saving
-      width = 1;
-      height = 1;
-    }
-
-    CADRectangle (double xLoc, double yLoc, double width, double height, double radius, double rotation, boolean centered) {
-      this.width = width;
-      this.height = height;
-      this.radius = radius;
-      setLocationAndOrientation(xLoc, yLoc, rotation, centered);
-    }
-
-    @Override
-    String[] getParameterNames () {
-      return new String[]{"width|in", "height|in", "radius|in"};
-    }
-
-    @Override
-    Shape buildShape () {
-      if (radius > 0) {
-        // Note: specifiy 2 x radius for arc height & width
-        return new RoundRectangle2D.Double(-width / 2, -height / 2, width, height, radius * 2, radius * 2);
-      } else {
-        return new Rectangle2D.Double(-width / 2, -height / 2, width, height);
-      }
     }
   }
 
@@ -1982,7 +2080,6 @@ public class LaserCut extends JFrame {
       return a1;
     }
   }
-
 
   static class CADText extends CADShape implements Serializable {
     private static final long serialVersionUID = 4314642313295298841L;
@@ -2787,7 +2884,7 @@ public class LaserCut extends JFrame {
     Line2D.Double[] getLinesAtScale (double ppi, boolean cutItems) {
       ArrayList<Line2D.Double> lines = new ArrayList<>();
       for (CADShape shape : surface.getDesign()) {
-        if (!(shape instanceof CADReference) && shape.engrave != cutItems) {
+        if (!(shape instanceof CADNoDraw) && shape.engrave != cutItems) {
           lines.addAll(shape.getScaledLines(ppi));
         }
       }
@@ -2897,6 +2994,6 @@ public class LaserCut extends JFrame {
   }
 
   public static void main (String[] s) {
-    java.awt.EventQueue.invokeLater(LaserCut::new);
+    SwingUtilities.invokeLater(LaserCut::new);
   }
 }
