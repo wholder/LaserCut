@@ -603,18 +603,6 @@ public class LaserCut extends JFrame {
     JMenu exportMenu = new JMenu("Export");
      // Add "Zing Laser" submenu
     JMenu zingMenu = new JMenu("Zing Laser");
-    /*
-    // Add "Test Optimize Path" Menu Item
-    JMenuItem optimizePath = new JMenuItem("Test Optimize Path");
-    optimizePath.addActionListener(ev -> {
-      surface.optimizePath();
-      for (CADShape shape : surface.getDesign()) {
-        double dist = Math.sqrt(shape.xLoc * shape.xLoc + shape.yLoc * shape.yLoc);
-        System.out.println(dist);
-      }
-    });
-    zingMenu.add(optimizePath);
-    */
     // Add "Send to Zing" Menu Item
     JMenuItem sendToZing = new JMenuItem("Send Job to Zing");
     sendToZing.addActionListener(ev -> {
@@ -623,7 +611,6 @@ public class LaserCut extends JFrame {
         return;
       }
       if (showWarningDialog("Press OK to Send Job to Zing")) {
-        surface.optimizePath();
         EpilogZing lasercutter = new EpilogZing(zingIpAddress);
         // Set Properties for Materla, such as for 3 mm birch plywood, Set: 60% speed, 80% power, 0 focus, 500 Hz.
         PowerSpeedFocusFrequencyProperty cutProperties = new PowerSpeedFocusFrequencyProperty();
@@ -743,7 +730,6 @@ public class LaserCut extends JFrame {
           int result = JOptionPane.showConfirmDialog(this, panel, "Send GRBL to Mini Laser", JOptionPane.YES_NO_OPTION,
               JOptionPane.PLAIN_MESSAGE, null);
           if (result == JOptionPane.OK_OPTION) {
-            surface.optimizePath();
             try {
               int iterations = Integer.parseInt(tf.getText());
               // Generate G_Code for GRBL 1.1
@@ -1314,7 +1300,7 @@ public class LaserCut extends JFrame {
     return inches * 25.4;
   }
 
-  static class CADShape implements Serializable, Comparable<CADShape> {
+  static class CADShape implements Serializable {
     private static final long serialVersionUID = 3716741066289930874L;
     public double     xLoc, yLoc, rotation;   // Note: must pubic for reflection
     public boolean    centered, engrave;      // Note: must pubic for reflection
@@ -1328,8 +1314,12 @@ public class LaserCut extends JFrame {
      */
     CADShape () {
       // Set typical initial values, which user can edit before saving
-      xLoc = .2;
-      yLoc = .2;
+      this(.2, .2);
+    }
+
+    CADShape (double x, double y) {
+      xLoc = x;
+      yLoc = y;
     }
 
     @SuppressWarnings("unused")
@@ -1350,15 +1340,10 @@ public class LaserCut extends JFrame {
       this.centered = centered;
     }
 
-    public int compareTo (CADShape that) {
-      // Sort so shapes with coords that are closer to the origin (upper left) are processed first
-      double dThis = Math.sqrt(this.xLoc * this.xLoc + this.yLoc * this.yLoc);
-      double dThat = Math.sqrt(that.xLoc * that.xLoc + that.yLoc * that.yLoc);
-      if (dThis < dThat)
-        return -1;
-      else if (dThis > dThat)
-        return 1;
-      return 0;
+    public double distanceTo (CADShape that) {
+      double dx = that.xLoc - this.xLoc;
+      double dy = that.yLoc - this.yLoc;
+      return Math.sqrt(dx * dx + dy * dy);
     }
 
     /**
@@ -2910,23 +2895,47 @@ public class LaserCut extends JFrame {
       repaint();
     }
 
+    /**
+     * Called by "Send to Zing" and "Send to Mini Laser" menu options.  Culls out shapes that are not processed, such as
+     * shapes that implement CADNoDraw interface and, if cutItems is true, also culls shapes with engrave set to true; or,
+     * if cutItems is false, culls shapes where engrave is set to false.  Then, code reorders shapes in list using a crude
+     * type of "travelling salesman" algorithm that tries to minimize laser head seek by successively finding the next
+     * closest shape.  After this, it converts all remaining shapes in the reordered list into an array of lines to cut
+     * or engrave.
+     * @param ppi Output PPI of laser
+     * @param cutItems if true, only process shapes with 'engrave' set to false.
+     * @return order array of 2D lines to cut
+     */
     Line2D.Double[] getLinesAtScale (double ppi, boolean cutItems) {
-      ArrayList<Line2D.Double> lines = new ArrayList<>();
+      // Cull out items that will not be cut or that don't match cutItems
+      ArrayList<CADShape> cullShapes = new ArrayList<>();
       for (CADShape shape : surface.getDesign()) {
         if (!(shape instanceof CADNoDraw) && shape.engrave != cutItems) {
-          lines.addAll(shape.getScaledLines(ppi));
+          cullShapes.add(shape);
         }
       }
+      // Reorder shapes by successively finding the next closest point starting from upper left
+      ArrayList<CADShape> newShapes = new ArrayList<>();
+      CADShape last = new CADShape(0, 0);
+      while (cullShapes.size() > 0) {
+        double dist = Double.MAX_VALUE;
+        CADShape sel = null;
+        for (CADShape shape : cullShapes) {
+          double tDist = shape.distanceTo(last);
+          if (tDist < dist) {
+            sel = shape;
+            dist = tDist;
+          }
+        }
+        newShapes.add(last = sel);
+        cullShapes.remove(sel);
+      }
+      // Convert shapes into an array of lines to cut, or engrave
+      ArrayList<Line2D.Double> lines = new ArrayList<>();
+      for (CADShape shape : newShapes) {
+        lines.addAll(shape.getScaledLines(ppi));
+      }
       return lines.toArray(new Line2D.Double[lines.size()]);
-    }
-
-    /*
-     * Sort position of CADShape objects in DrawSurface
-     */
-    void optimizePath () {
-      ArrayList<CADShape> opShapes = new ArrayList<>(shapes);
-      Collections.sort(opShapes);
-      shapes = opShapes;
     }
 
     public void paint (Graphics g) {
