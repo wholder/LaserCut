@@ -2951,17 +2951,23 @@ public class LaserCut extends JFrame {
       g2.setStroke(new BasicStroke(0.5f));
       new ArrayList<>(shapes).forEach(shape -> shape.draw(g2));
       if (showMeasure) {
-        g2.setColor(Color.red);
+        g2.setColor(Color.gray);
         g2.setStroke(new BasicStroke(0.5f));
         double extend = 10;
         double minX = Math.min(measure1.x, measure2.x);
         double minY = Math.min(measure1.y, measure2.y);
         g2.draw(new Line2D.Double(measure1.x - extend, minY, measure2.x + extend, minY));
         g2.draw(new Line2D.Double(minX, measure1.y - extend, minX, measure2.y + extend));
+        g2.setColor(new Color(127, 100, 49));
+        g2.setStroke(new BasicStroke(0.8f));
         double maxX = Math.max(measure1.x, measure2.x);
         double maxY = Math.max(measure1.y, measure2.y);
-        g2.draw(LineWithArrow.lineWithArrows(measure1.x, maxY, measure2.x, maxY));
-        g2.draw(LineWithArrow.lineWithArrows(maxX, measure1.y, maxX, measure2.y));
+        g2.draw(new Line2D.Double(measure1.x, maxY, measure2.x, maxY));
+        g2.draw(new Line2D.Double(maxX, measure1.y, maxX, measure2.y));
+        g2.fill(LineWithArrow.getArrow(measure1.x, maxY, measure2.x, maxY, false));
+        g2.fill(LineWithArrow.getArrow(measure1.x, maxY, measure2.x, maxY, true));
+        g2.fill(LineWithArrow.getArrow(maxX, measure1.y, maxX, measure2.y, false));
+        g2.fill(LineWithArrow.getArrow(maxX, measure1.y, maxX, measure2.y, true));
       }
     }
 
