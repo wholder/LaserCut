@@ -33,6 +33,7 @@ LaserCut uses the Java Language's reflection and object serialization features t
 - Export vector designs to a PDF file (experimental)
 ## Under Development
 - A tool to support freeform drawing of shapes using [Catmull-Rom Splines](https://en.wikipedia.org/wiki/Centripetal_Catmull–Rom_spline) and then automatically convert them into [Bézier Curve](https://en.wikipedia.org/wiki/Bézier_curve)-based shapes.
+- Background reference images which can be used as templates
 - Support for a user-extendable library of specialized cutout shapes, such as for mounting RC Servos (to replace and extend the current Nema Stepper code)
 - Import vector shapes from EPS (Encapsulated PostScript®) files
 - Get a certificate so I can sign the JAR file (costs $$$, sigh)
@@ -53,4 +54,5 @@ LaserCut uses the following Java code to perform some of its functions:
 - [Java Simple Serial Connector 2.8.0](https://github.com/scream3r/java-simple-serial-connector) "JSSC" (used to communicate with GRBL-based laser cutters)
 - [Apache PDFBox® 2.0.7](https://pdfbox.apache.org) (used by the "Export PDF" feature)
 - [Apache commons-logging 1.2](https://commons.apache.org/proper/commons-logging/) (needed by Apache PDFBox 2.0.7)
+- [Gear Shapes based on "Java Gear Generator: Involute and Fillet"](http://printobjects.me/catalogue/ujava-gear-generator-involute-and-fillet_520801/) by brush701
 - [IntelliJ IDEA from JetBrains](https://www.jetbrains.com/idea/) (my favorite development environment for Java coding. Thanks JetBrains!)

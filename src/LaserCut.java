@@ -86,7 +86,6 @@ public class LaserCut extends JFrame {
   private transient Preferences prefs = Preferences.userRoot().node(this.getClass().getName());
   private JSSCPort              jPort;
   private DrawSurface           surface;
-  private JScrollPane           scrollPane;
   private JTextField            itemInfo = new JTextField();
   private String                zingIpAddress = prefs.get("zing.ip", "10.0.1.201");
   private int                   zingCutPower = prefs.getInt("zing.power", 85);
@@ -143,7 +142,7 @@ public class LaserCut extends JFrame {
   private LaserCut () {
     setTitle("LaserCut");
     surface = new DrawSurface();
-    add(scrollPane = new JScrollPane(surface), BorderLayout.CENTER);
+    add(new JScrollPane(surface), BorderLayout.CENTER);
     JPanel bottomPane = new JPanel(new BorderLayout());
     bottomPane.setBorder(new EmptyBorder(1, 4, 1, 1));
     bottomPane.add(new JLabel("Info: "), BorderLayout.WEST);
@@ -206,6 +205,7 @@ public class LaserCut extends JFrame {
       fileChooser.setFileFilter(nameFilter);
       fileChooser.setSelectedFile(new File(prefs.get("default.dir", "/")));
       if (fileChooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
+        surface.pushToUndoStack();
         try {
           File tFile = fileChooser.getSelectedFile();
           surface.setDesign(loadDesign(tFile));
@@ -281,7 +281,7 @@ public class LaserCut extends JFrame {
           } else if (shp instanceof CADReferenceImage) {
             // Prompt for Image file
             JFileChooser fileChooser = new JFileChooser();
-            FileNameExtensionFilter nameFilter = new FileNameExtensionFilter("JPEG files (*.jpg)", "jpg");
+            FileNameExtensionFilter nameFilter = new FileNameExtensionFilter("Image files (jpg,jpeg,png,gif)", "jpg", "jpeg", "png", "gif");
             fileChooser.addChoosableFileFilter(nameFilter);
             fileChooser.setFileFilter(nameFilter);
             fileChooser.setSelectedFile(new File(prefs.get("image.dir", "/")));
@@ -438,20 +438,30 @@ public class LaserCut extends JFrame {
     unGroupSelected.setEnabled(false);
     unGroupSelected.addActionListener((ev) -> surface.unGroupSelected());
     editMenu.add(unGroupSelected);
-    // Add "Align Grouped Shapes to Selected Shape" Menu Item
-    JMenuItem alignSelected = new JMenuItem("Align Grouped Shapes to Selected Shape");
-    alignSelected.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_L, cmdMask));
-    alignSelected.setEnabled(false);
-    alignSelected.addActionListener((ev) -> surface.alignSelectedShapes());
-    editMenu.add(alignSelected);
+    // Add "Align Grouped Shape(s) to Selected Shape's" submenu
+    JMenu alignMenu = new JMenu("Align Grouped Shape(s) to Selected Shape's");
+    alignMenu.setEnabled(false);
+    // Add "X Coord" Submenu Item
+    JMenuItem alignXSelected = new JMenuItem("X Coord");
+    alignXSelected.addActionListener((ev) -> surface.alignSelectedShapes(true, false));
+    alignMenu.add(alignXSelected);
+    // Add "Y Coord" Submenu Item
+    JMenuItem alignYSelected = new JMenuItem("Y Coord");
+    alignYSelected.addActionListener((ev) -> surface.alignSelectedShapes(false, true));
+    alignMenu.add(alignYSelected);
+    // Add "X & Y Coord" Submenu Item
+    JMenuItem alignXYSelected = new JMenuItem("X & Y Coords");
+    alignXYSelected.addActionListener((ev) -> surface.alignSelectedShapes(true, true));
+    alignMenu.add(alignXYSelected);
+    editMenu.add(alignMenu);
     // Add "Add Grouped Shapes" Menu Item
-    JMenuItem addSelected = new JMenuItem("Add Grouped Shapes to Selected Shape");
+    JMenuItem addSelected = new JMenuItem("Add Grouped Shape{s) to Selected Shape");
     addSelected.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_A, cmdMask));
     addSelected.setEnabled(false);
     addSelected.addActionListener((ev) -> surface.addOrSubtractSelectedShapes(true));
     editMenu.add(addSelected);
     // Add "Subtract Group from Selected" Menu Item
-    JMenuItem subtractSelected = new JMenuItem("Take Away Grouped Shapes from Selected Shape");
+    JMenuItem subtractSelected = new JMenuItem("Take Away Grouped Shape(s) from Selected Shape");
     subtractSelected.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_T, cmdMask));
     subtractSelected.setEnabled(false);
     subtractSelected.addActionListener((ev) -> surface.addOrSubtractSelectedShapes(false));
@@ -466,7 +476,7 @@ public class LaserCut extends JFrame {
       boolean hasGroup = surface.selected != null && surface.selected.getGroup() != null;
       unGroupSelected.setEnabled(hasGroup);
       addSelected.setEnabled(hasGroup);
-      alignSelected.setEnabled(hasGroup);
+      alignMenu.setEnabled(hasGroup);
       subtractSelected.setEnabled(hasGroup);
       rotateSelected.setEnabled(hasGroup);
     });
@@ -2312,13 +2322,13 @@ public class LaserCut extends JFrame {
     private CADShape                        selected, dragged, shapeToPlace;
     private double                          gridSpacing = prefs.getDouble("gridSpacing", 0);
     private double                          zoomFactor = 1;
-    private Point2D.Double scrollPoint;
+    private Point2D.Double                  scrollPoint, measure1, measure2;
     private ArrayList<ShapeSelectListener>  selectListerners = new ArrayList<>();
     private ArrayList<ActionUndoListener>   undoListerners = new ArrayList<>();
     private ArrayList<ActionRedoListener>   redoListerners = new ArrayList<>();
     private LinkedList<byte[]>              undoStack = new LinkedList<>();
     private LinkedList<byte[]>              redoStack = new LinkedList<>();
-    private boolean                         pushedToStack;
+    private boolean                         pushedToStack, showMeasure;
 
     DrawSurface () {
       super(true);
@@ -2350,11 +2360,12 @@ public class LaserCut extends JFrame {
                 minX = Math.min(minX, shape.xLoc);
                 minY = Math.min(minY, shape.yLoc);
               }
+              pushToUndoStack();
               // Place all imported shapes so upper left position of set is now where used clicked
               for (CADShape shape : shapesToPlace) {
                 shape.xLoc = shape.xLoc - minX + newX;
                 shape.yLoc = shape.yLoc - minY + newY;
-                addShape(shape);
+                shapes.add(shape);
                 shapesToPlace = null;
               }
             }
@@ -2368,6 +2379,9 @@ public class LaserCut extends JFrame {
                   double dy = shape.yLoc - selected.yLoc;
                   itemInfo.setText(" dx: " + LaserCut.df.format(dx) + " in, dy: " + LaserCut.df.format(dy) + " in (" +
                       LaserCut.df.format(inchesToMM(dx)) + " mm, " + LaserCut.df.format(inchesToMM(dy)) + " mm)");
+                  measure1 = new Point2D.Double(selected.xLoc * SCREEN_PPI, selected.yLoc * SCREEN_PPI);
+                  measure2 = new Point2D.Double(shape.xLoc * SCREEN_PPI, shape.yLoc * SCREEN_PPI);
+                  showMeasure = true;
                   break;
                 }
               }
@@ -2436,6 +2450,7 @@ public class LaserCut extends JFrame {
                   dragged = shape;
                   setSelected(shape);
                   itemInfo.setText("xLoc: " + dragged.xLoc + ", yLoc: " + dragged.yLoc);
+                  showMeasure = false;
                   return;
                 }
               }
@@ -2448,6 +2463,7 @@ public class LaserCut extends JFrame {
                 pushToUndoStack();
                 setSelected(shape);
                 itemInfo.setText(shape.getInfo());
+                showMeasure = false;
                 processed = true;
                 break;
               }
@@ -2456,6 +2472,7 @@ public class LaserCut extends JFrame {
               pushToUndoStack();
               setSelected(null);
               itemInfo.setText("");
+              showMeasure = false;
               scrollPoint = point;
               LaserCut.this.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
             }
@@ -2469,12 +2486,6 @@ public class LaserCut extends JFrame {
           scrollPoint = null;
           LaserCut.this.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
           pushedToStack = false;
-          CADShape shape = getSelected();
-          if (shape != null) {
-            itemInfo.setText(shape.getInfo());
-          } else {
-            itemInfo.setText("");
-          }
         }
       });
       addMouseMotionListener(new MouseMotionAdapter() {
@@ -2731,14 +2742,18 @@ public class LaserCut extends JFrame {
       }
     }
 
-    void alignSelectedShapes () {
+    void alignSelectedShapes (boolean alignX, boolean alignY) {
       pushToUndoStack();
       CADShapeGroup group = selected.getGroup();
       if (group != null) {
         for (CADShape gItem : group.getGroupList()) {
           if (gItem != selected) {
-            gItem.xLoc = selected.xLoc;
-            gItem.yLoc = selected.yLoc;
+            if (alignX) {
+              gItem.xLoc = selected.xLoc;
+            }
+            if (alignY) {
+              gItem.yLoc = selected.yLoc;
+            }
           }
         }
         repaint();
@@ -2754,11 +2769,10 @@ public class LaserCut extends JFrame {
         double yOff = 0;
         for (ParameterDialog.ParmItem parm : parmSet) {
           try {
-            double val = (Double) parm.value;
               if ("xOff".equals(parm.name)) {
-                xOff = val;
+                xOff = (Double) parm.value;
               } else if ("yOff".equals(parm.name)) {
-                yOff = val;
+                yOff = (Double) parm.value;
               }
           } catch (Exception ex) {
             ex.printStackTrace();
@@ -2781,14 +2795,17 @@ public class LaserCut extends JFrame {
     }
 
     void rotateGroupAroundSelected () {
-      ParameterDialog.ParmItem[] parmSet = {new ParameterDialog.ParmItem("angle|deg", 0d)};
+      ParameterDialog.ParmItem[] parmSet = {new ParameterDialog.ParmItem("angle|deg", 0d), new ParameterDialog.ParmItem("rotateSelected", true)};
       if (ParameterDialog.showSaveCancelParameterDialog(parmSet, surface.getParent())) {
         double angle = 0;
+        boolean rotateSelected = true;
         for (ParameterDialog.ParmItem parm : parmSet) {
           try {
-            double val = (Double) parm.value;
             if ("angle".equals(parm.name)) {
-              angle = val;
+              angle = (Double) parm.value;
+            }
+            if ("rotateSelected".equals(parm.name)) {
+              rotateSelected = (Boolean) parm.value;
             }
           } catch (Exception ex) {
             ex.printStackTrace();
@@ -2799,7 +2816,7 @@ public class LaserCut extends JFrame {
         CADShapeGroup group = selected.getGroup();
         if (group != null) {
           for (CADShape gItem : group.getGroupList()) {
-            if (gItem != selected) {
+            if (gItem != selected || rotateSelected) {
               Point2D.Double pt = new Point2D.Double(gItem.xLoc, gItem.yLoc);
               center.transform(pt, pt);
               gItem.xLoc = pt.x;
@@ -2933,6 +2950,19 @@ public class LaserCut extends JFrame {
       }
       g2.setStroke(new BasicStroke(0.5f));
       new ArrayList<>(shapes).forEach(shape -> shape.draw(g2));
+      if (showMeasure) {
+        g2.setColor(Color.red);
+        g2.setStroke(new BasicStroke(0.5f));
+        double extend = 10;
+        double minX = Math.min(measure1.x, measure2.x);
+        double minY = Math.min(measure1.y, measure2.y);
+        g2.draw(new Line2D.Double(measure1.x - extend, minY, measure2.x + extend, minY));
+        g2.draw(new Line2D.Double(minX, measure1.y - extend, minX, measure2.y + extend));
+        double maxX = Math.max(measure1.x, measure2.x);
+        double maxY = Math.max(measure1.y, measure2.y);
+        g2.draw(LineWithArrow.lineWithArrows(measure1.x, maxY, measure2.x, maxY));
+        g2.draw(LineWithArrow.lineWithArrows(maxX, measure1.y, maxX, measure2.y));
+      }
     }
 
     void writePDF (File file) throws Exception {

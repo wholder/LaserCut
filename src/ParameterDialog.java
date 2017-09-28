@@ -112,7 +112,7 @@ class ParameterDialog extends JDialog {
     return tmp;
   }
 
-  public boolean doAction () {
+  boolean doAction () {
     return !cancelled;
   }
 
