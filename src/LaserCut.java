@@ -142,7 +142,9 @@ public class LaserCut extends JFrame {
   private LaserCut () {
     setTitle("LaserCut");
     surface = new DrawSurface();
-    add(new JScrollPane(surface), BorderLayout.CENTER);
+    JScrollPane scrollPane = new JScrollPane(surface);
+    scrollPane.setWheelScrollingEnabled(false);
+    add(scrollPane, BorderLayout.CENTER);
     JPanel bottomPane = new JPanel(new BorderLayout());
     bottomPane.setBorder(new EmptyBorder(1, 4, 1, 1));
     bottomPane.add(new JLabel("Info: "), BorderLayout.WEST);
@@ -268,7 +270,8 @@ public class LaserCut extends JFrame {
     // Add options for other Shapes
     String[] sItems = new String[] {"Reference Point/LaserCut$CADReference", "Rectangle/LaserCut$CADRectangle", "Polygon/LaserCut$CADPolygon",
                                     "Oval/LaserCut$CADOval", "Gear/LaserCut$CADGear", "Text/LaserCut$CADText", "NEMA Stepper/LaserCut$CADNemaMotor",
-                                    "Bobbin/LaserCut$CADBobbin", "Reference Image (beta)/LaserCut$CADReferenceImage"};
+                                    "Bobbin/LaserCut$CADBobbin", "Raster Image (beta)/LaserCut$CADRasterImage",
+                                    "Reference Image (beta)/LaserCut$CADReferenceImage"};
     for (String sItem : sItems) {
       String[] parts = sItem.split("/");
       JMenuItem mItem = new JMenuItem(parts[0]);
@@ -278,7 +281,7 @@ public class LaserCut extends JFrame {
           CADShape shp = (CADShape) ref.getDeclaredConstructor().newInstance();
           if (shp instanceof CADReference) {
             surface.placeShape(shp);
-          } else if (shp instanceof CADReferenceImage) {
+          } else if (shp instanceof CADRasterImage) {
             // Prompt for Image file
             JFileChooser fileChooser = new JFileChooser();
             FileNameExtensionFilter nameFilter = new FileNameExtensionFilter("Image files (jpg,jpeg,png,gif)", "jpg", "jpeg", "png", "gif");
@@ -289,7 +292,7 @@ public class LaserCut extends JFrame {
               try {
                 File iFile = fileChooser.getSelectedFile();
                 prefs.put("image.dir", iFile.getAbsolutePath());
-                ((CADReferenceImage) shp).loadImage(iFile);
+                ((CADRasterImage) shp).loadImage(iFile);
                 surface.placeShape(shp);
               } catch (Exception ex) {
                 showErrorDialog("Unable to load file");
@@ -395,7 +398,7 @@ public class LaserCut extends JFrame {
       if (sel != null && sel.editParameterDialog(surface)) {
         // User clicked dialog's OK button
         surface.getSelected().updateShape();
-        surface.setDirty();
+        surface.repaint();
       }
     });
     editMenu.add(editSelected);
@@ -428,7 +431,6 @@ public class LaserCut extends JFrame {
         surface.pushToUndoStack();
         double val = (Double) parms[0].value;
         surface.roundSelected(val);
-        surface.setDirty();
       }
     });
     editMenu.add(roundCorners);
@@ -601,9 +603,21 @@ public class LaserCut extends JFrame {
      *  Add "Export" Menu
      */
     JMenu exportMenu = new JMenu("Export");
-     // Add "Zing Laser" submenu
+     // Add "Zing Laser" Menu Item
     JMenu zingMenu = new JMenu("Zing Laser");
-    // Add "Send to Zing" Menu Item
+        /*
+    // Add "Test Optimize Path" Menu Item
+    JMenuItem optimizePath = new JMenuItem("Test Optimize Path");
+    optimizePath.addActionListener(ev -> {
+      surface.optimizePath();
+      for (CADShape shape : surface.getDesign()) {
+        double dist = Math.sqrt(shape.xLoc * shape.xLoc + shape.yLoc * shape.yLoc);
+        System.out.println(dist);
+      }
+    });
+    zingMenu.add(optimizePath);
+    */
+    // Add "Send to Zing" Submenu Item
     JMenuItem sendToZing = new JMenuItem("Send Job to Zing");
     sendToZing.addActionListener(ev -> {
       if (zingIpAddress == null ||  zingIpAddress.length() == 0) {
@@ -675,7 +689,7 @@ public class LaserCut extends JFrame {
       }
     });
     zingMenu.add(sendToZing);
-    // Add "Zing Settings" Menu Item
+    // Add "Zing Settings" Submenu Item
     JMenuItem zingSettings = new JMenuItem("Zing Settings");
     zingSettings.addActionListener(ev -> {
       ParameterDialog.ParmItem[] parmSet = {
@@ -698,7 +712,7 @@ public class LaserCut extends JFrame {
       }
     });
     zingMenu.add(zingSettings);
-    // Add "Resize for Zing" Full Size Menu Item
+    // Add "Resize for Zing" Full Size Submenu Items
     JMenuItem zingResize = new JMenuItem("Resize for Zing (" + (zingFullSize.width / SCREEN_PPI) + "x" + (zingFullSize.height / SCREEN_PPI) + ")");
     zingResize.addActionListener(ev -> {
       surface.setSurfaceSize(zingFullSize);
@@ -718,9 +732,9 @@ public class LaserCut extends JFrame {
     if (enableMiniLazer) {
       try {
         jPort = new JSSCPort(prefs);
-         // Add "Mini Laser" submenu
+         // Add "Mini Laser" Menu Item
         JMenu miniLaserMenu = new JMenu("Mini Laser");
-        // Add "Send to Mini Laser" Menu Item
+        // Add "Send to Mini Laser" Submenu Item
         JPanel panel = new JPanel(new GridLayout(1, 2));
         panel.add(new JLabel("Iterations: ", JLabel.RIGHT));
         JTextField tf = new JTextField("1", 4);
@@ -788,7 +802,7 @@ public class LaserCut extends JFrame {
           }
         });
         miniLaserMenu.add(sendToMiniLazer);
-        // Add "Mini Lazer Settings" Menu Item
+        // Add "Mini Lazer Settings" Submenu Item
         JMenuItem miniLazerSettings = new JMenuItem("Mini Lazer Settings");
         miniLazerSettings.addActionListener(ev -> {
           // Edit Mini Lazer Settings
@@ -802,7 +816,7 @@ public class LaserCut extends JFrame {
           }
         });
         miniLaserMenu.add(miniLazerSettings);
-        // Add "Resize for Mini Lazer" Menu Item
+        // Add "Resize for Mini Lazer" Submenu Item
         JMenuItem miniResize = new JMenuItem("Resize for Mini Lazer (" + (miniSize.width / SCREEN_PPI) + "x" + (miniSize.height / SCREEN_PPI) + ")");
         miniResize.addActionListener(ev -> {
           surface.setSurfaceSize(miniSize);
@@ -810,6 +824,7 @@ public class LaserCut extends JFrame {
           repaint();
         });
         miniLaserMenu.add(miniResize);
+        // Add "Jog Controls" Submenu Item
         JMenuItem jog = new JMenuItem("Jog Controls");
         jog.addActionListener((ev) -> {
           // Build Jog Controls
@@ -919,15 +934,16 @@ public class LaserCut extends JFrame {
               null, options, options[0]);
         });
         miniLaserMenu.add(settings);
-        // Add "Port" and "Baud" Menus to MenuBar
+        // Add "Port" and "Baud" Submenu to MenuBar
         miniLaserMenu.add(jPort.getPortMenu());
         miniLaserMenu.add(jPort.getBaudMenu());
-        // Add Mini Laser Menu to MenuBar
+        // Add Mini Laser Menu Item to MenuBar
         exportMenu.add(miniLaserMenu);
       } catch (Exception ex) {
         jPortError = true;
       }
     }
+    // Add "Export to PDF File" Menu Item
     JMenuItem pdfOutput = new JMenuItem("Export to PDF File");
     pdfOutput.addActionListener(ev -> {
       JFileChooser fileChooser = new JFileChooser();
@@ -1503,7 +1519,8 @@ public class LaserCut extends JFrame {
     void draw (Graphics2D g2) {
       Stroke saveStroke = g2.getStroke();
       Shape dShape = getScreenTranslatedShape();
-      boolean highlight = isSelected || getGroup() != null && getGroup().isGroupSelected();
+      boolean inGroup = getGroup() != null && getGroup().isGroupSelected();
+      boolean highlight = isSelected || inGroup;
       g2.setStroke(getShapeStroke(highlight, isSelected));
       g2.setColor(getShapeColor (highlight, engrave));
       // Scale Shape to scale and draw it
@@ -1754,16 +1771,13 @@ public class LaserCut extends JFrame {
     }
   }
 
-  static class CADReferenceImage extends CADShape implements Serializable, CADNoDraw {
+  static class CADRasterImage extends CADShape implements Serializable {
     private static final long serialVersionUID = 2309856254388651139L;
-    public double                   width, height, scale = 100.0;
-    private transient BufferedImage img;
+    public double             width, height, scale = 100.0;
+    transient BufferedImage   img;
 
-    /**
-     * Default constructor is used to instantiate subclasses in "Shapes" Menu
-     */
-    @SuppressWarnings("unused")
-    CADReferenceImage () {
+    CADRasterImage () {
+      engrave = true;
     }
 
     void loadImage (File imgFile) throws IOException {
@@ -1772,17 +1786,36 @@ public class LaserCut extends JFrame {
       width = img.getWidth() / SCREEN_PPI;
       height = img.getHeight() / SCREEN_PPI;
     }
+
     @Override
     void draw (Graphics2D g) {
-      Graphics2D g2 = (Graphics2D) g.create();
-      AffineTransform at = new AffineTransform();
-      at.translate(xLoc * SCREEN_PPI, yLoc * SCREEN_PPI);
-      at.rotate(Math.toRadians(rotation));
-      at.scale(scale / 100, scale / 100);
-      g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.2f));
-      g2.drawImage(img, at, null);
-      g2.dispose();
+      doDraw((Graphics2D) g.create());
       super.draw(g);
+    }
+
+    void doDraw (Graphics2D g2) {
+      // Convert Image to greyscale
+      BufferedImage bufimg = new BufferedImage(img.getWidth(), img.getHeight(), BufferedImage.TYPE_BYTE_GRAY);
+      Graphics2D g2d = bufimg.createGraphics();
+      g2d.drawImage(img, 0, 0, null);
+      g2d.dispose();
+      // Transform image for centering, rotation and scale
+      AffineTransform at = new AffineTransform();
+      double sRatio = scale / 100;  // Convert from % to ratio
+      if (centered) {
+        at.translate(xLoc * SCREEN_PPI, yLoc * SCREEN_PPI);
+        at.scale(sRatio, sRatio);
+        at.rotate(Math.toRadians(rotation));
+        at.translate(-bufimg.getWidth() / 2.0, -bufimg.getHeight() / 2.0);
+      } else {
+        at.translate(xLoc * SCREEN_PPI, yLoc * SCREEN_PPI);
+        at.scale(sRatio, sRatio);
+        at.rotate(Math.toRadians(rotation));
+      }
+      // Draw with 20% Alpha to fade image
+      g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.2f));
+      g2.drawImage(bufimg, at, null);
+      g2.dispose();
     }
 
     @Override
@@ -1793,19 +1826,8 @@ public class LaserCut extends JFrame {
     }
 
     @Override
-    Color getShapeColor (boolean highlight, boolean isSelected) {
-      return isSelected || highlight ? Color.blue : Color.lightGray;
-    }
-
-    @Override
-    BasicStroke getShapeStroke (boolean highlight, boolean isSelected) {
-      final float dash1[] = {8.0f};
-      return new BasicStroke(highlight ? isSelected ? 1.8f : 1.4f : 1.0f, BasicStroke.CAP_SQUARE, BasicStroke.JOIN_MITER, 1.0f, dash1, 0.5f);
-    }
-
-    @Override
     boolean editParameterDialog (DrawSurface surface) {
-      return displayShapeParameterDialog(surface, new ArrayList<>(Arrays.asList("xLoc|in", "yLoc|in", "rotation|deg", "scale|%")), "Save");
+      return displayShapeParameterDialog(surface, new ArrayList<>(Arrays.asList("xLoc|in", "yLoc|in", "rotation|deg", "scale|%", "centered")), "Save");
     }
 
     // Custom write serializer for BufferedImage
@@ -1818,6 +1840,46 @@ public class LaserCut extends JFrame {
     private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
       in.defaultReadObject();
       img = ImageIO.read(in);
+    }
+
+    @Override
+    Color getShapeColor (boolean highlight, boolean engrave) {
+      return highlight ? Color.blue : Color.lightGray;
+    }
+
+    @Override
+    BasicStroke getShapeStroke (boolean highlight, boolean isSelected) {
+      final float dash1[] = {8.0f};
+      return new BasicStroke(highlight ? isSelected ? 1.8f : 1.4f : 1.0f, BasicStroke.CAP_SQUARE, BasicStroke.JOIN_MITER, 1.0f, dash1, 0.5f);
+    }
+  }
+
+  static class CADReferenceImage extends CADRasterImage implements Serializable, CADNoDraw {
+    private static final long serialVersionUID = 1171659976420013588L;
+
+    CADReferenceImage () {
+      engrave = false;
+    }
+
+    @Override
+    void doDraw (Graphics2D g2) {
+      // Transform image for centering, rotation and scale
+      AffineTransform at = new AffineTransform();
+      double sRatio = scale / 100;  // Convert from % to ratio
+      if (centered) {
+        at.translate(xLoc * SCREEN_PPI, yLoc * SCREEN_PPI);
+        at.scale(sRatio, sRatio);
+        at.rotate(Math.toRadians(rotation));
+        at.translate(-img.getWidth() / 2.0, -img.getHeight() / 2.0);
+      } else {
+        at.translate(xLoc * SCREEN_PPI, yLoc * SCREEN_PPI);
+        at.scale(sRatio, sRatio);
+        at.rotate(Math.toRadians(rotation));
+      }
+      // Draw with 20% Alpha to fade image
+      g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.2f));
+      g2.drawImage(img, at, null);
+      g2.dispose();
     }
   }
 
@@ -2889,10 +2951,6 @@ public class LaserCut extends JFrame {
           repaint();
         }
       }
-    }
-
-    void setDirty () {
-      repaint();
     }
 
     /**
