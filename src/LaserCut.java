@@ -24,6 +24,7 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.text.DefaultCaret;
 import java.awt.*;
+import java.awt.desktop.*;
 import java.awt.event.*;
 import java.awt.font.GlyphVector;
 import java.awt.font.TextAttribute;
@@ -36,6 +37,7 @@ import java.util.*;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.prefs.Preferences;
+import java.util.zip.CRC32;
 
   /*
   Links to potentially useful stuff
@@ -101,6 +103,7 @@ public class LaserCut extends JFrame {
   private int                   zingEngraveFreq = prefs.getInt("zing.efreq", 500);
   private int                   miniPower = prefs.getInt("mini.power", 255);
   private int                   miniSpeed = prefs.getInt("mini.speed", 10);
+  private long                  savedCrc;
   private boolean               miniDynamicLaser = prefs.getBoolean("mini.dynamicLaser", true);
   private static final boolean  enableMiniLazer = true;
   private static Map<String,String> grblSettings = new LinkedHashMap<>();
@@ -144,6 +147,28 @@ public class LaserCut extends JFrame {
     grblSettings.put("$132", "Z Max travel, mm");
   }
 
+  private boolean quitHandler () {
+    if (savedCrc == surface.getDesignChecksum() || showWarningDialog("You have unsaved changes!\nDo you really want to quit?")) {
+      if (jPort != null) {
+        jPort.close();
+      }
+      return true;
+    }
+    return false;
+  }
+
+  private void showAboutBox () {
+    JOptionPane.showMessageDialog(this,
+        "By: Wayne Holder\n" +
+            "  Java Runtime  " + System.getProperty("java.version") + "\n" +
+            "  LibLaserCut " + com.t_oster.liblasercut.LibInfo.getVersion() + "\n" +
+            "  Java Simple Serial Connector " + SerialNativeInterface.getLibraryVersion() + "\n" +
+            "  Apache PDFBox " + org.apache.pdfbox.util.Version.getVersion(),
+        "LaserCut " + VERSION,
+        JOptionPane.INFORMATION_MESSAGE,
+        new ImageIcon(getClass().getResource("/images/laser_wip_black.png")));
+  }
+
   private LaserCut () {
     setTitle("LaserCut");
     surface = new DrawSurface();
@@ -163,7 +188,40 @@ public class LaserCut extends JFrame {
       surface.setSurfaceSize(zingFullSize);
     }
     requestFocusInWindow();
-    setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+    boolean hasAboutHandler = false;
+    boolean hasQuitHandler = false;
+    if (Desktop.isDesktopSupported()) {
+      Desktop desktop = Desktop.getDesktop();
+      desktop.disableSuddenTermination();
+      if (hasAboutHandler = desktop.isSupported(Desktop.Action.APP_ABOUT)) {
+        desktop.setAboutHandler(new AboutHandler() {
+          @Override
+          public void handleAbout (AboutEvent e) {
+            showAboutBox();
+          }
+        });
+      }
+      if (hasQuitHandler = desktop.isSupported(Desktop.Action.APP_QUIT_HANDLER)) {
+        desktop.setQuitHandler(new QuitHandler() {
+          @Override
+          public void handleQuitRequestWith (QuitEvent e, QuitResponse response) {
+            if (quitHandler()) {
+              response.performQuit();
+            } else {
+              response.cancelQuit();
+            }
+          }
+        });
+      }
+    }
+    addWindowListener(new WindowAdapter() {
+      @Override
+      public void windowClosing (WindowEvent e) {
+        if (quitHandler()) {
+          System.exit(0);
+        }
+      }
+    });
     // Add Menu Bar to Window
     JMenuBar menuBar = new JMenuBar();
     setJMenuBar(menuBar);
@@ -171,21 +229,23 @@ public class LaserCut extends JFrame {
      *  Add "File" Menu
      */
     JMenu fileMenu = new JMenu("File");
-    // Add "About" Item to File Menu
-    JMenuItem aboutBox = new JMenuItem("About " + getClass().getSimpleName());
-    aboutBox.addActionListener(ev -> {
-      JOptionPane.showMessageDialog(this,
-          "By: Wayne Holder\n" +
-              "  Java Runtime  " + System.getProperty("java.version") + "\n" +
-              "  LibLaserCut " + com.t_oster.liblasercut.LibInfo.getVersion() + "\n" +
-              "  Java Simple Serial Connector " + SerialNativeInterface.getLibraryVersion() + "\n" +
-              "  Apache PDFBox " + org.apache.pdfbox.util.Version.getVersion(),
-          "LaserCut " + VERSION,
-          JOptionPane.INFORMATION_MESSAGE,
-          new ImageIcon(getClass().getResource("/images/laser_wip_black.png")));
-    });
-    fileMenu.add(aboutBox);
-    fileMenu.addSeparator();
+    if (!hasAboutHandler) {
+      // Add "About" Item to File Menu
+      JMenuItem aboutBox = new JMenuItem("About " + getClass().getSimpleName());
+      aboutBox.addActionListener(ev -> {
+        JOptionPane.showMessageDialog(this,
+            "By: Wayne Holder\n" +
+                "  Java Runtime  " + System.getProperty("java.version") + "\n" +
+                "  LibLaserCut " + com.t_oster.liblasercut.LibInfo.getVersion() + "\n" +
+                "  Java Simple Serial Connector " + SerialNativeInterface.getLibraryVersion() + "\n" +
+                "  Apache PDFBox " + org.apache.pdfbox.util.Version.getVersion(),
+            "LaserCut " + VERSION,
+            JOptionPane.INFORMATION_MESSAGE,
+            new ImageIcon(getClass().getResource("/images/laser_wip_black.png")));
+      });
+      fileMenu.add(aboutBox);
+      fileMenu.addSeparator();
+    }
     // Add "New" Item to File Menu
     JMenuItem newObj = new JMenuItem("New");
     newObj.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_N, cmdMask));
@@ -194,6 +254,7 @@ public class LaserCut extends JFrame {
         if (!showWarningDialog("Discard current design?"))
           return;
         surface.clear();
+        savedCrc = surface.getDesignChecksum();
         setTitle("LaserCut");
       }
     });
@@ -216,6 +277,7 @@ public class LaserCut extends JFrame {
         try {
           File tFile = fileChooser.getSelectedFile();
           surface.setDesign(loadDesign(tFile));
+          savedCrc = surface.getDesignChecksum();
           prefs.put("default.dir", tFile.getAbsolutePath());
           setTitle("LaserCut - (" + tFile + ")");
         } catch (Exception ex) {
@@ -257,16 +319,50 @@ public class LaserCut extends JFrame {
       }
     });
     fileMenu.add(saveAs);
-    // Add "Quit" Item to File menu
-    JMenuItem quitObj = new JMenuItem("Quit");
-    quitObj.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Q, cmdMask));
-    quitObj.addActionListener(ev -> {
-      if (jPort != null) {
-        jPort.close();
+    // Add "Save As" Item to File menu
+    JMenuItem saveSelected = new JMenuItem("Save Selected");
+    saveSelected.setEnabled(false);
+    saveSelected.addActionListener(ev -> {
+      JFileChooser fileChooser = new JFileChooser();
+      FileNameExtensionFilter nameFilter = new FileNameExtensionFilter("LaserCut files (*.lzr)", "lzr");
+      fileChooser.addChoosableFileFilter(nameFilter);
+      fileChooser.setFileFilter(nameFilter);
+      fileChooser.setCurrentDirectory(new File(prefs.get("default.dir", "/")));
+      if (fileChooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
+        File sFile = fileChooser.getSelectedFile();
+        String fName = sFile.getName();
+        if (!fName.contains(".")) {
+          sFile = new File(fName + ".lzr");
+        }
+        try {
+          if (sFile.exists()) {
+            if (showWarningDialog("Overwrite Existing file?")) {
+              saveDesign(sFile, surface.getSelectedAsDesign());
+            }
+          } else {
+            saveDesign(sFile, surface.getSelectedAsDesign());
+          }
+          savedCrc = surface.getDesignChecksum();
+          setTitle("LaserCut - (" + sFile + ")");
+        } catch (IOException ex) {
+          showErrorDialog("Unable to save file");
+          ex.printStackTrace();
+        }
+        prefs.put("default.dir", sFile.getAbsolutePath());
       }
-      System.exit(0);
     });
-    fileMenu.add(quitObj);
+    fileMenu.add(saveSelected);
+    if (!hasQuitHandler) {
+      // Add "Quit" Item to File menu
+      JMenuItem quitObj = new JMenuItem("Quit");
+      quitObj.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Q, cmdMask));
+      quitObj.addActionListener(ev -> {
+        if (quitHandler()) {
+          System.exit(0);
+        }
+      });
+      fileMenu.add(quitObj);
+    }
     menuBar.add(fileMenu);
     /*
      *  Add "Shapes" Menu
@@ -360,14 +456,6 @@ public class LaserCut extends JFrame {
     menuBar.add(zoomMenu);
     // Add "Edit" Menu
     JMenu editMenu = new JMenu("Edit");
-    JMenuItem clearAll = new JMenuItem("Clear All");
-    clearAll.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_C, cmdMask));
-    editMenu.add(clearAll);
-    clearAll.addActionListener((ev) -> {
-      if (showWarningDialog("Clear All Shapes?")) {
-        surface.clear();
-      }
-    });
     // Add "Undo" Menu Item
     JMenuItem undo = new JMenuItem("Undo");
     undo.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Z, cmdMask));
@@ -377,7 +465,7 @@ public class LaserCut extends JFrame {
     surface.addUndoListener(undo::setEnabled);
     // Add "Redo" Menu Item
     JMenuItem redo = new JMenuItem("Redo");
-    redo.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Z, cmdMask + InputEvent.SHIFT_MASK));
+    redo.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Z, cmdMask + InputEvent.SHIFT_DOWN_MASK));
     redo.setEnabled(false);
     redo.addActionListener((ev) -> surface.popFromRedoStack());
     editMenu.add(redo);
@@ -480,6 +568,7 @@ public class LaserCut extends JFrame {
       editSelected.setEnabled(selected);
       moveSelected.setEnabled(selected);
       roundCorners.setEnabled(selected);
+      saveSelected.setEnabled(selected);
       boolean hasGroup = surface.selected != null && surface.selected.getGroup() != null;
       unGroupSelected.setEnabled(hasGroup);
       addSelected.setEnabled(hasGroup);
@@ -2787,6 +2876,39 @@ public class LaserCut extends JFrame {
 
     ArrayList<CADShape> getDesign () {
       return shapes;
+    }
+
+    ArrayList<CADShape> getSelectedAsDesign () {
+      ArrayList<CADShape> design = new ArrayList<>();
+      design.add(selected);
+      CADShapeGroup grp = selected.getGroup();
+      if (grp != null) {
+        for (CADShape shape : grp.getGroupList()) {
+          if (shape != selected) {
+            design.add(shape);
+          }
+        }
+      }
+      return design;
+    }
+
+    /**
+     * Uses Serilazation to convert design to byte artay and then uses this to compute a checkum
+     * @return
+     */
+    long getDesignChecksum () {
+      CRC32 crc = new CRC32();
+      try {
+        ByteArrayOutputStream bOut = new ByteArrayOutputStream();
+        ObjectOutputStream oOut = new ObjectOutputStream(bOut);
+        oOut.writeObject(shapes);
+        crc.update(bOut.toByteArray());
+        oOut.close();
+        bOut.close();
+      } catch (Exception ex) {
+        ex.printStackTrace();
+      }
+      return crc.getValue();
     }
 
     void setDesign (ArrayList<CADShape> shapes) {
