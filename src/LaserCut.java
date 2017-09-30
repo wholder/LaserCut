@@ -638,30 +638,35 @@ public class LaserCut extends JFrame {
         engraveProperties.setProperty("frequency", zingEngraveFreq);
         engraveProperties.setProperty("focus", 0.0f);
         LaserJob job = new LaserJob("laserCut", "laserCut", "laserCut");   // title, name, user
+        // Process raster engrave passes, if any
+
+        // Process cut and vector engrave passes
         for (int ii = 0; ii < 2; ii++) {
           boolean doCut = ii == 1;
           // Transform all the shapesInGroup into a series of line segments
-          VectorPart vp = new VectorPart(doCut ? cutProperties : engraveProperties, ZING_PPI);
-          boolean first = true;
           int lastX = 0, lastY = 0;
           // Loop detects pen up/pen down based on start and end points of line segments
-          Line2D.Double[] lines = surface.getLinesAtScale(ZING_PPI, doCut);
-          if (lines.length > 0) {
-            for (Line2D.Double line : lines) {
-              Point p1 = new Point((int) Math.round(line.x1), (int) Math.round(line.y1));
-              Point p2 = new Point((int) Math.round(line.x2), (int) Math.round(line.y2));
-              if (first) {
-                vp.moveto(p1.x, p1.y);
-                vp.lineto(lastX = p2.x, lastY = p2.y);
-              } else {
-                if (lastX != p1.x || lastY != p1.y) {
+          for (CADShape shape : surface.selectLaserItems(doCut)) {
+            ArrayList<Line2D.Double> lines = shape.getScaledLines(ZING_PPI);
+            if (lines.size() > 0) {
+              VectorPart vp = new VectorPart(doCut ? cutProperties : engraveProperties, ZING_PPI);
+              boolean first = true;
+              for (Line2D.Double line : lines) {
+                Point p1 = new Point((int) Math.round(line.x1), (int) Math.round(line.y1));
+                Point p2 = new Point((int) Math.round(line.x2), (int) Math.round(line.y2));
+                if (first) {
                   vp.moveto(p1.x, p1.y);
+                  vp.lineto(lastX = p2.x, lastY = p2.y);
+                } else {
+                  if (lastX != p1.x || lastY != p1.y) {
+                    vp.moveto(p1.x, p1.y);
+                  }
+                  vp.lineto(lastX = p2.x, lastY = p2.y);
                 }
-                vp.lineto(lastX = p2.x, lastY = p2.y);
+                first = false;
               }
-              first = false;
+              job.addPart(vp);
             }
-            job.addPart(vp);
           }
         }
         ZingMonitor zMon = new ZingMonitor();
@@ -755,41 +760,43 @@ public class LaserCut extends JFrame {
               int power = Math.min(1000, miniPower);
               cmds.add("S" + power);                                    // Set Laser Power (0 - 255)
               cmds.add("F" + speed);                                    // Set cut speed
-              Line2D.Double[] lines = surface.getLinesAtScale(1, true);
-              boolean first = true;
               double lastX = 0, lastY = 0;
               for (int ii = 0; ii < iterations; ii++) {
                 boolean laserOn = false;
-                for (Line2D.Double line : lines) {
-                  String x1 = LaserCut.df.format(line.x1);
-                  String y1 = LaserCut.df.format(line.y1);
-                  String x2 = LaserCut.df.format(line.x2);
-                  String y2 = LaserCut.df.format(line.y2);
-                  if (first) {
-                    cmds.add("M05");                                      // Set Laser Off
-                    cmds.add("G00 X" + x1 + " Y" + y1);                   // Move to x1 y1
-                    if (power > 0) {
-                      cmds.add(miniDynamicLaser ? "M04" : "M03");        // Set Laser On
-                      laserOn = true;                                     // Leave Laser On
+                for (CADShape shape : surface.selectLaserItems(true)) {
+                  ArrayList<Line2D.Double> lines = shape.getScaledLines(1);
+                  boolean first = true;
+                  for (Line2D.Double line : lines) {
+                    String x1 = LaserCut.df.format(line.x1);
+                    String y1 = LaserCut.df.format(line.y1);
+                    String x2 = LaserCut.df.format(line.x2);
+                    String y2 = LaserCut.df.format(line.y2);
+                    if (first) {
+                      cmds.add("M05");                                      // Set Laser Off
+                      cmds.add("G00 X" + x1 + " Y" + y1);                   // Move to x1 y1
+                      if (power > 0) {
+                        cmds.add(miniDynamicLaser ? "M04" : "M03");        // Set Laser On
+                        laserOn = true;                                     // Leave Laser On
+                      }
+                      cmds.add("G01 X" + x2 + " Y" + y2);                   // Line to x2 y2
+                      lastX = line.x2;
+                      lastY = line.y2;
+                    } else {
+                      if (lastX != line.x1 || lastY != line.y1) {
+                        cmds.add("M05");                                    // Set Laser Off
+                        cmds.add("G00 X" + x1 + " Y" + y1);                 // Move to x1 y1
+                        laserOn = false;                                    // Leave Laser Off
+                      }
+                      if (!laserOn && power > 0) {
+                        cmds.add(miniDynamicLaser ? "M04" : "M03");        // Set Laser On
+                        laserOn = true;                                     // Leave Laser On
+                      }
+                      cmds.add("G01 X" + x2 + " Y" + y2);                   // Line to x2 y2
+                      lastX = line.x2;
+                      lastY = line.y2;
                     }
-                    cmds.add("G01 X" + x2 + " Y" + y2);                   // Line to x2 y2
-                    lastX = line.x2;
-                    lastY = line.y2;
-                  } else {
-                    if (lastX != line.x1 || lastY != line.y1) {
-                      cmds.add("M05");                                    // Set Laser Off
-                      cmds.add("G00 X" + x1 + " Y" + y1);                 // Move to x1 y1
-                      laserOn = false;                                    // Leave Laser Off
-                    }
-                    if (!laserOn && power > 0) {
-                      cmds.add(miniDynamicLaser ? "M04" : "M03");        // Set Laser On
-                      laserOn = true;                                     // Leave Laser On
-                    }
-                    cmds.add("G01 X" + x2 + " Y" + y2);                   // Line to x2 y2
-                    lastX = line.x2;
-                    lastY = line.y2;
+                    first = false;
                   }
-                  first = false;
                 }
               }
               // Add ending G-codes
@@ -1771,7 +1778,7 @@ public class LaserCut extends JFrame {
     }
   }
 
-  static class CADRasterImage extends CADShape implements Serializable {
+  static class CADRasterImage extends CADShape implements Serializable, CADNoDraw {
     private static final long serialVersionUID = 2309856254388651139L;
     public double             width, height, scale = 100.0;
     transient BufferedImage   img;
@@ -1854,7 +1861,7 @@ public class LaserCut extends JFrame {
     }
   }
 
-  static class CADReferenceImage extends CADRasterImage implements Serializable, CADNoDraw {
+  static class CADReferenceImage extends CADRasterImage implements Serializable {
     private static final long serialVersionUID = 1171659976420013588L;
 
     CADReferenceImage () {
@@ -2491,6 +2498,11 @@ public class LaserCut extends JFrame {
             }
           } else {
             if (selected != null) {
+              if (selected.isPositionClicked(point, getScreenScale())) {
+                dragged = selected;
+                showMeasure = false;
+                return;
+              }
               for (CADShape shape : shapes) {
                 // Check for click and drag of shape's position
                 if (shape.isPositionClicked(point, getScreenScale())) {
@@ -2958,13 +2970,12 @@ public class LaserCut extends JFrame {
      * shapes that implement CADNoDraw interface and, if cutItems is true, also culls shapes with engrave set to true; or,
      * if cutItems is false, culls shapes where engrave is set to false.  Then, code reorders shapes in list using a crude
      * type of "travelling salesman" algorithm that tries to minimize laser head seek by successively finding the next
-     * closest shape.  After this, it converts all remaining shapes in the reordered list into an array of lines to cut
-     * or engrave.
+     * closest shape.
      * @param ppi Output PPI of laser
      * @param cutItems if true, only process shapes with 'engrave' set to false.
-     * @return order array of 2D lines to cut
+     * @return List of culled and reordered shapes CADShape objects cut
      */
-    Line2D.Double[] getLinesAtScale (double ppi, boolean cutItems) {
+    ArrayList<CADShape> selectLaserItems (boolean cutItems) {
       // Cull out items that will not be cut or that don't match cutItems
       ArrayList<CADShape> cullShapes = new ArrayList<>();
       for (CADShape shape : surface.getDesign()) {
@@ -2988,12 +2999,7 @@ public class LaserCut extends JFrame {
         newShapes.add(last = sel);
         cullShapes.remove(sel);
       }
-      // Convert shapes into an array of lines to cut, or engrave
-      ArrayList<Line2D.Double> lines = new ArrayList<>();
-      for (CADShape shape : newShapes) {
-        lines.addAll(shape.getScaledLines(ppi));
-      }
-      return lines.toArray(new Line2D.Double[lines.size()]);
+      return newShapes;
     }
 
     public void paint (Graphics g) {
