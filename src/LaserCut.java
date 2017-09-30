@@ -3078,7 +3078,7 @@ public class LaserCut extends JFrame {
       g2.clearRect(0, 0, d.width, d.height);
       g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
       g2.setColor(new Color(235, 235, 235));
-      g2.fillRect(0, 0, (int) workSize.width, (int) workSize.height);
+      g2.fillRect(0, 0, (int) (workSize.width * zoomFactor), (int) (workSize.height * zoomFactor));
       if (gridSpacing > 0) {
         g2.setColor(Color.darkGray);
         for (double xx = gridSpacing; xx < d.width / getScreenScale(); xx += gridSpacing) {
