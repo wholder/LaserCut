@@ -105,7 +105,7 @@ public class LaserCut extends JFrame {
   private int                   miniSpeed = prefs.getInt("mini.speed", 10);
   private long                  savedCrc;
   private boolean               miniDynamicLaser = prefs.getBoolean("mini.dynamicLaser", true);
-  private static final boolean  enableMiniLazer = false;
+  private static final boolean  enableMiniLazer = true;
   private static final boolean  useMouseWheel = false;
   private static Map<String,String> grblSettings = new LinkedHashMap<>();
 
