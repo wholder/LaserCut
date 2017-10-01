@@ -105,7 +105,8 @@ public class LaserCut extends JFrame {
   private int                   miniSpeed = prefs.getInt("mini.speed", 10);
   private long                  savedCrc;
   private boolean               miniDynamicLaser = prefs.getBoolean("mini.dynamicLaser", true);
-  private static final boolean  enableMiniLazer = true;
+  private static final boolean  enableMiniLazer = false;
+  private static final boolean  useMouseWheel = false;
   private static Map<String,String> grblSettings = new LinkedHashMap<>();
 
   static {
@@ -173,7 +174,13 @@ public class LaserCut extends JFrame {
     setTitle("LaserCut");
     surface = new DrawSurface();
     JScrollPane scrollPane = new JScrollPane(surface);
-    scrollPane.setWheelScrollingEnabled(false);
+    if (useMouseWheel) {
+      // Set units so scroll isn't sluggish
+      scrollPane.getVerticalScrollBar().setUnitIncrement(16);
+      scrollPane.getHorizontalScrollBar().setUnitIncrement(16);
+    } else {
+      scrollPane.setWheelScrollingEnabled(false);
+    }
     add(scrollPane, BorderLayout.CENTER);
     JPanel bottomPane = new JPanel(new BorderLayout());
     bottomPane.setBorder(new EmptyBorder(1, 4, 1, 1));
@@ -188,6 +195,12 @@ public class LaserCut extends JFrame {
       surface.setSurfaceSize(zingFullSize);
     }
     requestFocusInWindow();
+    if (Taskbar.isTaskbarSupported()) {
+      Taskbar taskbar = Taskbar.getTaskbar();
+      if (taskbar.isSupported(Taskbar.Feature.ICON_IMAGE)) {
+        taskbar.setIconImage(new ImageIcon(getClass().getResource("/images/laser_wip_black.png")).getImage());
+      }
+    }
     boolean hasAboutHandler = false;
     boolean hasQuitHandler = false;
     if (Desktop.isDesktopSupported()) {
@@ -1089,45 +1102,47 @@ public class LaserCut extends JFrame {
     if (jPortError) {
       showErrorDialog("Unable to initialize JSSCPort serial port");
     }
+    if (true) {
     /*
      * * * * * * * * * * * * * * * * * * *
      * Add some test shapes to DrawSurface
      * * * * * * * * * * * * * * * * * * *
      */
-    // Create + shape via additive and subtractive geometric operations
-    RoundRectangle2D.Double c1 = new RoundRectangle2D.Double(-.80, -.30, 1.60,  .60, .40, .40);
-    RoundRectangle2D.Double c2 = new RoundRectangle2D.Double(-.30, -.80,  .60, 1.60, .40, .40);
-    Area a1 = new Area(c1);
-    a1.add(new Area(c2));
-    Point2D.Double[] quadrant = {new Point2D.Double(-1, -1), new Point2D.Double( 1, -1),
-                                 new Point2D.Double(-1,  1), new Point2D.Double( 1,  1)};
-    double radius = .2;
-    double sqWid = radius + .1;
-    for (Point2D.Double qq : quadrant) {
-      Point2D.Double RectPnt = new Point2D.Double(qq.x * .4, qq.y * .4);
-      Point2D.Double RndPnt = new Point2D.Double(qq.x * .5, qq.y * .5);
-      Rectangle2D.Double t1 = new Rectangle2D.Double(RectPnt.x - sqWid / 2, RectPnt.y - sqWid / 2, sqWid, sqWid);
-      a1.add(new Area(t1));
-      RoundRectangle2D.Double t2 = new RoundRectangle2D.Double(RndPnt.x - radius, RndPnt.y - radius, .40, .40, .20, .20);
-      a1.subtract(new Area(t2));
-      //surface.addShape(new CADRectangle(8 + RectPnt.x, 6 + RectPnt.y, .20, .20, 0, 0, true));
-      //surface.addShape(new CADRectangle(8 + RndPnt.x, 6 + RndPnt.y, .40, .40, .20, 0, true));
+      // Create + shape via additive and subtractive geometric operations
+      RoundRectangle2D.Double c1 = new RoundRectangle2D.Double(-.80, -.30, 1.60, .60, .40, .40);
+      RoundRectangle2D.Double c2 = new RoundRectangle2D.Double(-.30, -.80, .60, 1.60, .40, .40);
+      Area a1 = new Area(c1);
+      a1.add(new Area(c2));
+      Point2D.Double[] quadrant = {new Point2D.Double(-1, -1), new Point2D.Double(1, -1), new Point2D.Double(-1, 1), new Point2D.Double(1, 1)};
+      double radius = .2;
+      double sqWid = radius + .1;
+      for (Point2D.Double qq : quadrant) {
+        Point2D.Double RectPnt = new Point2D.Double(qq.x * .4, qq.y * .4);
+        Point2D.Double RndPnt = new Point2D.Double(qq.x * .5, qq.y * .5);
+        Rectangle2D.Double t1 = new Rectangle2D.Double(RectPnt.x - sqWid / 2, RectPnt.y - sqWid / 2, sqWid, sqWid);
+        a1.add(new Area(t1));
+        RoundRectangle2D.Double t2 = new RoundRectangle2D.Double(RndPnt.x - radius, RndPnt.y - radius, .40, .40, .20, .20);
+        a1.subtract(new Area(t2));
+        //surface.addShape(new CADRectangle(8 + RectPnt.x, 6 + RectPnt.y, .20, .20, 0, 0, true));
+        //surface.addShape(new CADRectangle(8 + RndPnt.x, 6 + RndPnt.y, .40, .40, .20, 0, true));
+      }
+      surface.addShape(new CADShape(a1, 8, 6, 0, true));
+      // Add two concentric circles in center
+      CADShape circle1 = new CADOval(8, 6, 1.20, 1.20, 0, true);
+      CADShape circle2 = new CADOval(8, 6, 0.60, 0.60, 0, true);
+      CADShapeGroup group = new CADShapeGroup();
+      group.addToGroup(circle1);
+      group.addToGroup(circle2);
+      surface.addShape(circle1);
+      surface.addShape(circle2);
+      // Add RoundedRectange
+      surface.addShape(new CADRectangle(.1, .1, 4, 4, .25, 0, false));
+      // Add 72 Point Text (Note: need to fix scaling)
+      surface.addShape(new CADText(6, 1, "Belle", "Helvetica", "bold", 72, 0, false));
+      // Add Test Gear
+      surface.addShape(new CADGear(2, 6, .1, 30, 10, 20, .25, 0, mmToInches(3)));
+      savedCrc = surface.getDesignChecksum();   // Allow quit if unchanged
     }
-    surface.addShape(new CADShape(a1, 8, 6, 0, true));
-    // Add two concentric circles in center
-    CADShape circle1 = new CADOval(8, 6, 1.20, 1.20, 0, true);
-    CADShape circle2 = new CADOval(8, 6, 0.60, 0.60, 0, true);
-    CADShapeGroup group = new CADShapeGroup();
-    group.addToGroup(circle1);
-    group.addToGroup(circle2);
-    surface.addShape(circle1);
-    surface.addShape(circle2);
-    // Add RoundedRectange
-    surface.addShape(new CADRectangle(.1, .1, 4, 4, .25, 0, false));
-    // Add 72 Point Text (Note: need to fix scaling)
-    surface.addShape(new CADText(6, 1, "Belle", "Helvetica", "bold", 72, 0, false));
-    // Add Test Gear
-    surface.addShape(new CADGear(2, 6, .1, 30, 10, 20, .25, 0, mmToInches(3)));
   }
 
   class ZingMonitor extends JDialog {
@@ -3201,17 +3216,17 @@ public class LaserCut extends JFrame {
       g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
       g2.setColor(new Color(235, 235, 235));
       g2.fillRect(0, 0, (int) (workSize.width * zoomFactor), (int) (workSize.height * zoomFactor));
+      g2.setStroke(new BasicStroke(1.0f));
       if (gridSpacing > 0) {
-        g2.setColor(Color.darkGray);
+        g2.setColor(Color.lightGray);
         for (double xx = gridSpacing; xx < d.width / getScreenScale(); xx += gridSpacing) {
           for (double yy = gridSpacing; yy < d.height / getScreenScale(); yy += gridSpacing) {
             int gridX = (int) Math.round(xx * getScreenScale() + 0.5);
             int gridY = (int) Math.round(yy * getScreenScale() + 0.5);
-            g2.fillRect(gridX - 1, gridY - 1, 1, 1);
+            g2.fillRect(gridX - 1, gridY - 1, 2, 2);
           }
         }
       }
-      g2.setStroke(new BasicStroke(0.5f));
       new ArrayList<>(shapes).forEach(shape -> shape.draw(g2, getScreenScale()));
       if (showMeasure) {
         g2.setColor(Color.gray);
