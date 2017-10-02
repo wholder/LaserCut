@@ -428,26 +428,33 @@ public class LaserCut extends JFrame {
      */
     JMenu gridMenu = new JMenu("Grid");
     ButtonGroup gridGroup = new ButtonGroup();
-    String[] gridSizes = new String[] {"Off", "|", "0.0625 in", "0.1 in", "0.125 in", "0.25 in", "0.5 in", "|", "1 mm", "2 mm", "5 mm", "10 mm"};
+    String[] gridSizes = new String[] {"Off", "|", "0.0625/16 in", "0.1/10 in", "0.125/8 in", "0.25/4 in", "0.5/2 in", "|",
+                                                   "1/10 mm", "2/10 mm", "2.5/5 mm", "5/10 mm", "10/0 mm"};
     for (String gridItem : gridSizes) {
       if (gridItem.equals("|")) {
         gridMenu.addSeparator();
       } else {
         double gridSize;
-        if (gridItem.endsWith("in")) {
-          gridSize = Double.parseDouble(gridItem.substring(0, gridItem.length() - 3));
-        } else if (gridItem.endsWith("mm")) {
-          gridSize = mmToInches(Double.parseDouble(gridItem.substring(0, gridItem.length() - 3)));
+        int major;
+        String units = gridItem.substring(gridItem.length() - 2);
+        String[] tmp = gridItem.substring(0, gridItem.length() - 3).split("/");
+        if ("in".equals(units)) {
+          gridSize = Double.parseDouble(tmp[0]);
+          major = Integer.parseInt(tmp[1]);
+        } else if ("mm".equals(units)) {
+          gridSize = mmToInches(Double.parseDouble(tmp[0]));
+          major = Integer.parseInt(tmp[1]);
         } else {
           gridSize = 0;
+          major = 0;
         }
-        JMenuItem mItem = new JRadioButtonMenuItem("Off".equals(gridItem) ? "Off" : gridItem);
+        JMenuItem mItem = new JRadioButtonMenuItem("Off".equals(gridItem) ? "Off" : tmp[0] + " " + units);
         mItem.setSelected(gridSize == surface.getGridSize());
         gridGroup.add(mItem);
         gridMenu.add(mItem);
         mItem.addActionListener(ev -> {
           try {
-            surface.setGridSize(gridSize);
+            surface.setGridSize(gridSize, major);
           } catch (Exception ex) {
             ex.printStackTrace();
           }
@@ -1926,6 +1933,8 @@ public class LaserCut extends JFrame {
   static class CADRasterImage extends CADShape implements Serializable, CADNoDraw {
     private static final long serialVersionUID = 2309856254388651139L;
     public double             width, height, scale = 100.0;
+    public String             imageDpi;
+    Dimension                 dpi;
     transient BufferedImage   img;
 
     CADRasterImage () {
@@ -1933,41 +1942,44 @@ public class LaserCut extends JFrame {
     }
 
     void loadImage (File imgFile) throws IOException {
+      dpi = getImageDPI(imgFile);
+      imageDpi = dpi.width + "x" + dpi.height;
       img = ImageIO.read(imgFile);
       ColorModel cm = img.getColorModel();
-      width = img.getWidth() / SCREEN_PPI;
-      height = img.getHeight() / SCREEN_PPI;
+      width = (double) img.getWidth() / dpi.width;
+      height = (double) img.getHeight() / dpi.height;
     }
 
     @Override
     void draw (Graphics2D g, double zoom) {
-      doDraw((Graphics2D) g.create(), zoom);
+      Graphics2D g2 =  (Graphics2D)g.create();
+      BufferedImage bufimg = getImage();
+      // Transform image for centering, rotation and scale
+      AffineTransform at = new AffineTransform();
+      if (centered) {
+        at.translate(xLoc * zoom, yLoc * zoom);
+        at.scale(scale / 100 * SCREEN_PPI / dpi.width, scale / 100 * SCREEN_PPI / dpi.height);
+        at.rotate(Math.toRadians(rotation));
+        at.translate(-bufimg.getWidth() / 2.0, -bufimg.getHeight() / 2.0);
+      } else {
+        at.translate(xLoc * zoom, yLoc * zoom);
+        at.scale(scale / 100 * SCREEN_PPI / dpi.width, scale / 100 * SCREEN_PPI / dpi.height);
+        at.rotate(Math.toRadians(rotation));
+      }
+      // Draw with 40% Alpha to make image semi transparent
+      g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.4f));
+      g2.drawImage(bufimg, at, null);
+      g2.dispose();
       super.draw(g, zoom);
     }
 
-    void doDraw (Graphics2D g2, double zoom) {
+    BufferedImage getImage () {
       // Convert Image to greyscale
       BufferedImage bufimg = new BufferedImage(img.getWidth(), img.getHeight(), BufferedImage.TYPE_BYTE_GRAY);
       Graphics2D g2d = bufimg.createGraphics();
       g2d.drawImage(img, 0, 0, null);
       g2d.dispose();
-      // Transform image for centering, rotation and scale
-      AffineTransform at = new AffineTransform();
-      double sRatio = scale / 100;  // Convert from % to ratio
-      if (centered) {
-        at.translate(xLoc * zoom, yLoc * zoom);
-        at.scale(sRatio, sRatio);
-        at.rotate(Math.toRadians(rotation));
-        at.translate(-bufimg.getWidth() / 2.0, -bufimg.getHeight() / 2.0);
-      } else {
-        at.translate(xLoc * zoom, yLoc * zoom);
-        at.scale(sRatio, sRatio);
-        at.rotate(Math.toRadians(rotation));
-      }
-      // Draw with 20% Alpha to fade image
-      g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.2f));
-      g2.drawImage(bufimg, at, null);
-      g2.dispose();
+      return bufimg;
     }
 
     @Override
@@ -1979,7 +1991,8 @@ public class LaserCut extends JFrame {
 
     @Override
     boolean editParameterDialog (DrawSurface surface) {
-      return displayShapeParameterDialog(surface, new ArrayList<>(Arrays.asList("xLoc|in", "yLoc|in", "rotation|deg", "scale|%", "centered")), "Save");
+      return displayShapeParameterDialog(surface, new ArrayList<>(Arrays.asList("xLoc|in", "yLoc|in", "*width|in", "*height|in",
+                                                                                "*imageDpi", "rotation|deg", "scale|%", "centered")), "Save");
     }
 
     // Custom write serializer for BufferedImage
@@ -2004,29 +2017,38 @@ public class LaserCut extends JFrame {
       final float dash1[] = {8.0f};
       return new BasicStroke(highlight ? isSelected ? 1.8f : 1.4f : 1.0f, BasicStroke.CAP_SQUARE, BasicStroke.JOIN_MITER, 1.0f, dash1, 0.5f);
     }
-    static Dimension getImageDPI (File file) throws Exception {
+
+    static Dimension getImageDPI (File file) throws IOException {
       ImageInputStream iis = ImageIO.createImageInputStream(file);
-      Iterator it = ImageIO.getImageReaders(iis);
-      if (it.hasNext()) {
-        ImageReader reader = (ImageReader) it.next();
-        reader.setInput(iis);
-        IIOMetadata meta = reader.getImageMetadata(0);
-        String formatName = meta.getNativeMetadataFormatName();
-        Element tree = (Element) meta.getAsTree(formatName);
-        NodeList nodes;
-        if ((nodes = tree.getElementsByTagName("app0JFIF")).getLength() > 0) {
-          // Read DPI for JPEG File (if it contained needed Metadata)
-          Element jfif = (Element) nodes.item(0);
-          int dpiH = Integer.parseInt(jfif.getAttribute("Xdensity"));
-          int dpiV = Integer.parseInt(jfif.getAttribute("Ydensity"));
-          return new Dimension(dpiH, dpiV);
-        } else if ((nodes = tree.getElementsByTagName("pHYs")).getLength() > 0) {
-          // Read DPI for PNG File (if it contained needed Metadata)
-          Element jfif = (Element) nodes.item(0);
-          long dpiH = Math.round(Double.parseDouble(jfif.getAttribute("pixelsPerUnitXAxis")) / 39.3701);
-          long dpiV = Math.round(Double.parseDouble(jfif.getAttribute("pixelsPerUnitYAxis")) / 39.3701);
-          return new Dimension((int) dpiH, (int) dpiV);
+      try {
+        Iterator it = ImageIO.getImageReaders(iis);
+        if (it.hasNext()) {
+          ImageReader reader = (ImageReader) it.next();
+          try {
+            reader.setInput(iis);
+            IIOMetadata meta = reader.getImageMetadata(0);
+            String formatName = meta.getNativeMetadataFormatName();
+            Element tree = (Element) meta.getAsTree(formatName);
+            NodeList nodes;
+            if ((nodes = tree.getElementsByTagName("app0JFIF")).getLength() > 0) {
+              // Read DPI for JPEG File (if it contained needed Metadata)
+              Element jfif = (Element) nodes.item(0);
+              int dpiH = Integer.parseInt(jfif.getAttribute("Xdensity"));
+              int dpiV = Integer.parseInt(jfif.getAttribute("Ydensity"));
+              return new Dimension(dpiH, dpiV);
+            } else if ((nodes = tree.getElementsByTagName("pHYs")).getLength() > 0) {
+              // Read DPI for PNG File (if it contained needed Metadata)
+              Element jfif = (Element) nodes.item(0);
+              long dpiH = Math.round(Double.parseDouble(jfif.getAttribute("pixelsPerUnitXAxis")) / 39.3701);
+              long dpiV = Math.round(Double.parseDouble(jfif.getAttribute("pixelsPerUnitYAxis")) / 39.3701);
+              return new Dimension((int) dpiH, (int) dpiV);
+            }
+          } finally {
+            reader.dispose();
+          }
         }
+      } finally {
+        iis.close();
       }
       // Assume it's 72 DPI if there's no Metadata that specifies it
       return new Dimension(72, 72);
@@ -2041,24 +2063,8 @@ public class LaserCut extends JFrame {
     }
 
     @Override
-    void doDraw (Graphics2D g2, double zoom) {
-      // Transform image for centering, rotation and scale
-      AffineTransform at = new AffineTransform();
-      double sRatio = scale / 100;  // Convert from % to ratio
-      if (centered) {
-        at.translate(xLoc * zoom, yLoc * zoom);
-        at.scale(sRatio, sRatio);
-        at.rotate(Math.toRadians(rotation));
-        at.translate(-img.getWidth() / 2.0, -img.getHeight() / 2.0);
-      } else {
-        at.translate(xLoc * zoom, yLoc * zoom);
-        at.scale(sRatio, sRatio);
-        at.rotate(Math.toRadians(rotation));
-      }
-      // Draw with 20% Alpha to fade image
-      g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.2f));
-      g2.drawImage(img, at, null);
-      g2.dispose();
+    BufferedImage getImage () {
+      return img;
     }
   }
 
@@ -2398,7 +2404,7 @@ public class LaserCut extends JFrame {
     @Override
     Shape buildShape () {
       // Code from: http://www.java2s.com/Tutorial/Java/0261__2D-Graphics/GenerateShapeFromText.htm
-      BufferedImage img = new BufferedImage(100, 100, BufferedImage.TYPE_INT_RGB);
+      BufferedImage img = new BufferedImage(10, 10, BufferedImage.TYPE_INT_RGB);
       Graphics2D g2 = img.createGraphics();
       Font font = new Font(fontName, styles.get(fontStyle), fontSize);
       HashMap<TextAttribute, Object> attrs = new HashMap<>();
@@ -2467,6 +2473,7 @@ public class LaserCut extends JFrame {
     @Override
     void draw (Graphics2D g2, double zoom) {
       super.draw(g2, zoom);
+      // Draw dashed line in magenta to show gear diameter
       g2.setColor(Color.MAGENTA);
       BasicStroke dashed = new BasicStroke(1.0f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 10.0f, new float[] {10.0f}, 0.0f);
       g2.setStroke(dashed);
@@ -2547,6 +2554,7 @@ public class LaserCut extends JFrame {
     private ArrayList<CADShape>             shapes = new ArrayList<>(), shapesToPlace;
     private CADShape                        selected, dragged, shapeToPlace;
     private double                          gridSpacing = prefs.getDouble("gridSpacing", 0);
+    private int                             gridMajor = prefs.getInt("gridMajor", 0);
     private double                          zoomFactor = 1;
     private Point2D.Double                  scrollPoint, measure1, measure2;
     private ArrayList<ShapeSelectListener>  selectListerners = new ArrayList<>();
@@ -2792,9 +2800,11 @@ public class LaserCut extends JFrame {
       return zoomFactor;
     }
 
-    void setGridSize (double gridSize) {
+    void setGridSize (double gridSize, int majorStep) {
       gridSpacing = gridSize;
+      gridMajor = majorStep;
       prefs.putDouble("gridSpacing", gridSize);
+      prefs.putInt("gridMajor", gridMajor);
       repaint();
     }
 
@@ -3214,17 +3224,21 @@ public class LaserCut extends JFrame {
       g2.setBackground(Color.white);
       g2.clearRect(0, 0, d.width, d.height);
       g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-      g2.setColor(new Color(235, 235, 235));
-      g2.fillRect(0, 0, (int) (workSize.width * zoomFactor), (int) (workSize.height * zoomFactor));
-      g2.setStroke(new BasicStroke(1.0f));
       if (gridSpacing > 0) {
-        g2.setColor(Color.lightGray);
-        for (double xx = gridSpacing; xx < d.width / getScreenScale(); xx += gridSpacing) {
-          for (double yy = gridSpacing; yy < d.height / getScreenScale(); yy += gridSpacing) {
-            int gridX = (int) Math.round(xx * getScreenScale() + 0.5);
-            int gridY = (int) Math.round(yy * getScreenScale() + 0.5);
-            g2.fillRect(gridX - 1, gridY - 1, 2, 2);
-          }
+        Stroke bold = new BasicStroke(2.0f);
+        Stroke mild = new BasicStroke(0.8f);
+        g2.setColor(new Color(224, 222, 254));
+        int mCnt = 0;
+        for (double xx = 0; xx <= workSize.width / getScreenScale(); xx += gridSpacing) {
+          double col = xx * getScreenScale();
+          g2.setStroke(gridMajor > 0 && (mCnt++ % gridMajor) == 0 ? bold :mild);
+          g2.draw(new Line2D.Double(col, 0, col, workSize.height));
+        }
+        mCnt = 0;
+        for (double yy = gridSpacing; yy <= workSize.height / getScreenScale(); yy += gridSpacing) {
+          double row = yy  * getScreenScale();
+          g2.setStroke(gridMajor > 0 && (mCnt++ % gridMajor) == 0 ? bold :mild);
+          g2.draw(new Line2D.Double(0, row, workSize.width,row));
         }
       }
       new ArrayList<>(shapes).forEach(shape -> shape.draw(g2, getScreenScale()));

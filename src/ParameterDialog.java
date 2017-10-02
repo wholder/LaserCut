@@ -75,8 +75,6 @@ class ParameterDialog extends JDialog {
         } catch (NumberFormatException ex) {
           return true;
         }
-      } else if (valueType instanceof Boolean) {
-        value = newValue.equalsIgnoreCase("yes") || newValue.equalsIgnoreCase("true");
       } else if (valueType instanceof String[]) {
         value = newValue;
       } else if (valueType instanceof String) {
@@ -129,8 +127,9 @@ class ParameterDialog extends JDialog {
       ParmItem parm = parms[ii];
       fields.add(new JLabel(parm.name + ": "), getGbc(0, ii));
       if (parm.valueType instanceof Boolean) {
-        JComboBox select = new JComboBox<>(new String[] {"yes", "no"});
-        select.setSelectedIndex((Boolean) parm.value ? 0 : 1);
+        JCheckBox select  = new JCheckBox();
+        select.setSelected((Boolean) parm.value);
+        select.setHorizontalAlignment(JCheckBox.RIGHT);
         fields.add(parm.field = select, getGbc(1, ii));
       } else if (parm.valueType instanceof String[]) {
         String[] labels = getLabels((String[]) parm.valueType);
@@ -142,6 +141,10 @@ class ParameterDialog extends JDialog {
         String val = parm.value instanceof Double ? LaserCut.df.format(parm.value) : parm.value.toString();
         JTextField jtf = new JTextField(val, 6);
         jtf.setEditable(!parm.readOnly);
+        if (parm.readOnly) {
+          jtf.setForeground(Color.gray);
+        }
+        jtf.setHorizontalAlignment(JTextField.RIGHT);
         fields.add(parm.field = jtf, getGbc(1, ii));
         parm.field.addFocusListener(new FocusAdapter() {
           @Override
@@ -188,13 +191,13 @@ class ParameterDialog extends JDialog {
                 } else {
                   tf.setBackground(Color.white);
                 }
+              } else if (comp instanceof JCheckBox) {
+                parm.value = (((JCheckBox) comp).isSelected());
               } else if (comp instanceof JComboBox) {
                 JComboBox sel = (JComboBox) comp;
                 if (parm.valueType instanceof String[]) {
                   String[] values = getValues((String[]) parm.valueType);
                   parm.setValueAndValidate(values[sel.getSelectedIndex()]);
-                } else {
-                  parm.setValueAndValidate(sel.getSelectedIndex() == 0 ? "yes" : "no");
                 }
               }
             }
@@ -227,7 +230,7 @@ class ParameterDialog extends JDialog {
 
   public static void main (String... args) {
     ParmItem[] parmSet = {
-        new ParmItem("Power|%{PWM Control}", 80),
+        new ParmItem("*Power|%{PWM Control}", 80),
         new ParmItem("Motor:Nema 8|0:Nema 11|1:Nema 14|2:Nema 17|3:Nema 23|4", "2"),
         new ParmItem("Font:plain:bold:italic", "bold"),
         new ParmItem("Speed", 60),
