@@ -161,7 +161,7 @@ public class LaserCut extends JFrame {
   private void showAboutBox () {
     JOptionPane.showMessageDialog(this,
         "By: Wayne Holder\n" +
-            "  Java Runtime  " + System.getProperty("java.version") + "\n" +
+            "  Java Runtime  " + Runtime.version() + "\n" +
             "  LibLaserCut " + com.t_oster.liblasercut.LibInfo.getVersion() + "\n" +
             "  Java Simple Serial Connector " + SerialNativeInterface.getLibraryVersion() + "\n" +
             "  Apache PDFBox " + org.apache.pdfbox.util.Version.getVersion(),
@@ -3235,7 +3235,7 @@ public class LaserCut extends JFrame {
           g2.draw(new Line2D.Double(col, 0, col, workSize.height));
         }
         mCnt = 0;
-        for (double yy = gridSpacing; yy <= workSize.height / getScreenScale(); yy += gridSpacing) {
+        for (double yy = 0; yy <= workSize.height / getScreenScale(); yy += gridSpacing) {
           double row = yy  * getScreenScale();
           g2.setStroke(gridMajor > 0 && (mCnt++ % gridMajor) == 0 ? bold :mild);
           g2.draw(new Line2D.Double(0, row, workSize.width,row));
