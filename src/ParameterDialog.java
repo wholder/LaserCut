@@ -91,6 +91,7 @@ class ParameterDialog extends JDialog {
     gbc.anchor = (x == 0) ? GridBagConstraints.WEST : GridBagConstraints.EAST;
     gbc.fill = (x == 0) ? GridBagConstraints.BOTH : GridBagConstraints.HORIZONTAL;
     gbc.weightx = (x == 0) ? 0.5 : 0.5;
+    gbc.ipady = 3;
     return gbc;
   }
 
@@ -166,8 +167,7 @@ class ParameterDialog extends JDialog {
 
       }
     }
-    JOptionPane optionPane = new JOptionPane(fields, JOptionPane.PLAIN_MESSAGE, JOptionPane.YES_NO_OPTION,
-                                             null, options, options[0]);
+    JOptionPane optionPane = new JOptionPane(fields, JOptionPane.PLAIN_MESSAGE, JOptionPane.YES_NO_OPTION, null, options, options[0]);
     setContentPane(optionPane);
     setDefaultCloseOperation(DISPOSE_ON_CLOSE);
     optionPane.addPropertyChangeListener(ev -> {

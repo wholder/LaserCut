@@ -93,6 +93,7 @@ public class LaserCut extends JFrame {
   private transient Preferences prefs = Preferences.userRoot().node(this.getClass().getName());
   private JSSCPort              jPort;
   private DrawSurface           surface;
+  private JScrollPane           scrollPane;
   private JTextField            itemInfo = new JTextField();
   private String                zingIpAddress = prefs.get("zing.ip", "10.0.1.201");
   private int                   zingCutPower = prefs.getInt("zing.power", 85);
@@ -104,9 +105,9 @@ public class LaserCut extends JFrame {
   private int                   miniPower = prefs.getInt("mini.power", 255);
   private int                   miniSpeed = prefs.getInt("mini.speed", 10);
   private long                  savedCrc;
+  private boolean               useMouseWheel = prefs.getBoolean("useMouseWheel", false);
   private boolean               miniDynamicLaser = prefs.getBoolean("mini.dynamicLaser", true);
   private static final boolean  enableMiniLazer = true;
-  private static final boolean  useMouseWheel = false;
   private static Map<String,String> grblSettings = new LinkedHashMap<>();
 
   static {
@@ -164,16 +165,34 @@ public class LaserCut extends JFrame {
             "  Java Runtime  " + Runtime.version() + "\n" +
             "  LibLaserCut " + com.t_oster.liblasercut.LibInfo.getVersion() + "\n" +
             "  Java Simple Serial Connector " + SerialNativeInterface.getLibraryVersion() + "\n" +
+            "  JSSC Native Code DLL Version " + SerialNativeInterface.getNativeLibraryVersion() + "\n" +
             "  Apache PDFBox " + org.apache.pdfbox.util.Version.getVersion(),
         "LaserCut " + VERSION,
         JOptionPane.INFORMATION_MESSAGE,
         new ImageIcon(getClass().getResource("/images/laser_wip_black.png")));
   }
 
-  private LaserCut () {
-    setTitle("LaserCut");
-    surface = new DrawSurface();
-    JScrollPane scrollPane = new JScrollPane(surface);
+  private void showPreferencesBox () {
+    Map<String,ParameterDialog.ParmItem> items = new LinkedHashMap<>();
+    items.put("useMouseWheel", new ParameterDialog.ParmItem("Enable Mouse Wheel Scrolling", prefs.getBoolean("useMouseWheel", false)));
+    ParameterDialog.ParmItem[] parmSet = items.values().toArray(new ParameterDialog.ParmItem[items.size()]);
+    ParameterDialog dialog = (new ParameterDialog(parmSet, new String[] {"Save", "Cancel"}));
+    dialog.setLocationRelativeTo(this);
+    dialog.setVisible(true);              // Note: this call invokes dialog
+    if (dialog.doAction() ) {
+      for (String name : items.keySet()) {
+        ParameterDialog.ParmItem parm = items.get(name);
+        if ("useMouseWheel".equals(name)) {
+          prefs.putBoolean("useMouseWheel", useMouseWheel = (Boolean) parm.value);
+          configureMouseWheel();
+        } else {
+          System.out.println(name + ": " + parm.value);
+        }
+      }
+    }
+  }
+
+  private void configureMouseWheel () {
     if (useMouseWheel) {
       // Set units so scroll isn't sluggish
       scrollPane.getVerticalScrollBar().setUnitIncrement(16);
@@ -181,6 +200,13 @@ public class LaserCut extends JFrame {
     } else {
       scrollPane.setWheelScrollingEnabled(false);
     }
+  }
+
+  private LaserCut () {
+    setTitle("LaserCut");
+    surface = new DrawSurface();
+    scrollPane = new JScrollPane(surface);
+    configureMouseWheel();
     add(scrollPane, BorderLayout.CENTER);
     JPanel bottomPane = new JPanel(new BorderLayout());
     bottomPane.setBorder(new EmptyBorder(1, 4, 1, 1));
@@ -202,6 +228,7 @@ public class LaserCut extends JFrame {
       }
     }
     boolean hasAboutHandler = false;
+    boolean hasPreferencesHandler = false;
     boolean hasQuitHandler = false;
     if (Desktop.isDesktopSupported()) {
       Desktop desktop = Desktop.getDesktop();
@@ -226,6 +253,14 @@ public class LaserCut extends JFrame {
           }
         });
       }
+      if (hasPreferencesHandler = desktop.isSupported(Desktop.Action.APP_PREFERENCES)) {
+        desktop.setPreferencesHandler(new PreferencesHandler() {
+          @Override
+          public void handlePreferences (PreferencesEvent e) {
+            showPreferencesBox();
+          }
+        });
+      }
     }
     addWindowListener(new WindowAdapter() {
       @Override
@@ -246,17 +281,19 @@ public class LaserCut extends JFrame {
       // Add "About" Item to File Menu
       JMenuItem aboutBox = new JMenuItem("About " + getClass().getSimpleName());
       aboutBox.addActionListener(ev -> {
-        JOptionPane.showMessageDialog(this,
-            "By: Wayne Holder\n" +
-                "  Java Runtime  " + System.getProperty("java.version") + "\n" +
-                "  LibLaserCut " + com.t_oster.liblasercut.LibInfo.getVersion() + "\n" +
-                "  Java Simple Serial Connector " + SerialNativeInterface.getLibraryVersion() + "\n" +
-                "  Apache PDFBox " + org.apache.pdfbox.util.Version.getVersion(),
-            "LaserCut " + VERSION,
-            JOptionPane.INFORMATION_MESSAGE,
-            new ImageIcon(getClass().getResource("/images/laser_wip_black.png")));
+        showAboutBox();
       });
       fileMenu.add(aboutBox);
+    }
+    if (!hasPreferencesHandler) {
+      // Add "Preferences" Item to File Menu
+      JMenuItem preferencesBox = new JMenuItem("Preferences");
+      preferencesBox.addActionListener(ev -> {
+        showPreferencesBox();
+      });
+      fileMenu.add(preferencesBox);
+    }
+    if (!hasAboutHandler || !hasPreferencesHandler) {
       fileMenu.addSeparator();
     }
     // Add "New" Item to File Menu
@@ -1130,24 +1167,22 @@ public class LaserCut extends JFrame {
         a1.add(new Area(t1));
         RoundRectangle2D.Double t2 = new RoundRectangle2D.Double(RndPnt.x - radius, RndPnt.y - radius, .40, .40, .20, .20);
         a1.subtract(new Area(t2));
-        //surface.addShape(new CADRectangle(8 + RectPnt.x, 6 + RectPnt.y, .20, .20, 0, 0, true));
-        //surface.addShape(new CADRectangle(8 + RndPnt.x, 6 + RndPnt.y, .40, .40, .20, 0, true));
       }
-      surface.addShape(new CADShape(a1, 8, 6, 0, true));
+      surface.addShape(new CADShape(a1, 5.75, 2.5, 0, true));
       // Add two concentric circles in center
-      CADShape circle1 = new CADOval(8, 6, 1.20, 1.20, 0, true);
-      CADShape circle2 = new CADOval(8, 6, 0.60, 0.60, 0, true);
+      CADShape circle1 = new CADOval(5.75, 2.5, 1.20, 1.20, 0, true);
+      CADShape circle2 = new CADOval(5.75, 2.5, 0.60, 0.60, 0, true);
       CADShapeGroup group = new CADShapeGroup();
       group.addToGroup(circle1);
       group.addToGroup(circle2);
       surface.addShape(circle1);
       surface.addShape(circle2);
       // Add RoundedRectange
-      surface.addShape(new CADRectangle(.1, .1, 4, 4, .25, 0, false));
+      surface.addShape(new CADRectangle(.25, .25, 4, 4, .25, 0, false));
       // Add 72 Point Text (Note: need to fix scaling)
-      surface.addShape(new CADText(6, 1, "Belle", "Helvetica", "bold", 72, 0, false));
+      surface.addShape(new CADText(4.625, .25, "Belle", "Helvetica", "bold", 72, 0, false));
       // Add Test Gear
-      surface.addShape(new CADGear(2, 6, .1, 30, 10, 20, .25, 0, mmToInches(3)));
+      surface.addShape(new CADGear(2.25, 2.25, .1, 30, 10, 20, .25, 0, mmToInches(3)));
       savedCrc = surface.getDesignChecksum();   // Allow quit if unchanged
     }
   }
@@ -3225,8 +3260,8 @@ public class LaserCut extends JFrame {
       g2.clearRect(0, 0, d.width, d.height);
       g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
       if (gridSpacing > 0) {
-        Stroke bold = new BasicStroke(2.0f);
-        Stroke mild = new BasicStroke(0.8f);
+        Stroke bold = new BasicStroke(2.5f);
+        Stroke mild = new BasicStroke(1.0f);
         g2.setColor(new Color(224, 222, 254));
         int mCnt = 0;
         for (double xx = 0; xx <= workSize.width / getScreenScale(); xx += gridSpacing) {
