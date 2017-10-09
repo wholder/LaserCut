@@ -2530,7 +2530,7 @@ public class LaserCut extends JFrame {
       }
       if (!closePath) {
         surface.pushToUndoStack();
-        points.add(movePoint = new Point2D.Double(gPoint.x - xLoc, gPoint.y - yLoc));
+        points.add(rotatePoint(new Point2D.Double(gPoint.x - xLoc, gPoint.y - yLoc), -rotation));
         updatePath();
         return true;
       }

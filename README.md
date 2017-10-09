@@ -33,9 +33,9 @@ LaserCut uses the Java Language's reflection and object serialization features t
 - Import vector outlines from an SVG files (experimental)
 - Import drill holes and outlines from a Gerber file (experimental)
 - Export vector designs to a PDF file (experimental)
-## Under Development
-- A tool to support freeform drawing of shapes using [Catmull-Rom Splines](https://en.wikipedia.org/wiki/Centripetal_Catmull–Rom_spline) and then automatically convert them into [Bézier Curve](https://en.wikipedia.org/wiki/Bézier_curve)-based shapes.
+- Freeform drawing of shapes (Beta) using [Catmull-Rom Splines](https://en.wikipedia.org/wiki/Centripetal_Catmull–Rom_spline) and then automatically convert them into [Bézier Curve](https://en.wikipedia.org/wiki/Bézier_curve)-based shapes.
 - Background reference images which can be used as templates
+## Under Development
 - Support for a user-extendable library of specialized cutout shapes, such as for mounting RC Servos (to replace and extend the current Nema Stepper code)
 - Import vector shapes from EPS (Encapsulated PostScript®) files
 - Get a certificate so I can sign the JAR file (costs $$$, sigh)
@@ -50,6 +50,12 @@ I'm working on more comprehensive documentation to be built into the code but, i
 - Select a shape and select **Edit->Move Selected** (or press the **CMD-M** shortcut key) to reposition a shape, or a group of shapes.
 - Select a shape and select **Edit->Delete Selected** (or press the **CMD-X** shortcut key) to delete a shape, or a group of shapes.
 - Select a shape and select **Edit->Duplicate Selected** (or press the **CMD-D** shortcut key) to create a duplicate shape you can then reposition.
+- Spline Shapes
+  - Select `Spline Curve` from the `Shapes` menu then click to place the origin of the shape (does not create a point on the curve)
+  - Click again to place first control point then again to place another (repeat to trace out curve.)
+  - Click on first control point placed to complete and close curve.
+  - Click and drag on an already placed control point to move it.
+  - Click and drag on the origin to move the entire spline shape
 ## Credits
 LaserCut uses the following Java code to perform some of its functions:
 - [LibLaserCut](https://github.com/t-oster/LibLaserCut) (used to control the Zing Laser)
