@@ -13,6 +13,7 @@ import org.apache.pdfbox.util.Matrix;
 
 import jssc.SerialNativeInterface;
 import org.w3c.dom.Element;
+import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
 import javax.imageio.ImageIO;
@@ -115,28 +116,28 @@ public class LaserCut extends JFrame {
 
   static {
     // Settings map for GRBL .9, or later
-    grblSettings.put("$0", "Step pulse, usec");
-    grblSettings.put("$1", "Step idle delay, msec");
-    grblSettings.put("$2", "Step port invert, mask");
-    grblSettings.put("$3", "Direction port invert, mask");
-    grblSettings.put("$4", "Step enable invert, boolean");
-    grblSettings.put("$5", "Limit pins invert, boolean");
-    grblSettings.put("$6", "Probe pin invert, boolean");
-    grblSettings.put("$10", "Status report, mask");
-    grblSettings.put("$11", "Junction deviation, mm");
-    grblSettings.put("$12", "Arc tolerance, mm");
-    grblSettings.put("$13", "Report inches, boolean");
-    grblSettings.put("$20", "Soft limits, boolean");
-    grblSettings.put("$21", "Hard limits, boolean");
-    grblSettings.put("$22", "Homing cycle, boolean");
-    grblSettings.put("$23", "Homing dir invert, mask");
-    grblSettings.put("$24", "Homing feed, mm/min");
-    grblSettings.put("$25", "Homing seek, mm/min");
-    grblSettings.put("$26", "Homing debounce, msec");
-    grblSettings.put("$27", "Homing pull-off, mm");
-    grblSettings.put("$30", "Max spindle speed, RPM");
-    grblSettings.put("$31", "Min spindle speed, RPM");
-    grblSettings.put("$32", "Laser mode, boolean");
+    grblSettings.put("$0",   "Step pulse, usec");
+    grblSettings.put("$1",   "Step idle delay, msec");
+    grblSettings.put("$2",   "Step port invert, mask");
+    grblSettings.put("$3",   "Direction port invert, mask");
+    grblSettings.put("$4",   "Step enable invert, boolean");
+    grblSettings.put("$5",   "Limit pins invert, boolean");
+    grblSettings.put("$6",   "Probe pin invert, boolean");
+    grblSettings.put("$10",  "Status report, mask");
+    grblSettings.put("$11",  "Junction deviation, mm");
+    grblSettings.put("$12",  "Arc tolerance, mm");
+    grblSettings.put("$13",  "Report inches, boolean");
+    grblSettings.put("$20",  "Soft limits, boolean");
+    grblSettings.put("$21",  "Hard limits, boolean");
+    grblSettings.put("$22",  "Homing cycle, boolean");
+    grblSettings.put("$23",  "Homing dir invert, mask");
+    grblSettings.put("$24",  "Homing feed, mm/min");
+    grblSettings.put("$25",  "Homing seek, mm/min");
+    grblSettings.put("$26",  "Homing debounce, msec");
+    grblSettings.put("$27",  "Homing pull-off, mm");
+    grblSettings.put("$30",  "Max spindle speed, RPM");
+    grblSettings.put("$31",  "Min spindle speed, RPM");
+    grblSettings.put("$32",  "Laser mode, boolean");
     grblSettings.put("$100", "X steps/mm");
     grblSettings.put("$101", "Y steps/mm");
     grblSettings.put("$102", "Z steps/mm");
@@ -451,7 +452,7 @@ public class LaserCut extends JFrame {
           } else if (shp instanceof CADRasterImage) {
             // Prompt for Image file
             JFileChooser fileChooser = new JFileChooser();
-            FileNameExtensionFilter nameFilter = new FileNameExtensionFilter("Image files (jpg,jpeg,png,gif)", "jpg", "jpeg", "png", "gif");
+            FileNameExtensionFilter nameFilter = new FileNameExtensionFilter("Image files (jpg,jpeg,png,gif,bmp)", "jpg", "jpeg", "png", "gif", "bmp");
             fileChooser.addChoosableFileFilter(nameFilter);
             fileChooser.setFileFilter(nameFilter);
             fileChooser.setSelectedFile(new File(prefs.get("image.dir", "/")));
@@ -2135,6 +2136,21 @@ public class LaserCut extends JFrame {
               long dpiH = Math.round(Double.parseDouble(jfif.getAttribute("pixelsPerUnitXAxis")) / 39.3701);
               long dpiV = Math.round(Double.parseDouble(jfif.getAttribute("pixelsPerUnitYAxis")) / 39.3701);
               return new Dimension((int) dpiH, (int) dpiV);
+            } else if ((nodes = tree.getElementsByTagName("BMPVersion")).getLength() > 0) {
+              // Note: there must be a more efficient way to do this...
+              NodeList bmp = tree.getElementsByTagName("PixelsPerMeter");
+              Map<String, Double> map = new HashMap<>();
+              for (int ii = 0; ii < bmp.getLength(); ii++) {
+                Node item = bmp.item(ii);
+                NodeList bmp2 = item.getChildNodes();
+                for (int jj = 0; jj < bmp2.getLength(); jj++) {
+                  Node xy = bmp2.item(jj);
+                  map.put(xy.getNodeName().toLowerCase(), Double.parseDouble(xy.getNodeValue()));
+                }
+              }
+              if (map.size() == 2) {
+                return new Dimension((int) Math.round(map.get("x") / 39.3701), (int) Math.round(map.get("y") / 39.3701));
+              }
             }
           } finally {
             reader.dispose();

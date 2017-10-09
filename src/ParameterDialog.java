@@ -224,7 +224,7 @@ class ParameterDialog extends JDialog {
    * @param parent parent Component (needed to set position on screen)
    * @return true if user pressed OK
    */
-  public static boolean showSaveCancelParameterDialog (ParmItem[] parms, Component parent) {
+  static boolean showSaveCancelParameterDialog (ParmItem[] parms, Component parent) {
     ParameterDialog dialog = (new ParameterDialog(parms, new String[] {"Save", "Cancel"}));
     dialog.setLocationRelativeTo(parent);
     dialog.setVisible(true);              // Note: this call invokes dialog
