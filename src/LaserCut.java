@@ -1768,7 +1768,7 @@ public class LaserCut extends JFrame {
         AffineTransform atScale = AffineTransform.getScaleInstance(zoom, zoom);
         g2.draw(atScale.createTransformedShape(dShape));
       }
-      if (isSelected || this instanceof CADReference) {
+      if (isSelected || this instanceof CADReference || this instanceof CADShapeSpline) {
         double mx = xLoc * zoom;
         double my = yLoc * zoom;
         double mWid = 3 * zoom / SCREEN_PPI;
@@ -2674,7 +2674,7 @@ public class LaserCut extends JFrame {
     @Override
     void draw (Graphics2D g2, double zoom) {
       // Draw all Catmull-Rom Control Points
-      g2.setColor(isSelected ? Color.blue : Color.lightGray);
+      g2.setColor(isSelected ? Color.blue : closePath ? Color.lightGray : Color.darkGray);
       for (Point2D.Double cp : points) {
         Point2D.Double np = rotatePoint(cp, rotation);
         double mx = (xLoc + np.x) * zoom;
@@ -2939,7 +2939,7 @@ public class LaserCut extends JFrame {
             CADShape procShape = null;
             for (CADShape shape : shapes) {
               // Check for selection or deselection of shapes
-              if (shape.isShapeClicked(newLoc) || (shape instanceof CADReference && shape.isPositionClicked(newLoc)) ) {
+              if (shape.isShapeClicked(newLoc) || ((shape instanceof CADReference || shape instanceof CADShapeSpline)&& shape.isPositionClicked(newLoc)) ) {
                 procShape = shape;
                 break;
               }
