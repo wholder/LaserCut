@@ -108,6 +108,8 @@ public class LaserCut extends JFrame {
   private long                  savedCrc;
   private boolean               useMouseWheel = prefs.getBoolean("useMouseWheel", false);
   private boolean               miniDynamicLaser = prefs.getBoolean("mini.dynamicLaser", true);
+  private boolean               snapToGrid = prefs.getBoolean("snapToGrid", true);
+  private boolean               displayGrid = prefs.getBoolean("displayGrid", true);
   private static final boolean  enableMiniLazer = true;
   private static Map<String,String> grblSettings = new LinkedHashMap<>();
 
@@ -471,8 +473,24 @@ public class LaserCut extends JFrame {
      */
     JMenu gridMenu = new JMenu("Grid");
     ButtonGroup gridGroup = new ButtonGroup();
-    String[] gridSizes = new String[] {"Off", "|", "0.0625/16 in", "0.1/10 in", "0.125/8 in", "0.25/4 in", "0.5/2 in", "|",
-                                                   "1/10 mm", "2/10 mm", "2.5/5 mm", "5/10 mm", "10/0 mm"};
+    String[] gridSizes = new String[] {"|", "0.0625/16 in", "0.1/10 in", "0.125/8 in", "0.25/4 in", "0.5/2 in", "|",
+                                       "1/10 mm", "2/10 mm", "2.5/5 mm", "5/10 mm", "10/0 mm"};
+    JCheckBoxMenuItem gridSnap = new JCheckBoxMenuItem("Snap to Grid", snapToGrid);
+    gridSnap.addActionListener(ev -> {
+      prefs.putBoolean("snapToGrid", snapToGrid = gridSnap.getState());
+      surface.enableGridSnap(snapToGrid);
+    });
+    surface.enableGridSnap(snapToGrid);
+    gridMenu.add(gridSnap);
+
+    JCheckBoxMenuItem gridShow = new JCheckBoxMenuItem("Show Grid", displayGrid);
+    gridShow.addActionListener(ev -> {
+      prefs.putBoolean("displayGrid", displayGrid = gridShow.getState());
+      surface.enableGridDisplay(displayGrid);
+    });
+    surface.enableGridDisplay(displayGrid);
+    gridMenu.add(gridShow);
+
     for (String gridItem : gridSizes) {
       if (gridItem.equals("|")) {
         gridMenu.addSeparator();
@@ -2773,7 +2791,7 @@ public class LaserCut extends JFrame {
     private List<ActionRedoListener>        redoListerners = new ArrayList<>();
     private LinkedList<byte[]>              undoStack = new LinkedList<>();
     private LinkedList<byte[]>              redoStack = new LinkedList<>();
-    private boolean                         pushedToStack, showMeasure;
+    private boolean                         pushedToStack, showMeasure, doSnap, showGrid;
 
     DrawSurface () {
       super(true);
@@ -2785,7 +2803,7 @@ public class LaserCut extends JFrame {
           requestFocus();
           Point2D.Double newLoc = new Point2D.Double(ev.getX() / getScreenScale(), ev.getY() / getScreenScale());
           if (shapeToPlace != null || shapesToPlace != null) {
-            if (gridSpacing > 0) {
+            if (doSnap && gridSpacing > 0) {
               newLoc = toGrid(newLoc);
             }
             if (shapeToPlace != null) {
@@ -2939,7 +2957,7 @@ public class LaserCut extends JFrame {
               pushToUndoStack();
             }
             Point2D.Double newLoc = new Point2D.Double(ev.getX() / getScreenScale(), ev.getY() / getScreenScale());
-            if (gridSpacing > 0) {
+            if (doSnap && gridSpacing > 0) {
               newLoc = toGrid(newLoc);
             }
             if (!dragged.doMovePoints(newLoc)) {
@@ -3001,6 +3019,15 @@ public class LaserCut extends JFrame {
 
     double getZoomFactor () {
       return zoomFactor;
+    }
+
+    void enableGridSnap (boolean doSnap) {
+      this.doSnap = doSnap;
+    }
+
+    void enableGridDisplay (boolean showGrid) {
+      this.showGrid = showGrid;
+      repaint();
     }
 
     void setGridSize (double gridSize, int majorStep) {
@@ -3449,7 +3476,7 @@ public class LaserCut extends JFrame {
       g2.setBackground(Color.white);
       g2.clearRect(0, 0, d.width, d.height);
       g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-      if (gridSpacing > 0) {
+      if (showGrid && gridSpacing > 0) {
         Stroke bold = new BasicStroke(2.5f);
         Stroke mild = new BasicStroke(1.0f);
         g2.setColor(new Color(224, 222, 254));
