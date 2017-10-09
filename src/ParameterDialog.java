@@ -43,7 +43,9 @@ class ParameterDialog extends JDialog {
 
     void setValue (Object value) {
       this.value = value;
-      valueType = value;
+      if (valueType == null) {
+        valueType = value;
+      }
     }
 
     // Return true of invalid value

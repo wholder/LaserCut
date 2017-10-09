@@ -1216,7 +1216,7 @@ public class LaserCut extends JFrame {
       // Add RoundedRectange
       surface.addShape(new CADRectangle(.25, .25, 4, 4, .25, 0, false));
       // Add 72 Point, 1 inch tall Text
-      surface.addShape(new CADText(4.625, .25, "Belle", "Helvetica", "bold", 72, 0, false));
+      surface.addShape(new CADText(4.625, .25, "Belle", "Helvetica", "bold", 72, 0, 0, false));
       // Add Test Gear
       surface.addShape(new CADGear(2.25, 2.25, .1, 30, 10, 20, .25, 0, mmToInches(3)));
       savedCrc = surface.getDesignChecksum();   // Allow quit if unchanged
@@ -2435,6 +2435,7 @@ public class LaserCut extends JFrame {
     private static final long serialVersionUID = 4314642313295298841L;
     public String   text, fontName, fontStyle;
     public int      fontSize;
+    public double   tracking;
     private static Map<String,Integer>  styles = new HashMap<>();
     private static List<String> fonts = new ArrayList<>();
 
@@ -2488,15 +2489,17 @@ public class LaserCut extends JFrame {
       fontName = "Helvetica";
       fontStyle = "plain";
       fontSize = 24;
+      tracking = 0;
       engrave = true;
     }
 
-    CADText (double xLoc, double yLoc, String text, String fontName, String fontStyle, int fontSize,
+    CADText (double xLoc, double yLoc, String text, String fontName, String fontStyle, int fontSize, double tracking,
              double rotation, boolean centered) {
       this.text = text;
       this.fontName = fontName;
       this.fontStyle = fontStyle;
       this.fontSize = fontSize;
+      this.tracking = tracking;
       setLocationAndOrientation(xLoc, yLoc, rotation, centered);
     }
 
@@ -2507,7 +2510,7 @@ public class LaserCut extends JFrame {
         fontNames.append(":");
         fontNames.append(font);
       }
-      return new String[]{"text", fontNames.toString(), "fontStyle:plain:bold:italic:bold-italic", "fontSize|pts"};
+      return new String[]{"text", fontNames.toString(), "fontStyle:plain:bold:italic:bold-italic", "fontSize|pts", "tracking"};
     }
 
     @Override
@@ -2519,6 +2522,7 @@ public class LaserCut extends JFrame {
       HashMap<TextAttribute, Object> attrs = new HashMap<>();
       attrs.put(TextAttribute.KERNING, TextAttribute.KERNING_ON);
       attrs.put(TextAttribute.LIGATURES, TextAttribute.LIGATURES_ON);
+      attrs.put(TextAttribute.TRACKING, tracking);
       font = font.deriveFont(attrs);
       g2.setFont(font);
       try {
