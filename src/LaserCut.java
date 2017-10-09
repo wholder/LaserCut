@@ -427,16 +427,24 @@ public class LaserCut extends JFrame {
      */
     JMenu shapesMenu = new JMenu("Shapes");
     // Add options for other Shapes
-    String[] sItems = new String[] {"Reference Point/LaserCut$CADReference", "Rectangle/LaserCut$CADRectangle", "Polygon/LaserCut$CADPolygon",
-                                    "Oval/LaserCut$CADOval", "Gear/LaserCut$CADGear", "Text/LaserCut$CADText", "NEMA Stepper/LaserCut$CADNemaMotor",
-                                    "Bobbin/LaserCut$CADBobbin", "Raster Image (beta)/LaserCut$CADRasterImage",
-                                    "Reference Image (beta)/LaserCut$CADReferenceImage", "Spline Curve/LaserCut$CADShapeSpline"};
-    for (String sItem : sItems) {
-      String[] parts = sItem.split("/");
+    String[][] shapeNames = new String[][] {
+        {"Reference Point",         "CADReference"},
+        {"Rectangle",               "CADRectangle"},
+        {"Polygon",                 "CADPolygon"},
+        {"Oval",                    "CADOval"},
+        {"Gear",                    "CADGear"},
+        {"Text",                    "CADText"},
+        {"NEMA Stepper",            "CADNemaMotor"},
+        {"Bobbin",                  "CADBobbin"},
+        {"Raster Image (beta)",     "CADRasterImage"},
+        {"Reference Image (beta)",  "CADReferenceImage"},
+        {"Spline Curve (beta)",     "CADShapeSpline"}
+    };
+    for (String[] parts : shapeNames) {
       JMenuItem mItem = new JMenuItem(parts[0]);
       mItem.addActionListener(ev -> {
         try {
-          Class ref = Class.forName(parts[1]);
+          Class ref = Class.forName(LaserCut.class.getSimpleName() + '$' + parts[1]);
           CADShape shp = (CADShape) ref.getDeclaredConstructor().newInstance();
           if (shp instanceof CADReference || shp instanceof CADShapeSpline) {
             surface.placeShape(shp);
@@ -473,8 +481,7 @@ public class LaserCut extends JFrame {
      */
     JMenu gridMenu = new JMenu("Grid");
     ButtonGroup gridGroup = new ButtonGroup();
-    String[] gridSizes = new String[] {"|", "0.0625/16 in", "0.1/10 in", "0.125/8 in", "0.25/4 in", "0.5/2 in", "|",
-                                       "1/10 mm", "2/10 mm", "2.5/5 mm", "5/10 mm", "10/0 mm"};
+    // Add "Snap to Grid" Menu Item
     JCheckBoxMenuItem gridSnap = new JCheckBoxMenuItem("Snap to Grid", snapToGrid);
     gridSnap.addActionListener(ev -> {
       prefs.putBoolean("snapToGrid", snapToGrid = gridSnap.getState());
@@ -482,7 +489,7 @@ public class LaserCut extends JFrame {
     });
     surface.enableGridSnap(snapToGrid);
     gridMenu.add(gridSnap);
-
+    // Add "Show Grid" Menu Item
     JCheckBoxMenuItem gridShow = new JCheckBoxMenuItem("Show Grid", displayGrid);
     gridShow.addActionListener(ev -> {
       prefs.putBoolean("displayGrid", displayGrid = gridShow.getState());
@@ -490,32 +497,34 @@ public class LaserCut extends JFrame {
     });
     surface.enableGridDisplay(displayGrid);
     gridMenu.add(gridShow);
-
+    // Add grid size options
+    String[] gridSizes = new String[] {"|", "0.0625/16 in", "0.1/10 in", "0.125/8 in", "0.25/4 in", "0.5/2 in", "|",
+        "1/10 mm", "2/10 mm", "2.5/5 mm", "5/10 mm", "10/0 mm"};
     for (String gridItem : gridSizes) {
       if (gridItem.equals("|")) {
         gridMenu.addSeparator();
       } else {
-        double gridSize;
-        int major;
+        double gridMinor;
+        int gridMajor;
         String units = gridItem.substring(gridItem.length() - 2);
         String[] tmp = gridItem.substring(0, gridItem.length() - 3).split("/");
         if ("in".equals(units)) {
-          gridSize = Double.parseDouble(tmp[0]);
-          major = Integer.parseInt(tmp[1]);
+          gridMinor = Double.parseDouble(tmp[0]);
+          gridMajor = Integer.parseInt(tmp[1]);
         } else if ("mm".equals(units)) {
-          gridSize = mmToInches(Double.parseDouble(tmp[0]));
-          major = Integer.parseInt(tmp[1]);
+          gridMinor = mmToInches(Double.parseDouble(tmp[0]));
+          gridMajor = Integer.parseInt(tmp[1]);
         } else {
-          gridSize = 0;
-          major = 0;
+          gridMinor = 0;
+          gridMajor = 0;
         }
         JMenuItem mItem = new JRadioButtonMenuItem("Off".equals(gridItem) ? "Off" : tmp[0] + " " + units);
-        mItem.setSelected(gridSize == surface.getGridSize());
+        mItem.setSelected(gridMinor == surface.getGridSize());
         gridGroup.add(mItem);
         gridMenu.add(mItem);
         mItem.addActionListener(ev -> {
           try {
-            surface.setGridSize(gridSize, major);
+            surface.setGridSize(gridMinor, gridMajor);
           } catch (Exception ex) {
             ex.printStackTrace();
           }
@@ -2010,7 +2019,7 @@ public class LaserCut extends JFrame {
 
     @Override
     boolean editParameterDialog (DrawSurface surface) {
-      return displayShapeParameterDialog(surface, new ArrayList<>(Arrays.asList("xLoc|in", "yLoc|in")), "Place");
+      return displayShapeParameterDialog(surface, new ArrayList<>(Arrays.asList("xLoc|in", "yLoc|in")), "Save");
     }
   }
 
