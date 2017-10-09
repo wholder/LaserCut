@@ -2510,6 +2510,11 @@ public class LaserCut extends JFrame {
     }
 
     @Override
+    boolean editParameterDialog (DrawSurface surface) {
+      return displayShapeParameterDialog(surface, new ArrayList<>(Arrays.asList("xLoc|in", "yLoc|in", "rotation|deg")), "Save");
+    }
+
+    @Override
     boolean selectMovePoint (DrawSurface surface, Point2D.Double point, Point2D.Double gPoint) {
       // See if we clicked on an existing Catmull-Rom Control Point other than origin
       Point2D.Double mse = new Point2D.Double(point.x - xLoc, point.y - yLoc);
@@ -2892,7 +2897,7 @@ public class LaserCut extends JFrame {
                 break;
               }
             }
-            if (selected != null && selected.selectMovePoint(DrawSurface.this, newLoc, toGrid(newLoc))) {
+            if ((procShape == null || procShape == selected) && selected != null && selected.selectMovePoint(DrawSurface.this, newLoc, toGrid(newLoc))) {
               dragged = selected;
               repaint();
               return;
@@ -3048,10 +3053,7 @@ public class LaserCut extends JFrame {
       return (ArrayList<CADShape>) in.readObject();
     }
 
-    int pStep = 0;
-
     void pushToUndoStack () {
-      System.out.println("pushToUndoStack " + ++pStep);
       try {
         byte[] bytes = shapesListToBytes();
         undoStack.addFirst(bytes);
