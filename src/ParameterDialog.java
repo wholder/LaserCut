@@ -91,7 +91,7 @@ class ParameterDialog extends JDialog {
     gbc.anchor = (x == 0) ? GridBagConstraints.WEST : GridBagConstraints.EAST;
     gbc.fill = (x == 0) ? GridBagConstraints.BOTH : GridBagConstraints.HORIZONTAL;
     gbc.weightx = (x == 0) ? 0.5 : 0.5;
-    gbc.ipady = 3;
+    gbc.ipady = 2;
     return gbc;
   }
 
@@ -129,6 +129,9 @@ class ParameterDialog extends JDialog {
       fields.add(new JLabel(parm.name + ": "), getGbc(0, ii));
       if (parm.valueType instanceof Boolean) {
         JCheckBox select  = new JCheckBox();
+        select.setBorderPainted(false);
+        select.setFocusable(false);
+        select.setBorderPaintedFlat(true);
         select.setSelected((Boolean) parm.value);
         select.setHorizontalAlignment(JCheckBox.RIGHT);
         fields.add(parm.field = select, getGbc(1, ii));
@@ -230,12 +233,12 @@ class ParameterDialog extends JDialog {
 
   public static void main (String... args) {
     ParmItem[] parmSet = {
+        new ParmItem("Enabled", true),
         new ParmItem("*Power|%{PWM Control}", 80),
         new ParmItem("Motor:Nema 8|0:Nema 11|1:Nema 14|2:Nema 17|3:Nema 23|4", "2"),
         new ParmItem("Font:plain:bold:italic", "bold"),
         new ParmItem("Speed", 60),
-        new ParmItem("Freq|Hz", 500.123456),
-        new ParmItem("Enabled", true)};
+        new ParmItem("Freq|Hz", 500.123456)};
     if (showSaveCancelParameterDialog(parmSet, null)) {
       for (ParmItem parm : parmSet) {
         System.out.println(parm.name + ": " + parm.value);

@@ -95,6 +95,7 @@ public class LaserCut extends JFrame {
   private DrawSurface           surface;
   private JScrollPane           scrollPane;
   private JTextField            itemInfo = new JTextField();
+  private JMenuItem             gerberZip;
   private String                zingIpAddress = prefs.get("zing.ip", "10.0.1.201");
   private int                   zingCutPower = prefs.getInt("zing.power", 85);
   private int                   zingCutSpeed = prefs.getInt("zing.speed", 55);
@@ -175,6 +176,7 @@ public class LaserCut extends JFrame {
   private void showPreferencesBox () {
     Map<String,ParameterDialog.ParmItem> items = new LinkedHashMap<>();
     items.put("useMouseWheel", new ParameterDialog.ParmItem("Enable Mouse Wheel Scrolling", prefs.getBoolean("useMouseWheel", false)));
+    items.put("enableGerber", new ParameterDialog.ParmItem("Enable Gerber ZIP Import", prefs.getBoolean("gerber.import", false)));
     ParameterDialog.ParmItem[] parmSet = items.values().toArray(new ParameterDialog.ParmItem[items.size()]);
     ParameterDialog dialog = (new ParameterDialog(parmSet, new String[] {"Save", "Cancel"}));
     dialog.setLocationRelativeTo(this);
@@ -185,6 +187,10 @@ public class LaserCut extends JFrame {
         if ("useMouseWheel".equals(name)) {
           prefs.putBoolean("useMouseWheel", useMouseWheel = (Boolean) parm.value);
           configureMouseWheel();
+        } else if ("enableGerber".equals(name)) {
+          boolean enabled = (Boolean) parm.value;
+          prefs.putBoolean("gerber.import", enabled);
+          gerberZip.setVisible(enabled);
         } else {
           System.out.println(name + ": " + parm.value);
         }
@@ -422,7 +428,7 @@ public class LaserCut extends JFrame {
     String[] sItems = new String[] {"Reference Point/LaserCut$CADReference", "Rectangle/LaserCut$CADRectangle", "Polygon/LaserCut$CADPolygon",
                                     "Oval/LaserCut$CADOval", "Gear/LaserCut$CADGear", "Text/LaserCut$CADText", "NEMA Stepper/LaserCut$CADNemaMotor",
                                     "Bobbin/LaserCut$CADBobbin", "Raster Image (beta)/LaserCut$CADRasterImage",
-                                    "Reference Image (beta)/LaserCut$CADReferenceImage"};
+                                    "Reference Image (beta)/LaserCut$CADReferenceImage", "Spline Curve/CADShapeSpline"};
     for (String sItem : sItems) {
       String[] parts = sItem.split("/");
       JMenuItem mItem = new JMenuItem(parts[0]);
@@ -430,7 +436,7 @@ public class LaserCut extends JFrame {
         try {
           Class ref = Class.forName(parts[1]);
           CADShape shp = (CADShape) ref.getDeclaredConstructor().newInstance();
-          if (shp instanceof CADReference) {
+          if (shp instanceof CADReference || shp instanceof CADShapeSpline) {
             surface.placeShape(shp);
           } else if (shp instanceof CADRasterImage) {
             // Prompt for Image file
@@ -694,7 +700,8 @@ public class LaserCut extends JFrame {
     });
     importMenu.add(svgRead);
      // Add Gerber menu item
-    JMenuItem gerberZip = new JMenuItem("Gerber Zip");
+    gerberZip = new JMenuItem("Gerber Zip");
+    gerberZip.setVisible(prefs.getBoolean("gerber.import", false));
     gerberZip.addActionListener((ActionEvent ev) -> {
       JFileChooser fileChooser = new JFileChooser();
       FileNameExtensionFilter nameFilter = new FileNameExtensionFilter("Gerber .zip files (*.zip)", "zip");
@@ -702,7 +709,6 @@ public class LaserCut extends JFrame {
       fileChooser.setFileFilter(nameFilter);
       fileChooser.setSelectedFile(new File(prefs.get("default.zip.dir", "/")));
       if (fileChooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
-        surface.pushToUndoStack();
         try {
           File tFile = fileChooser.getSelectedFile();
           prefs.put("default.zip.dir", tFile.getAbsolutePath());
@@ -714,15 +720,16 @@ public class LaserCut extends JFrame {
           double yBase = bounds.getHeight();
           double xOff = .125, yOff = .125;
           CADShapeGroup group = new CADShapeGroup();
+          List<CADShape> gShapes = new ArrayList<>();
           for (GerberZip.ExcellonHole hole : holes) {
             CADShape circle = new CADOval(hole.xLoc + xOff, yBase - hole.yLoc + yOff, hole.diameter, hole.diameter, 0, true);
             group.addToGroup(circle);
-            surface.addShapeNoPush(circle);
+            gShapes.add(circle);
           }
           if (false) {
             CADRectangle rect = new CADRectangle(xOff, yOff, bounds.getWidth(), bounds.getHeight(), .050, 0, false);
             group.addToGroup(rect);
-            surface.addShapeNoPush(rect);
+            gShapes.add(rect);
           } else {
             // Build shapes for all outlines
             for (List<Point2D.Double> points : outlines) {
@@ -738,9 +745,10 @@ public class LaserCut extends JFrame {
               }
               CADShape outline = new CADShape(path, xOff, yOff, 0, true);
               group.addToGroup(outline);
-              surface.addShapeNoPush(outline);
+              gShapes.add(outline);
             }
           }
+          surface.placeShapes(gShapes);
           repaint();
         } catch (Exception ex) {
           showErrorDialog("Unable to load Gerber file");
@@ -1179,7 +1187,7 @@ public class LaserCut extends JFrame {
       surface.addShape(circle2);
       // Add RoundedRectange
       surface.addShape(new CADRectangle(.25, .25, 4, 4, .25, 0, false));
-      // Add 72 Point Text (Note: need to fix scaling)
+      // Add 72 Point, 1 inch tall Text
       surface.addShape(new CADText(4.625, .25, "Belle", "Helvetica", "bold", 72, 0, false));
       // Add Test Gear
       surface.addShape(new CADGear(2.25, 2.25, .1, 30, 10, 20, .25, 0, mmToInches(3)));
@@ -1440,7 +1448,7 @@ public class LaserCut extends JFrame {
     }
   }
 
-  private ArrayList<CADShape> loadDesign (File fName) throws IOException, ClassNotFoundException {
+  private List<CADShape> loadDesign (File fName) throws IOException, ClassNotFoundException {
     FileInputStream fileIn = new FileInputStream(fName);
     ObjectInputStream in = new ObjectInputStream(fileIn);
     ArrayList<CADShape> design = (ArrayList<CADShape>) in.readObject();
@@ -1449,7 +1457,7 @@ public class LaserCut extends JFrame {
     return design;
   }
 
-  private void saveDesign (File fName, ArrayList<CADShape> shapes) throws IOException {
+  private void saveDesign (File fName, List<CADShape> shapes) throws IOException {
     FileOutputStream fileOut = new FileOutputStream(fName);
     ObjectOutputStream out = new ObjectOutputStream(fileOut);
     out.writeObject(shapes);
@@ -1514,15 +1522,19 @@ public class LaserCut extends JFrame {
       this.centered = centered;
     }
 
+    Rectangle2D getBounds () {
+      return getShape().getBounds2D();
+    }
+
     /**
-     * Return the distance from point cx/cy to shape's starting point
+     * Return the distance from point cx/cy to starting point of shape's path
      * @param cx x coord
      * @param cy y reference
      * @return distance to cx/cy
      */
     public double distanceTo (double cx, double cy) {
       Shape shape = getShape();
-      Rectangle2D bounds = builtShape.getBounds2D();
+      Rectangle2D bounds = shape.getBounds2D();
       PathIterator pi = shape.getPathIterator(new AffineTransform());
       double x = this.xLoc;
       double y = this.yLoc;
@@ -1611,7 +1623,7 @@ public class LaserCut extends JFrame {
         at.rotate(Math.toRadians(rotation));
       } else {
         // Position shape relative to its upper left bounding box at position xLoc/yLoc in inches
-        Rectangle2D bounds = builtShape.getBounds2D();
+        Rectangle2D bounds = dShape.getBounds2D();
         at.rotate(Math.toRadians(rotation));
         at.translate(bounds.getWidth() / 2, bounds.getHeight() / 2);
       }
@@ -1756,15 +1768,36 @@ public class LaserCut extends JFrame {
     }
 
     /**
+     * Override in subclass to let mouse drag move internal control points
+     * @return true if an internal point is was dragged, else false
+     */
+    boolean doMovePoints (Point2D.Double point) {
+      return false;
+    }
+
+    /**
+     * Override in sunclass to check if a moveable internal point was clicked
+     * @return true if a moveable internal point is was clicked, else false
+     */
+    boolean selectMovePoint (Point2D.Double point, Point2D.Double gPoint) {
+      return false;
+    }
+
+    /**
+     * Override in sunclass to cancel selection of a moveable internal point
+     */
+    void cancelMove () {
+    }
+
+    /**
      * Set position of shape to a new location
-     * @param newX new x position (in shape coordinates, inches)
-     * @param newY new y position (in shape coordinates, inches)
+     * @param newLoc new x/y position (in shape coordinates, inches)
      * @return delta position change in a Point2D.Double object
      */
-    Point2D.Double setPosition (double newX, double newY) {
-      Point2D.Double delta = new Point2D.Double(newX - xLoc, newY - yLoc);
-      xLoc = newX;
-      yLoc = newY;
+    Point2D.Double setPosition (Point2D.Double newLoc) {
+      Point2D.Double delta = new Point2D.Double(newLoc.x - xLoc, newLoc.y - yLoc);
+      xLoc = newLoc.x;
+      yLoc = newLoc.y;
       return delta;
     }
 
@@ -1787,28 +1820,26 @@ public class LaserCut extends JFrame {
 
     /**
      * Check if 'point' is close to shape's xLoc/yLoc position
-     * @param point point on screen at scale
-     * @param scale factor
+     * @param point Location click on screen in model coordinates (inches)
      * @return true if close enough to consider a 'touch'
      */
-    boolean isPositionClicked (Point2D.Double point, double scale) {
-      double dist = point.distance(xLoc * scale, yLoc * scale);
+    boolean isPositionClicked (Point2D.Double point) {
+      double dist = point.distance(xLoc, yLoc) * SCREEN_PPI;
       return dist < 5;
     }
 
     /**
      * Check if 'point' is close to one of the segments that make up the shape
-     * @param point point on screen at scale
-     * @param scale factor
+     * @param point Location click on screen in model coordinates (inches)
      * @return true if close enough to consider a 'touch'
      */
-    boolean isShapeClicked (Point2D.Double point, double scale) {
+    boolean isShapeClicked (Point2D.Double point) {
       // Translate Shape to position, Note: point is in screen units (scale)
       Shape lShape = getScreenTranslatedShape();
       // Scale Shape to Screen scale and scan all line segments in the shape
       // return true if any is closer than 4 pixels to point
-      for (Line2D.Double line : transformShapeToLines(lShape, scale)) {
-        double dist = line.ptSegDist(point);
+      for (Line2D.Double line : transformShapeToLines(lShape, 1)) {
+        double dist = line.ptSegDist(point) * SCREEN_PPI;
         if (dist < 5)
           return true;
       }
@@ -2462,6 +2493,144 @@ public class LaserCut extends JFrame {
     }
   }
 
+  static class CADShapeSpline extends LaserCut.CADShape implements Serializable {
+    private static final long serialVersionUID = 1175193935200692376L;
+    private List<Point2D.Double>  points = new ArrayList<>();
+    private Point2D.Double        movePoint;
+    private boolean               closePath;
+    private Path2D.Double         path = new Path2D.Double();
+
+    CADShapeSpline () {
+      centered = true;
+    }
+
+    @Override
+    Point2D.Double setPosition (Point2D.Double newLoc) {
+      return super.setPosition(newLoc);
+    }
+
+    @Override
+    boolean selectMovePoint (Point2D.Double point, Point2D.Double gPoint) {
+      // See if we clicked on an existing Catmull-Rom Control Point other than origin
+      Point2D.Double mse = new Point2D.Double(point.x - xLoc, point.y - yLoc);
+      for (int ii = 0; ii < points.size(); ii++) {
+        Point2D.Double cp = points.get(ii);
+        Point2D.Double np = rotatePoint(cp, rotation);
+        double dist = mse.distance(np.x, np.y) * LaserCut.SCREEN_PPI;
+        if (dist < 5) {
+          if (ii == 0 && !closePath) {
+            closePath = true;
+            updatePath();
+          } else {
+            movePoint = cp;
+          }
+          return true;
+        }
+      }
+      if (!closePath) {
+        points.add(movePoint = new Point2D.Double(gPoint.x - xLoc, gPoint.y - yLoc));
+        updatePath();
+        return true;
+      }
+      return false;
+    }
+
+    @Override
+    boolean doMovePoints (Point2D.Double point) {
+      Point2D.Double mse = rotatePoint(new Point2D.Double(point.x - xLoc, point.y - yLoc), -rotation);
+      if (movePoint != null) {
+        double dx = mse.x - movePoint.x;
+        double dy = mse.y - movePoint.y;
+        movePoint.x += dx;
+        movePoint.y += dy;
+        updatePath();
+        return true;
+      }
+      return false;
+    }
+
+    @Override
+    void cancelMove () {
+      movePoint = null;
+    }
+
+    @Override
+    Shape getShape () {
+      return path;
+    }
+
+    private void updatePath () {
+      if (closePath) {
+        path = convert(points.toArray(new Point2D.Double[points.size()]), true);
+      } else {
+        Point2D.Double[] pnts = points.toArray(new Point2D.Double[points.size() + 1]);
+        // Duplicate last point so we can draw a curve through all points in the path
+        pnts[pnts.length -1 ] = pnts[pnts.length - 2];
+        path = convert(pnts, false);
+      }
+    }
+
+    private Point2D.Double rotatePoint (Point2D.Double point, double angle) {
+      AffineTransform center = AffineTransform.getRotateInstance(Math.toRadians(angle), 0, 0);
+      Point2D.Double np = new Point2D.Double();
+      center.transform(point, np);
+      return np;
+    }
+
+    private Path2D.Double convert (Point2D.Double[] points, boolean close) {
+      Path2D.Double path = new Path2D.Double();
+      path.moveTo(points[0].x, points[0].y);
+      int end = close ? points.length + 1 : points.length - 1;
+      for (int ii = 0;  ii < end - 1; ii++) {
+        Point2D.Double p0, p1, p2, p3;
+        if (close) {
+          int idx0 = Math.floorMod(ii - 1, points.length);
+          int idx1 = Math.floorMod(idx0 + 1, points.length);
+          int idx2 = Math.floorMod(idx1 + 1, points.length);
+          int idx3 = Math.floorMod(idx2 + 1, points.length);
+          p0 = new Point2D.Double(points[idx0].x, points[idx0].y);
+          p1 = new Point2D.Double(points[idx1].x, points[idx1].y);
+          p2 = new Point2D.Double(points[idx2].x, points[idx2].y);
+          p3 = new Point2D.Double(points[idx3].x, points[idx3].y);
+        } else {
+          p0 = new Point2D.Double(points[Math.max(ii - 1, 0)].x, points[Math.max(ii - 1, 0)].y);
+          p1 = new Point2D.Double(points[ii].x, points[ii].y);
+          p2 = new Point2D.Double(points[ii + 1].x, points[ii + 1].y);
+          p3 = new Point2D.Double(points[Math.min(ii + 2, points.length - 1)].x, points[Math.min(ii + 2, points.length - 1)].y);
+        }
+        // Catmull-Rom to Cubic Bezier conversion matrix
+        //    0       1       0       0
+        //  -1/6      1      1/6      0
+        //    0      1/6      1     -1/6
+        //    0       0       1       0
+        double x1 = (-p0.x + 6 * p1.x + p2.x) / 6;  // First control point
+        double y1 = (-p0.y + 6 * p1.y + p2.y) / 6;
+        double x2 = ( p1.x + 6 * p2.x - p3.x) / 6;  // Second control point
+        double y2 = ( p1.y + 6 * p2.y - p3.y) / 6;
+        double x3 = p2.x;                           // End point
+        double y3 = p2.y;
+        path.curveTo(x1, y1, x2, y2, x3, y3);
+      }
+      if (close) {
+        path.closePath();
+      }
+      return path;
+    }
+
+    @Override
+    void draw (Graphics2D g2, double zoom) {
+      // Draw all Catmull-Rom Control Points
+      g2.setColor(isSelected ? Color.blue : Color.lightGray);
+      for (Point2D.Double cp : points) {
+        Point2D.Double np = rotatePoint(cp, rotation);
+        double mx = (xLoc + np.x) * zoom;
+        double my = (yLoc + np.y) * zoom;
+        double mWid = 2 * zoom / LaserCut.SCREEN_PPI;
+        g2.fill(new Rectangle.Double(mx - mWid, my - mWid, mWid * 2, mWid * 2));
+      }
+      super.draw(g2, zoom);
+    }
+  }
   static class CADGear extends CADShape implements Serializable {
     private static final long serialVersionUID = 2334548672295293845L;
     public double module, pressAngle, profileShift, holeSize, diameter;
@@ -2586,15 +2755,15 @@ public class LaserCut extends JFrame {
 
   public class DrawSurface extends JPanel {
     private Dimension                       workSize;
-    private ArrayList<CADShape>             shapes = new ArrayList<>(), shapesToPlace;
+    private List<CADShape>                  shapes = new ArrayList<>(), shapesToPlace;
     private CADShape                        selected, dragged, shapeToPlace;
     private double                          gridSpacing = prefs.getDouble("gridSpacing", 0);
     private int                             gridMajor = prefs.getInt("gridMajor", 0);
     private double                          zoomFactor = 1;
     private Point2D.Double                  scrollPoint, measure1, measure2;
-    private ArrayList<ShapeSelectListener>  selectListerners = new ArrayList<>();
-    private ArrayList<ActionUndoListener>   undoListerners = new ArrayList<>();
-    private ArrayList<ActionRedoListener>   redoListerners = new ArrayList<>();
+    private List<ShapeSelectListener>       selectListerners = new ArrayList<>();
+    private List<ActionUndoListener>        undoListerners = new ArrayList<>();
+    private List<ActionRedoListener>        redoListerners = new ArrayList<>();
     private LinkedList<byte[]>              undoStack = new LinkedList<>();
     private LinkedList<byte[]>              redoStack = new LinkedList<>();
     private boolean                         pushedToStack, showMeasure;
@@ -2607,43 +2776,27 @@ public class LaserCut extends JFrame {
         @Override
         public void mousePressed (MouseEvent ev) {
           requestFocus();
-          Point2D.Double point = new Point2D.Double(ev.getX(), ev.getY());
+          Point2D.Double newLoc = new Point2D.Double(ev.getX() / getScreenScale(), ev.getY() / getScreenScale());
           if (shapeToPlace != null || shapesToPlace != null) {
-            double newX = ev.getX() / getScreenScale();
-            double newY = ev.getY() / getScreenScale();
             if (gridSpacing > 0) {
-              newX = toGrid(newX);
-              newY = toGrid(newY);
+              newLoc = toGrid(newLoc);
             }
             if (shapeToPlace != null) {
               // Set location of shape to location user clicked
-              shapeToPlace.setPosition(newX, newY);
+              shapeToPlace.setPosition(newLoc);
               addShape(shapeToPlace);
               setSelected(shapeToPlace);
               shapeToPlace = null;
             } else {
-              // Determine upper left offset to set of import shapes
-              double minX = Double.MAX_VALUE;
-              double minY = Double.MAX_VALUE;
-              for (CADShape shape : shapesToPlace) {
-                minX = Math.min(minX, shape.xLoc);
-                minY = Math.min(minY, shape.yLoc);
-              }
-              pushToUndoStack();
-              // Place all imported shapes so upper left position of set is now where used clicked
-              for (CADShape shape : shapesToPlace) {
-                shape.xLoc = shape.xLoc - minX + newX;
-                shape.yLoc = shape.yLoc - minY + newY;
-                shapes.add(shape);
-                shapesToPlace = null;
-              }
+              importShapes(shapesToPlace, newLoc);
+              shapesToPlace = null;
             }
           } else if (ev.isControlDown()) {
             // Select shape and then do CTRL-Click on second shape to measure distance from origin to origin
             if (selected != null) {
               for (CADShape shape : shapes) {
                 // Check for mouse pointing to shape
-                if (shape.isPositionClicked(point, getScreenScale()) || shape.isShapeClicked(point, getScreenScale())) {
+                if (shape.isPositionClicked(newLoc) || shape.isShapeClicked(newLoc)) {
                   double dx = shape.xLoc - selected.xLoc;
                   double dy = shape.yLoc - selected.yLoc;
                   itemInfo.setText(" dx: " + LaserCut.df.format(dx) + " in, dy: " + LaserCut.df.format(dy) + " in (" +
@@ -2672,7 +2825,7 @@ public class LaserCut extends JFrame {
                */
               CADShapeGroup selGroup = selected.getGroup();
               for (CADShape shape : shapes) {
-                if (shape.isShapeClicked(point, getScreenScale())) {
+                if (shape.isShapeClicked(newLoc)) {
                   pushToUndoStack();
                   CADShapeGroup shapeGroup = shape.getGroup();
                   if (shape == selected) {
@@ -2713,14 +2866,14 @@ public class LaserCut extends JFrame {
             }
           } else {
             if (selected != null) {
-              if (selected.isPositionClicked(point, getScreenScale())) {
+              if (selected.isPositionClicked(newLoc)) {
                 dragged = selected;
                 showMeasure = false;
                 return;
               }
               for (CADShape shape : shapes) {
                 // Check for click and drag of shape's position
-                if (shape.isPositionClicked(point, getScreenScale())) {
+                if (shape.isPositionClicked(newLoc)) {
                   dragged = shape;
                   setSelected(shape);
                   itemInfo.setText("xLoc: " + dragged.xLoc + ", yLoc: " + dragged.yLoc);
@@ -2732,8 +2885,8 @@ public class LaserCut extends JFrame {
             boolean processed = false;
             for (CADShape shape : shapes) {
               // Check for selection or deselection of shapes
-              if (shape.isShapeClicked(point, getScreenScale()) ||
-                  (shape instanceof CADReference && shape.isPositionClicked(point, getScreenScale())) ) {
+              if (shape.isShapeClicked(newLoc) ||
+                  (shape instanceof CADReference && shape.isPositionClicked(newLoc)) ) {
                 pushToUndoStack();
                 setSelected(shape);
                 itemInfo.setText(shape.getInfo());
@@ -2742,12 +2895,17 @@ public class LaserCut extends JFrame {
                 break;
               }
             }
+            if (selected != null && selected.selectMovePoint(newLoc, toGrid(newLoc))) {
+              dragged = selected;
+              repaint();
+              return;
+            }
             if (!processed) {
               pushToUndoStack();
               setSelected(null);
               itemInfo.setText("");
               showMeasure = false;
-              scrollPoint = point;
+              scrollPoint = newLoc;
               LaserCut.this.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
             }
           }
@@ -2760,6 +2918,9 @@ public class LaserCut extends JFrame {
           scrollPoint = null;
           LaserCut.this.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
           pushedToStack = false;
+          if (selected != null) {
+            selected.cancelMove();
+          }
         }
       });
       addMouseMotionListener(new MouseMotionAdapter() {
@@ -2770,27 +2931,27 @@ public class LaserCut extends JFrame {
               pushedToStack = true;
               pushToUndoStack();
             }
-            double newX = ev.getX() / getScreenScale();
-            double newY = ev.getY() / getScreenScale();
-            Point2D.Double delta;
+            Point2D.Double newLoc = new Point2D.Double(ev.getX() / getScreenScale(), ev.getY() / getScreenScale());
             if (gridSpacing > 0) {
-              delta = dragged.setPosition(toGrid(newX), toGrid(newY));
-            } else {
-              delta = dragged.setPosition(newX, newY);
+              newLoc = toGrid(newLoc);
             }
-            itemInfo.setText("xLoc: " + dragged.xLoc + ", yLoc: " + dragged.yLoc);
-            CADShapeGroup group = dragged.getGroup();
-            if (group != null) {
-              for (CADShape shape : group.shapesInGroup) {
-                if (shape != dragged) {
-                  shape.movePosition(delta);
+            if (!dragged.doMovePoints(newLoc)) {
+              Point2D.Double delta = dragged.setPosition(newLoc);
+              itemInfo.setText("xLoc: " + dragged.xLoc + ", yLoc: " + dragged.yLoc);
+              CADShapeGroup group = dragged.getGroup();
+              if (group != null) {
+                for (CADShape shape : group.shapesInGroup) {
+                  if (shape != dragged) {
+                    shape.movePosition(delta);
+                  }
                 }
               }
             }
             repaint();
           } else if (scrollPoint != null) {
-            double deltaX = scrollPoint.x - ev.getX();
-            double deltaY = scrollPoint.y - ev.getY();
+            // Drag the mouse to move the JScrollPane
+            double deltaX = scrollPoint.x * getScreenScale() - ev.getX();
+            double deltaY = scrollPoint.y * getScreenScale() - ev.getY();
             Rectangle view = getVisibleRect();
             view.x += (int) deltaX;
             view.y += (int) deltaY;
@@ -2850,6 +3011,10 @@ public class LaserCut extends JFrame {
     private double toGrid (double coord) {
       // From: https://stackoverflow.com/a/5421681 (answer #2)
       return gridSpacing * Math.floor((coord / gridSpacing) + 0.5);
+    }
+
+    private Point2D.Double toGrid (Point2D.Double loc) {
+      return new Point2D.Double(toGrid(loc.x), toGrid(loc.y));
     }
 
     void addUndoListener (ActionUndoListener lst) {
@@ -2934,7 +3099,7 @@ public class LaserCut extends JFrame {
       }
     }
 
-    ArrayList<CADShape> getDesign () {
+    List<CADShape> getDesign () {
       return shapes;
     }
 
@@ -2971,7 +3136,7 @@ public class LaserCut extends JFrame {
       return crc.getValue();
     }
 
-    void setDesign (ArrayList<CADShape> shapes) {
+    void setDesign (List<CADShape> shapes) {
       this.shapes = shapes;
       repaint();
     }
@@ -2982,12 +3147,30 @@ public class LaserCut extends JFrame {
       repaint();
     }
 
+    void importShapes (List<CADShape> addShapes, Point2D.Double newLoc) {
+      pushToUndoStack();
+      // Determine upper left offset to set of import shapes
+      double minX = Double.MAX_VALUE;
+      double minY = Double.MAX_VALUE;
+      for (CADShape shape : addShapes) {
+        Rectangle2D bounds = shape.getBounds();
+        minX = Math.min(minX, shape.xLoc + bounds.getX());
+        minY = Math.min(minY, shape.yLoc + bounds.getY());
+      }
+      // Place all imported shapes so upper left position of set is now where used clicked
+      for (CADShape shape : addShapes) {
+        shape.xLoc = shape.xLoc - minX + newLoc.x;
+        shape.yLoc = shape.yLoc - minY + newLoc.y;
+        shapes.add(shape);
+      }
+    }
+
     void placeShape (CADShape shape) {
       shapeToPlace = shape;
       itemInfo.setText("Click to place Shape");
     }
 
-    void placeShapes (ArrayList<CADShape> shapes) {
+    void placeShapes (List<CADShape> shapes) {
       shapesToPlace = shapes;
       itemInfo.setText("Click to place imported Shapes");
     }
@@ -3264,16 +3447,16 @@ public class LaserCut extends JFrame {
         Stroke mild = new BasicStroke(1.0f);
         g2.setColor(new Color(224, 222, 254));
         int mCnt = 0;
-        for (double xx = 0; xx <= workSize.width / getScreenScale(); xx += gridSpacing) {
+        for (double xx = 0; xx <= workSize.width / zoomFactor; xx += gridSpacing) {
           double col = xx * getScreenScale();
           g2.setStroke(gridMajor > 0 && (mCnt++ % gridMajor) == 0 ? bold :mild);
-          g2.draw(new Line2D.Double(col, 0, col, workSize.height));
+          g2.draw(new Line2D.Double(col, 0, col, workSize.height * zoomFactor));
         }
         mCnt = 0;
-        for (double yy = 0; yy <= workSize.height / getScreenScale(); yy += gridSpacing) {
+        for (double yy = 0; yy <= workSize.height / zoomFactor; yy += gridSpacing) {
           double row = yy  * getScreenScale();
           g2.setStroke(gridMajor > 0 && (mCnt++ % gridMajor) == 0 ? bold :mild);
-          g2.draw(new Line2D.Double(0, row, workSize.width,row));
+          g2.draw(new Line2D.Double(0, row, workSize.width * zoomFactor, row));
         }
       }
       new ArrayList<>(shapes).forEach(shape -> shape.draw(g2, getScreenScale()));
