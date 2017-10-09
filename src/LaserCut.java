@@ -428,7 +428,7 @@ public class LaserCut extends JFrame {
     String[] sItems = new String[] {"Reference Point/LaserCut$CADReference", "Rectangle/LaserCut$CADRectangle", "Polygon/LaserCut$CADPolygon",
                                     "Oval/LaserCut$CADOval", "Gear/LaserCut$CADGear", "Text/LaserCut$CADText", "NEMA Stepper/LaserCut$CADNemaMotor",
                                     "Bobbin/LaserCut$CADBobbin", "Raster Image (beta)/LaserCut$CADRasterImage",
-                                    "Reference Image (beta)/LaserCut$CADReferenceImage", "Spline Curve/CADShapeSpline"};
+                                    "Reference Image (beta)/LaserCut$CADReferenceImage", "Spline Curve/LaserCut$CADShapeSpline"};
     for (String sItem : sItems) {
       String[] parts = sItem.split("/");
       JMenuItem mItem = new JMenuItem(parts[0]);
@@ -1779,7 +1779,7 @@ public class LaserCut extends JFrame {
      * Override in sunclass to check if a moveable internal point was clicked
      * @return true if a moveable internal point is was clicked, else false
      */
-    boolean selectMovePoint (Point2D.Double point, Point2D.Double gPoint) {
+    boolean selectMovePoint (DrawSurface surface, Point2D.Double point, Point2D.Double gPoint) {
       return false;
     }
 
@@ -2510,7 +2510,7 @@ public class LaserCut extends JFrame {
     }
 
     @Override
-    boolean selectMovePoint (Point2D.Double point, Point2D.Double gPoint) {
+    boolean selectMovePoint (DrawSurface surface, Point2D.Double point, Point2D.Double gPoint) {
       // See if we clicked on an existing Catmull-Rom Control Point other than origin
       Point2D.Double mse = new Point2D.Double(point.x - xLoc, point.y - yLoc);
       for (int ii = 0; ii < points.size(); ii++) {
@@ -2519,6 +2519,7 @@ public class LaserCut extends JFrame {
         double dist = mse.distance(np.x, np.y) * LaserCut.SCREEN_PPI;
         if (dist < 5) {
           if (ii == 0 && !closePath) {
+            surface.pushToUndoStack();
             closePath = true;
             updatePath();
           } else {
@@ -2528,6 +2529,7 @@ public class LaserCut extends JFrame {
         }
       }
       if (!closePath) {
+        surface.pushToUndoStack();
         points.add(movePoint = new Point2D.Double(gPoint.x - xLoc, gPoint.y - yLoc));
         updatePath();
         return true;
@@ -2882,25 +2884,25 @@ public class LaserCut extends JFrame {
                 }
               }
             }
-            boolean processed = false;
+            CADShape procShape = null;
             for (CADShape shape : shapes) {
               // Check for selection or deselection of shapes
-              if (shape.isShapeClicked(newLoc) ||
-                  (shape instanceof CADReference && shape.isPositionClicked(newLoc)) ) {
-                pushToUndoStack();
-                setSelected(shape);
-                itemInfo.setText(shape.getInfo());
-                showMeasure = false;
-                processed = true;
+              if (shape.isShapeClicked(newLoc) || (shape instanceof CADReference && shape.isPositionClicked(newLoc)) ) {
+                procShape = shape;
                 break;
               }
             }
-            if (selected != null && selected.selectMovePoint(newLoc, toGrid(newLoc))) {
+            if (selected != null && selected.selectMovePoint(DrawSurface.this, newLoc, toGrid(newLoc))) {
               dragged = selected;
               repaint();
               return;
             }
-            if (!processed) {
+            if (procShape != null) {
+              pushToUndoStack();
+              setSelected(procShape);
+              itemInfo.setText(procShape.getInfo());
+              showMeasure = false;
+            } else {
               pushToUndoStack();
               setSelected(null);
               itemInfo.setText("");
@@ -3046,7 +3048,10 @@ public class LaserCut extends JFrame {
       return (ArrayList<CADShape>) in.readObject();
     }
 
+    int pStep = 0;
+
     void pushToUndoStack () {
+      System.out.println("pushToUndoStack " + ++pStep);
       try {
         byte[] bytes = shapesListToBytes();
         undoStack.addFirst(bytes);
