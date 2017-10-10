@@ -141,7 +141,7 @@ class ParameterDialog extends JDialog {
         String[] labels = getLabels((String[]) parm.valueType);
         JComboBox select = new JComboBox<>(labels);
         String[] values = getValues((String[]) parm.valueType);
-        select.setSelectedIndex(Arrays.asList(values).indexOf(parm.value));
+        select.setSelectedIndex(Arrays.asList(values).indexOf((String) parm.value));
         fields.add(parm.field = select, getGbc(1, ii));
       } else {
         String val = parm.value instanceof Double ? LaserCut.df.format(parm.value) : parm.value.toString();

@@ -1659,7 +1659,7 @@ public class LaserCut extends JFrame {
     }
 
     // Translate Shape to screen position
-    private Shape getScreenTranslatedShape () {
+    protected Shape getScreenTranslatedShape () {
       AffineTransform at = AffineTransform.getTranslateInstance(xLoc, yLoc);
       return at.createTransformedShape(getLocallyTransformedShape());
     }
@@ -2575,19 +2575,43 @@ public class LaserCut extends JFrame {
             closePath = true;
             updatePath();
           } else {
-            movePoint = cp;
           }
+          movePoint = cp;
           return true;
         }
       }
+      int idx;
+      if (closePath && (idx = getInsertionPoint(point)) >= 0) {
+        surface.pushToUndoStack();
+        points.add(idx + 1, movePoint = rotatePoint(new Point2D.Double(gPoint.x - xLoc, gPoint.y - yLoc), -rotation));
+        updatePath();
+        return true;
+      }
       if (!closePath) {
         surface.pushToUndoStack();
-        points.add(rotatePoint(new Point2D.Double(gPoint.x - xLoc, gPoint.y - yLoc), -rotation));
+        points.add(rotatePoint(movePoint = new Point2D.Double(gPoint.x - xLoc, gPoint.y - yLoc), -rotation));
         updatePath();
         return true;
       }
       return false;
     }
+
+    int getInsertionPoint (Point2D.Double point) {
+      Point2D.Double mse = rotatePoint(new Point2D.Double(point.x - xLoc, point.y - yLoc), -rotation);
+      int idx = 1;
+      Point2D.Double chk = points.get(idx);
+      for (Line2D.Double line : transformShapeToLines(getShape(), 1)) {
+        double dist = line.ptSegDist(mse);
+        if (dist < 5 / SCREEN_PPI) {
+          return idx - 1;
+        }
+        if (idx < points.size() && chk.distance(line.getP2()) < .000001) {
+          chk = points.get(Math.min(points.size() - 1, ++idx));
+        }
+      }
+      return -1;
+    }
+
 
     @Override
     boolean doMovePoints (Point2D.Double point) {
@@ -2673,8 +2697,9 @@ public class LaserCut extends JFrame {
 
     @Override
     void draw (Graphics2D g2, double zoom) {
+      super.draw(g2, zoom);
       // Draw all Catmull-Rom Control Points
-      g2.setColor(isSelected ? Color.blue : closePath ? Color.lightGray : Color.darkGray);
+      g2.setColor(isSelected ? Color.red : closePath ? Color.lightGray : Color.darkGray);
       for (Point2D.Double cp : points) {
         Point2D.Double np = rotatePoint(cp, rotation);
         double mx = (xLoc + np.x) * zoom;
@@ -2682,7 +2707,6 @@ public class LaserCut extends JFrame {
         double mWid = 2 * zoom / LaserCut.SCREEN_PPI;
         g2.fill(new Rectangle.Double(mx - mWid, my - mWid, mWid * 2, mWid * 2));
       }
-      super.draw(g2, zoom);
     }
   }
   static class CADGear extends CADShape implements Serializable {
@@ -2939,7 +2963,7 @@ public class LaserCut extends JFrame {
             CADShape procShape = null;
             for (CADShape shape : shapes) {
               // Check for selection or deselection of shapes
-              if (shape.isShapeClicked(newLoc) || ((shape instanceof CADReference || shape instanceof CADShapeSpline)&& shape.isPositionClicked(newLoc)) ) {
+              if (shape.isShapeClicked(newLoc) || ((shape instanceof CADReference || shape instanceof CADShapeSpline) && shape.isPositionClicked(newLoc)) ) {
                 procShape = shape;
                 break;
               }
@@ -2981,6 +3005,7 @@ public class LaserCut extends JFrame {
         @Override
         public void mouseDragged (MouseEvent ev) {
           if (dragged != null) {
+            System.out.println("a");
             if (!pushedToStack) {
               pushedToStack = true;
               pushToUndoStack();
@@ -2990,6 +3015,7 @@ public class LaserCut extends JFrame {
               newLoc = toGrid(newLoc);
             }
             if (!dragged.doMovePoints(newLoc)) {
+              System.out.println("b");
               Point2D.Double delta = dragged.setPosition(newLoc);
               itemInfo.setText("xLoc: " + dragged.xLoc + ", yLoc: " + dragged.yLoc);
               CADShapeGroup group = dragged.getGroup();
@@ -3003,6 +3029,7 @@ public class LaserCut extends JFrame {
             }
             repaint();
           } else if (scrollPoint != null) {
+            System.out.println("c");
             // Drag the mouse to move the JScrollPane
             double deltaX = scrollPoint.x * getScreenScale() - ev.getX();
             double deltaY = scrollPoint.y * getScreenScale() - ev.getY();
