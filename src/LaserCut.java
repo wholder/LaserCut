@@ -2612,7 +2612,6 @@ public class LaserCut extends JFrame {
       return -1;
     }
 
-
     @Override
     boolean doMovePoints (Point2D.Double point) {
       Point2D.Double mse = rotatePoint(new Point2D.Double(point.x - xLoc, point.y - yLoc), -rotation);
@@ -3005,7 +3004,6 @@ public class LaserCut extends JFrame {
         @Override
         public void mouseDragged (MouseEvent ev) {
           if (dragged != null) {
-            System.out.println("a");
             if (!pushedToStack) {
               pushedToStack = true;
               pushToUndoStack();
@@ -3015,7 +3013,6 @@ public class LaserCut extends JFrame {
               newLoc = toGrid(newLoc);
             }
             if (!dragged.doMovePoints(newLoc)) {
-              System.out.println("b");
               Point2D.Double delta = dragged.setPosition(newLoc);
               itemInfo.setText("xLoc: " + dragged.xLoc + ", yLoc: " + dragged.yLoc);
               CADShapeGroup group = dragged.getGroup();
@@ -3029,7 +3026,6 @@ public class LaserCut extends JFrame {
             }
             repaint();
           } else if (scrollPoint != null) {
-            System.out.println("c");
             // Drag the mouse to move the JScrollPane
             double deltaX = scrollPoint.x * getScreenScale() - ev.getX();
             double deltaY = scrollPoint.y * getScreenScale() - ev.getY();
