@@ -241,7 +241,9 @@ public class LaserCut extends JFrame {
     boolean hasQuitHandler = false;
     if (Desktop.isDesktopSupported()) {
       Desktop desktop = Desktop.getDesktop();
-      desktop.disableSuddenTermination();
+      if (desktop.isSupported(Desktop.Action.APP_SUDDEN_TERMINATION)) {
+        desktop.disableSuddenTermination();
+      }
       if (hasAboutHandler = desktop.isSupported(Desktop.Action.APP_ABOUT)) {
         desktop.setAboutHandler(new AboutHandler() {
           @Override
@@ -1512,8 +1514,8 @@ public class LaserCut extends JFrame {
 
   static class CADShape implements Serializable {
     private static final long serialVersionUID = 3716741066289930874L;
-    public double     xLoc, yLoc, rotation;   // Note: must pubic for reflection
-    public boolean    centered, engrave;      // Note: must pubic for reflection
+    public double     xLoc, yLoc, rotation;   // Note: must be public for reflection
+    public boolean    centered, engrave;      // Note: must be public for reflection
     CADShapeGroup     group;
     Shape             shape;
     transient Shape   builtShape;
