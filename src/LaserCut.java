@@ -213,7 +213,7 @@ public class LaserCut extends JFrame {
 
   private LaserCut () {
     setTitle("LaserCut");
-    surface = new DrawSurface();
+    surface = new DrawSurface(zingFullSize);
     scrollPane = new JScrollPane(surface);
     configureMouseWheel();
     add(scrollPane, BorderLayout.CENTER);
@@ -225,10 +225,6 @@ public class LaserCut extends JFrame {
     itemInfo.setFocusable(false);
     bottomPane.setFocusable(false);
     add(bottomPane, BorderLayout.SOUTH);
-    Dimension sSize = surface.getSize();
-    if (!sSize.equals(zingFullSize)  &&  !sSize.equals(miniSize)) {
-      surface.setSurfaceSize(zingFullSize);
-    }
     requestFocusInWindow();
     if (Taskbar.isTaskbarSupported()) {
       Taskbar taskbar = Taskbar.getTaskbar();
@@ -794,18 +790,6 @@ public class LaserCut extends JFrame {
     JMenu exportMenu = new JMenu("Export");
      // Add "Zing Laser" Menu Item
     JMenu zingMenu = new JMenu("Zing Laser");
-        /*
-    // Add "Test Optimize Path" Menu Item
-    JMenuItem optimizePath = new JMenuItem("Test Optimize Path");
-    optimizePath.addActionListener(ev -> {
-      surface.optimizePath();
-      for (CADShape shape : surface.getDesign()) {
-        double dist = Math.sqrt(shape.xLoc * shape.xLoc + shape.yLoc * shape.yLoc);
-        System.out.println(dist);
-      }
-    });
-    zingMenu.add(optimizePath);
-    */
     // Add "Send to Zing" Submenu Item
     JMenuItem sendToZing = new JMenuItem("Send Job to Zing");
     sendToZing.addActionListener(ev -> {
@@ -910,15 +894,11 @@ public class LaserCut extends JFrame {
     JMenuItem zingResize = new JMenuItem("Resize for Zing (" + (zingFullSize.width / SCREEN_PPI) + "x" + (zingFullSize.height / SCREEN_PPI) + ")");
     zingResize.addActionListener(ev -> {
       surface.setSurfaceSize(zingFullSize);
-      pack();
-      repaint();
     });
     zingMenu.add(zingResize);
     JMenuItem zing12x12 = new JMenuItem("Resize for Zing (" + (zing12x12Size.width / SCREEN_PPI) + "x" + (zing12x12Size.height / SCREEN_PPI) + ")");
     zing12x12.addActionListener(ev -> {
       surface.setSurfaceSize(zing12x12Size);
-      pack();
-      repaint();
     });
     zingMenu.add(zing12x12);
     exportMenu.add(zingMenu);
@@ -1016,8 +996,6 @@ public class LaserCut extends JFrame {
         JMenuItem miniResize = new JMenuItem("Resize for Mini Lazer (" + (miniSize.width / SCREEN_PPI) + "x" + (miniSize.height / SCREEN_PPI) + ")");
         miniResize.addActionListener(ev -> {
           surface.setSurfaceSize(miniSize);
-          pack();
-          repaint();
         });
         miniLaserMenu.add(miniResize);
         // Add "Jog Controls" Submenu Item
@@ -2847,10 +2825,10 @@ public class LaserCut extends JFrame {
     private LinkedList<byte[]>              redoStack = new LinkedList<>();
     private boolean                         pushedToStack, showMeasure, doSnap, showGrid;
 
-    DrawSurface () {
+    DrawSurface (Dimension workSize) {
       super(true);
       // Set JPanel size for Zing's maximum work area, or other, if resized by user
-      setPreferredSize(getSize());
+      setPreferredSize(this.workSize = workSize);
       addMouseListener(new MouseAdapter() {
         @Override
         public void mousePressed (MouseEvent ev) {
@@ -3049,16 +3027,25 @@ public class LaserCut extends JFrame {
       });
     }
 
+    @Override
+    public Dimension getPreferredSize () {
+      return new Dimension((int) (workSize.getWidth() * zoomFactor), (int) (workSize.getHeight() * zoomFactor));
+    }
+
+    @Override
+    public Dimension getMaximumSize () {
+      return workSize;
+    }
+
     void setSurfaceSize (Dimension size) {
       workSize = size;
       setSize(size);
-      setPreferredSize(size);
-      setMaximumSize(size);
+      double tmp = zoomFactor;
+      zoomFactor = 1;
+      pack();
+      zoomFactor = tmp;
+      getParent().revalidate();
       repaint();
-    }
-
-    private double getScreenScale () {
-      return SCREEN_PPI * zoomFactor;
     }
 
     void setZoomFactor (double zoom) {
@@ -3066,13 +3053,16 @@ public class LaserCut extends JFrame {
         zoomFactor = zoom;
         Dimension zoomSize = new Dimension((int) (workSize.getWidth() * zoomFactor), (int) (workSize.getHeight() * zoomFactor));
         setSize(zoomSize);
-        setPreferredSize(zoomSize);
         repaint();
       }
     }
 
     double getZoomFactor () {
       return zoomFactor;
+    }
+
+    private double getScreenScale () {
+      return SCREEN_PPI * zoomFactor;
     }
 
     void enableGridSnap (boolean doSnap) {
@@ -3535,16 +3525,18 @@ public class LaserCut extends JFrame {
         Stroke mild = new BasicStroke(1.0f);
         g2.setColor(new Color(224, 222, 254));
         int mCnt = 0;
-        for (double xx = 0; xx <= workSize.width / zoomFactor; xx += gridSpacing) {
+        for (double xx = 0; xx <= workSize.width / SCREEN_PPI; xx += gridSpacing) {
           double col = xx * getScreenScale();
+          double cHyt = workSize.height * zoomFactor;
           g2.setStroke(gridMajor > 0 && (mCnt++ % gridMajor) == 0 ? bold :mild);
-          g2.draw(new Line2D.Double(col, 0, col, workSize.height * zoomFactor));
+          g2.draw(new Line2D.Double(col, 0, col, cHyt));
         }
         mCnt = 0;
-        for (double yy = 0; yy <= workSize.height / zoomFactor; yy += gridSpacing) {
+        for (double yy = 0; yy <= workSize.height / SCREEN_PPI; yy += gridSpacing) {
           double row = yy  * getScreenScale();
+          double rWid = workSize.width * zoomFactor;
           g2.setStroke(gridMajor > 0 && (mCnt++ % gridMajor) == 0 ? bold :mild);
-          g2.draw(new Line2D.Double(0, row, workSize.width * zoomFactor, row));
+          g2.draw(new Line2D.Double(0, row, rWid, row));
         }
       }
       new ArrayList<>(shapes).forEach(shape -> shape.draw(g2, getScreenScale()));
