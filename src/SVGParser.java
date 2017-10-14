@@ -59,13 +59,18 @@ public class SVGParser {
         Shape shape = null;
         switch (qName.toLowerCase()) {
           case "svg":
-            double wid = getInches(attributes.getValue("width"));
-            double hyt = getInches(attributes.getValue("height"));
+            String wAttr = attributes.getValue("width");
+            String hAttr = attributes.getValue("height");
             String vBox = attributes.getValue("viewBox");
-            if (vBox != null) {
-              double[] viewBox = parseRawCoords(vBox);
-              atScale = AffineTransform.getScaleInstance(scaleX = wid / viewBox[2], scaleY = hyt / viewBox[3]);
+            if (vBox != null && wAttr != null && hAttr != null) {
+              double[] vb = parseRawCoords(vBox);
+              double wid = getInches(attributes.getValue("width"));
+              double hyt = getInches(attributes.getValue("height"));
+              atScale = AffineTransform.getScaleInstance(scaleX = wid / vb[2], scaleY = hyt / vb[3]);
               debugPrintln("svg: scale " + sf.format(atScale.getScaleX()) + ", " + sf.format(atScale.getScaleY()));
+            } else if (vBox != null) {
+              double[] vb = parseRawCoords(vBox);
+              debugPrintln("viewBox: " + vb[0] + ", " + vb[1] + ", " + vb[2] + ", " + vb[3]);
             } else {
               //atScale.setToScale(wid, hyt);
               //debugPrintln("svg: scale " + sf.format(atScale.getScaleX()) + ", " + sf.format(atScale.getScaleY()));
@@ -407,7 +412,7 @@ public class SVGParser {
   public static void main (String[] args) throws Exception {
     SVGParser parser = new SVGParser(true);
     parser.enableDebug(true);
-    Shape[] shapes = parser.parseSVG(new File("Test/SVG Files/letter_reg-marks.svg"));
+    Shape[] shapes = parser.parseSVG(new File("Test/SVG Files/Chistmas Carols.svg"));
     shapes = removeOffset(shapes);
     shapes = new Shape[]{combinePaths(shapes)};
     new ShapeWindow(shapes, .25);

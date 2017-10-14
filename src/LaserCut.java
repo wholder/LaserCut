@@ -714,10 +714,8 @@ public class LaserCut extends JFrame {
           double offY = bounds.getHeight() / 2;
           AffineTransform at = AffineTransform.getTranslateInstance(-offX, -offY);
           shape = at.createTransformedShape(shape);
-          CADShape shp = new CADShape(shape, 0.125 + offX, 0.125 + offY, 0, false);
-          if (shp.placeParameterDialog(surface)) {
-            surface.placeShape(shp);
-          }
+          CADShape shp = new CADScaledShape(shape, offX, offY, 0, false, 100.0);
+          surface.placeShape(shp);
         } catch (Exception ex) {
           showErrorDialog("Unable to load SVG file");
           ex.printStackTrace(System.out);
@@ -1623,7 +1621,7 @@ public class LaserCut extends JFrame {
      * Note: not all Shapes are built from parameters, however.  See buildShape() for details.
      * @return translated Shape
      */
-    private Shape getLocallyTransformedShape () {
+    protected Shape getLocallyTransformedShape () {
       Shape dShape = getShape();
       AffineTransform at = new AffineTransform();
       if (centered) {
@@ -1740,6 +1738,7 @@ public class LaserCut extends JFrame {
       // Scale Shape to scale and draw it
       if (false) {
         // Use PathIterator to draw Shape line by line
+        // Note: used to debug transformShapeToLines()
         for (Line2D.Double line : transformShapeToLines(dShape, zoom)) {
           g2.draw(line);
         }
@@ -1866,13 +1865,23 @@ public class LaserCut extends JFrame {
       builtShape = null;
     }
 
+    // Note: override in subclass, as needed
+    protected List<String> getPlaceFields () {
+      return Arrays.asList("rotation|deg", "centered", "engrave");
+    }
+
+    // Note: override in subclass, as needed
+    protected List<String> getEditFields () {
+      return Arrays.asList("xLoc|in", "yLoc|in", "rotation|deg", "centered", "engrave");
+    }
+
     /**
      * Bring up editable parameter dialog box do user can edit fields.  Uses reflection to read and save
      * parameter values before clicking the mouse to place the shape.
      * @return true if used clicked OK to save
      */
     boolean placeParameterDialog (DrawSurface surface) {
-      return displayShapeParameterDialog(surface, new ArrayList<>(Arrays.asList("rotation|deg", "centered", "engrave")), "Place");
+      return displayShapeParameterDialog(surface, new ArrayList<>(getPlaceFields()), "Place");
     }
 
     /**
@@ -1881,7 +1890,7 @@ public class LaserCut extends JFrame {
      * @return true if used clicked OK to save
      */
     boolean editParameterDialog (DrawSurface surface) {
-      return displayShapeParameterDialog(surface, new ArrayList<>(Arrays.asList("xLoc|in", "yLoc|in", "rotation|deg", "centered", "engrave")), "Save");
+      return displayShapeParameterDialog(surface, new ArrayList<>(getEditFields()), "Save");
     }
 
     /**
@@ -1994,13 +2003,13 @@ public class LaserCut extends JFrame {
     }
 
     @Override
-    boolean placeParameterDialog (DrawSurface surface) {
-      return displayShapeParameterDialog(surface, new ArrayList<>(), "Save");
+    protected List<String> getPlaceFields () {
+      return new ArrayList<>();
     }
 
     @Override
-    boolean editParameterDialog (DrawSurface surface) {
-      return displayShapeParameterDialog(surface, new ArrayList<>(Arrays.asList("xLoc|in", "yLoc|in")), "Save");
+    protected List<String> getEditFields () {
+      return Arrays.asList("xLoc|in", "yLoc|in");
     }
   }
 
@@ -2064,9 +2073,8 @@ public class LaserCut extends JFrame {
     }
 
     @Override
-    boolean editParameterDialog (DrawSurface surface) {
-      return displayShapeParameterDialog(surface, new ArrayList<>(Arrays.asList("xLoc|in", "yLoc|in", "*width|in", "*height|in",
-                                                                                "*imageDpi", "rotation|deg", "scale|%", "centered")), "Save");
+    protected List<String> getEditFields () {
+      return Arrays.asList("xLoc|in", "yLoc|in", "*width|in", "*height|in", "*imageDpi", "rotation|deg", "scale|%", "centered");
     }
 
     // Custom write serializer for BufferedImage
@@ -2520,7 +2528,39 @@ public class LaserCut extends JFrame {
     }
   }
 
-  static class CADShapeSpline extends LaserCut.CADShape implements Serializable {
+  static class CADScaledShape extends CADShape implements Serializable {
+    public double   scale = 100.0;
+
+    CADScaledShape (Shape shape, double xLoc, double yLoc, double rotation, boolean centered, double scale) {
+      super(shape, xLoc, yLoc, rotation, centered);
+      this.scale = scale;
+    }
+
+    @Override
+    // Translate Shape to screen position
+    protected Shape getScreenTranslatedShape () {
+      AffineTransform at = new AffineTransform();
+      at.translate(xLoc, yLoc);
+      at.scale(scale / 100.0, scale / 100.0);
+      return at.createTransformedShape(getLocallyTransformedShape());
+    }
+
+    @Override
+    protected List<String> getPlaceFields () {
+      ArrayList<String> list = new ArrayList(super.getPlaceFields());
+      list.add("scale|%");
+      return list;
+    }
+
+    @Override
+    protected List<String> getEditFields () {
+      ArrayList<String> list = new ArrayList(super.getEditFields());
+      list.add("scale|%");
+      return list;
+    }
+  }
+
+  static class CADShapeSpline extends CADShape implements Serializable {
     private static final long serialVersionUID = 1175193935200692376L;
     private List<Point2D.Double>  points = new ArrayList<>();
     private Point2D.Double        movePoint;
@@ -2537,8 +2577,8 @@ public class LaserCut extends JFrame {
     }
 
     @Override
-    boolean editParameterDialog (DrawSurface surface) {
-      return displayShapeParameterDialog(surface, new ArrayList<>(Arrays.asList("xLoc|in", "yLoc|in", "rotation|deg")), "Save");
+    protected List<String> getEditFields () {
+      return Arrays.asList("xLoc|in", "yLoc|in", "rotation|deg");
     }
 
     @Override
