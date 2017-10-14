@@ -8,13 +8,20 @@ import java.awt.*;
 import java.awt.geom.*;
 import java.io.File;
 import java.text.DecimalFormat;
+import java.util.List;
 import java.util.ArrayList;
+import java.util.StringTokenizer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
   // https://www.w3schools.com/graphics/svg_examples.asp
   // http://ptolemy.eecs.berkeley.edu/ptolemyII/ptII8.1/ptII8.0.1/diva/canvas/toolbox/SVGParser.java
   // https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths
+  // https://www.w3.org/TR/SVG/paths.html
+
+/**
+ * This is my attempt at a crude parser that tries to extract the vector portion of an SVG file
+ */
 
 public class SVGParser {
   private boolean       debug, pxIs72;
@@ -78,6 +85,16 @@ public class SVGParser {
                     yLoc = relative ? parseCoord(data[++ii]) + yLast : parseCoord(data[++ii]);
                     path.moveTo(xLast = xLoc, yLast = yLoc);
                     debugPrintln("  MoveTo: " + scX(xLoc) + ", " + scY(yLoc));
+                    try {
+                      while (ii < (data.length - 2) && (item = data[ii + 1]).length() > 1 || !Character.isAlphabetic(data[ii + 1].charAt(0))) {
+                        xLoc = relative ? parseCoord(data[++ii]) + xLast : parseCoord(data[++ii]);
+                        yLoc = relative ? parseCoord(data[++ii]) + yLast : parseCoord(data[++ii]);
+                        path.lineTo(xLast = xLoc, yLast = yLoc);
+                        debugPrintln("  LineTo: " + scX(xLoc) + ", " + scY(yLoc));
+                      }
+                    } catch (Exception ex) {
+                      int dum = 0;
+                    }
                     break;
                   case "c":
                     // Cubic Bézier curve (start point is lastPoint)
@@ -285,7 +302,7 @@ public class SVGParser {
       } else if (data.endsWith("in")) {
         return Double.parseDouble(data.substring(0, data.length() - 2));          // inches
       } else {
-        return Double.parseDouble(data.substring(0, data.length() - 2)) / 96;     // 96px = 1 inch
+        return Double.parseDouble(data) / 96;                                     // 96px = 1 inch
       }
     }
     return 0;
@@ -390,7 +407,7 @@ public class SVGParser {
   public static void main (String[] args) throws Exception {
     SVGParser parser = new SVGParser(true);
     parser.enableDebug(true);
-    Shape[] shapes = parser.parseSVG(new File("svg/quadratic.svg"));
+    Shape[] shapes = parser.parseSVG(new File("Test/SVG Files/letter_reg-marks.svg"));
     shapes = removeOffset(shapes);
     shapes = new Shape[]{combinePaths(shapes)};
     new ShapeWindow(shapes, .25);

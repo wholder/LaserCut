@@ -714,7 +714,7 @@ public class LaserCut extends JFrame {
           double offY = bounds.getHeight() / 2;
           AffineTransform at = AffineTransform.getTranslateInstance(-offX, -offY);
           shape = at.createTransformedShape(shape);
-          CADShape shp = new CADShape(shape, 0.125 + offX, 0.125 + offY, 0, true);
+          CADShape shp = new CADShape(shape, 0.125 + offX, 0.125 + offY, 0, false);
           if (shp.placeParameterDialog(surface)) {
             surface.placeShape(shp);
           }
