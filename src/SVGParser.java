@@ -25,10 +25,11 @@ import java.util.regex.Pattern;
  */
 
 public class SVGParser {
-  private boolean       debug, pxIs72;
-  private DecimalFormat df = new DecimalFormat("#.###");
-  private DecimalFormat sf = new DecimalFormat("#.########");
-  private double         scaleX = 1, scaleY = 1;
+  private boolean         debug, pxIs72;
+  private DecimalFormat   df = new DecimalFormat("#.###");
+  private DecimalFormat   sf = new DecimalFormat("#.########");
+  private double          scaleX = 1, scaleY = 1;
+  private boolean         inMarker;
 
   public SVGParser (boolean pxIs72) {
     this.pxIs72 = pxIs72;
@@ -59,6 +60,9 @@ public class SVGParser {
         Point2D.Double[] points;
         Shape shape = null;
         switch (qName.toLowerCase()) {
+          case "marker":
+            inMarker  = true;
+            break;
           case "svg":
             String wAttr = attributes.getValue("width");
             String hAttr = attributes.getValue("height");
@@ -78,120 +82,128 @@ public class SVGParser {
             }
             break;
           case "path":
-            String[] data = parsePathData(attributes.getValue("d"));
-            debugPrintln("path:");
-            Path2D.Double path = new Path2D.Double();
-            for (int ii = 0; ii < data.length; ii++) {
-              String item = data[ii];
-              if (item.length() == 1 && Character.isAlphabetic(item.charAt(0))) {
-                boolean relative = item.equals(item.toLowerCase());
-                switch (item.toLowerCase()) {
-                  case "m":
-                    xLoc = relative ? parseCoord(data[++ii]) + xLast : parseCoord(data[++ii]);
-                    yLoc = relative ? parseCoord(data[++ii]) + yLast : parseCoord(data[++ii]);
-                    path.moveTo(xLast = xLoc, yLast = yLoc);
-                    debugPrintln("  MoveTo: " + scX(xLoc) + ", " + scY(yLoc));
-                    try {
-                      while (ii < (data.length - 2) && (item = data[ii + 1]).length() > 1 || !Character.isAlphabetic(data[ii + 1].charAt(0))) {
+            if (!inMarker) {
+              String[] data = parsePathData(attributes.getValue("d"));
+              debugPrintln("path:");
+              Path2D.Double path = new Path2D.Double();
+              for (int ii = 0; ii < data.length; ii++) {
+                String item = data[ii];
+                if (item.length() == 1 && Character.isAlphabetic(item.charAt(0))) {
+                  boolean relative = item.equals(item.toLowerCase());
+                  switch (item.toLowerCase()) {
+                    case "m":
+                      xLoc = relative ? parseCoord(data[++ii]) + xLast : parseCoord(data[++ii]);
+                      yLoc = relative ? parseCoord(data[++ii]) + yLast : parseCoord(data[++ii]);
+                      path.moveTo(xLast = xLoc, yLast = yLoc);
+                      debugPrintln("  MoveTo: " + scX(xLoc) + ", " + scY(yLoc));
+                      while (ii < (data.length - 2) && (data[ii + 1].length() > 1 || !Character.isAlphabetic(data[ii + 1].charAt(0)))) {
                         xLoc = relative ? parseCoord(data[++ii]) + xLast : parseCoord(data[++ii]);
                         yLoc = relative ? parseCoord(data[++ii]) + yLast : parseCoord(data[++ii]);
                         path.lineTo(xLast = xLoc, yLast = yLoc);
                         debugPrintln("  LineTo: " + scX(xLoc) + ", " + scY(yLoc));
                       }
-                    } catch (Exception ex) {
-                      int dum = 0;
-                    }
-                    break;
-                  case "c":
-                    // Cubic Bézier curve (start point is lastPoint)
-                    p1 = new Point2D.Double(parseCoord(data[++ii]), parseCoord(data[++ii]));  // 1st ctrl point
-                    p2 = new Point2D.Double(parseCoord(data[++ii]), parseCoord(data[++ii]));  // 2nd ctrl point
-                    p3 = new Point2D.Double(parseCoord(data[++ii]), parseCoord(data[++ii]));  // End point
-                    if (relative) {
-                      p1.setLocation(p1.x + xLast, p1.y + yLast);
-                      p2.setLocation(p2.x + xLast, p2.y + yLast);
-                      p3.setLocation(p3.x + xLast, p3.y + yLast);
-                    }
-                    path.curveTo(p1.x, p1.y, p2.x, p2.y, p3.x, p3.y);
-                    debugPrintln("  Cubic-" + item + ": " + scp(p1) + ", " + scp(p2) + ", " + scp(p3));
-                    reflect = reflectControlPoint(p3, p2);
-                    xLast = p3.x;
-                    yLast = p3.y;
-                    break;
-                  case "s":
-                    // Shorthand Cubic Bézier curve (start point is lastPoint, 1st ctrl point is reflected from prior C curve)
-                    p1 = new Point2D.Double(parseCoord(data[++ii]), parseCoord(data[++ii]));  // 2nd ctrl point
-                    p2 = new Point2D.Double(parseCoord(data[++ii]), parseCoord(data[++ii]));  // End point
-                    if (relative) {
-                      p1.setLocation(p1.x + xLast, p1.y + yLast);
-                      p2.setLocation(p2.x + xLast, p2.y + yLast);
-                    }
-                    path.curveTo(reflect.x, reflect.y, p1.x, p1.y, p2.x, p2.y);
-                    debugPrintln("  Cubic-" + item + ": " + scp(reflect) + ", " + scp(p1) + ", " + scp(p2));
-                    reflect = reflectControlPoint(p2, p1);
-                    xLast = p2.x;
-                    yLast = p2.y;
-                    break;
-                  case "q":
-                    // Quadratic Bézier curveto (start point is lastPoint)
-                    p1 = new Point2D.Double(parseCoord(data[++ii]), parseCoord(data[++ii]));  // ctrl point
-                    p2 = new Point2D.Double(parseCoord(data[++ii]), parseCoord(data[++ii]));  // End point
-                    if (relative) {
-                      p1.setLocation(p1.x + xLast, p1.y + yLast);
-                      p2.setLocation(p2.x + xLast, p2.y + yLast);
-                    }
-                    path.quadTo(p1.x, p1.y, p2.x, p2.y);
-                    debugPrintln("  Quad-" + item +": " + scp(p1) + ", " + scp(p2));
-                    reflect = reflectControlPoint(p2, p1);
-                    xLast = p2.x;
-                    yLast = p2.y;
-                    break;
-                  case "t":
-                    // Shorthand quadratic Bézier curveto  (start point is lastPoint, ctrl point is reflected from prior Q curve)
-                    p1 = new Point2D.Double(parseCoord(data[++ii]), parseCoord(data[++ii]));  // End point
-                    if (relative) {
-                      p1.setLocation(p1.x + xLast, p1.y + yLast);
-                    }
-                    path.quadTo(reflect.x, reflect.y, p1.x, p1.y);
-                    debugPrintln("  Quad-" + item + ": " + scp(reflect) + ", " + scp(p1));
-                    reflect = reflectControlPoint(p1, reflect);
-                    xLast = p1.x;
-                    yLast = p1.y;
-                    break;
-                  case "a":
-                    // Elliptical Arc (7 values?)
-                    //
-                    break;
-                  case "l":
-                    // LineTo (2 points)
-                    xLoc = relative ? parseCoord(data[++ii]) + xLast : parseCoord(data[++ii]);
-                    yLoc = relative ? parseCoord(data[++ii]) + yLast : parseCoord(data[++ii]);
-                    path.lineTo(xLast = xLoc, yLast = yLoc);
-                    debugPrintln("  LineTo: " + scX(xLoc) + ", " + scY(yLoc));
-                    break;
-                  case "h":
-                    // Horizontal LineTo (xLoc)
-                    xLoc = relative ? parseCoord(data[++ii]) + xLast : parseCoord(data[++ii]);
-                    path.lineTo(xLast = xLoc, yLast);
-                    debugPrintln("  HLineTo: " + scX(xLoc) + ", " + scY(yLast));
-                    break;
-                  case "v":
-                    // Vertical LineTo (yLoc)
-                    yLoc = relative ? parseCoord(data[++ii]) + yLast : parseCoord(data[++ii]);
-                    path.lineTo(xLast, yLast = yLoc);
-                    debugPrintln("  VLineTo: " + scX(xLast) + ", " + scY(yLoc));
-                    break;
-                  case "z":
-                    // Close Path
-                    path.closePath();
-                    break;
-                  default:
-                    debugPrintln("  *** unknown cmd '" + item + "' ***");
-                    break;
+                      break;
+                    case "c":
+                      do {
+                        // Cubic Bézier curve (start point is lastPoint)
+                        p1 = new Point2D.Double(parseCoord(data[++ii]), parseCoord(data[++ii]));  // 1st ctrl point
+                        p2 = new Point2D.Double(parseCoord(data[++ii]), parseCoord(data[++ii]));  // 2nd ctrl point
+                        p3 = new Point2D.Double(parseCoord(data[++ii]), parseCoord(data[++ii]));  // End point
+                        if (relative) {
+                          p1.setLocation(p1.x + xLast, p1.y + yLast);
+                          p2.setLocation(p2.x + xLast, p2.y + yLast);
+                          p3.setLocation(p3.x + xLast, p3.y + yLast);
+                        }
+                        path.curveTo(p1.x, p1.y, p2.x, p2.y, p3.x, p3.y);
+                        debugPrintln("  Cubic-" + item + ": " + scp(p1) + ", " + scp(p2) + ", " + scp(p3));
+                        reflect = reflectControlPoint(p3, p2);
+                        xLast = p3.x;
+                        yLast = p3.y;
+                      } while (ii < (data.length - 6) && (data[ii + 1].length() > 1 || !Character.isAlphabetic(data[ii + 1].charAt(0))));
+                      break;
+                    case "s":
+                      do {
+                        // Shorthand Cubic Bézier curve (start point is lastPoint, 1st ctrl point is reflected from prior C curve)
+                        p1 = new Point2D.Double(parseCoord(data[++ii]), parseCoord(data[++ii]));  // 2nd ctrl point
+                        p2 = new Point2D.Double(parseCoord(data[++ii]), parseCoord(data[++ii]));  // End point
+                        if (relative) {
+                          p1.setLocation(p1.x + xLast, p1.y + yLast);
+                          p2.setLocation(p2.x + xLast, p2.y + yLast);
+                        }
+                        path.curveTo(reflect.x, reflect.y, p1.x, p1.y, p2.x, p2.y);
+                        debugPrintln("  Cubic-" + item + ": " + scp(reflect) + ", " + scp(p1) + ", " + scp(p2));
+                        reflect = reflectControlPoint(p2, p1);
+                        xLast = p2.x;
+                        yLast = p2.y;
+                      } while (ii < (data.length - 4) && (data[ii + 1].length() > 1 || !Character.isAlphabetic(data[ii + 1].charAt(0))));
+                      break;
+                    case "q":
+                      do {
+                        // Quadratic Bézier curveto (start point is lastPoint)
+                        p1 = new Point2D.Double(parseCoord(data[++ii]), parseCoord(data[++ii]));  // ctrl point
+                        p2 = new Point2D.Double(parseCoord(data[++ii]), parseCoord(data[++ii]));  // End point
+                        if (relative) {
+                          p1.setLocation(p1.x + xLast, p1.y + yLast);
+                          p2.setLocation(p2.x + xLast, p2.y + yLast);
+                        }
+                        path.quadTo(p1.x, p1.y, p2.x, p2.y);
+                        debugPrintln("  Quad-" + item + ": " + scp(p1) + ", " + scp(p2));
+                        reflect = reflectControlPoint(p2, p1);
+                        xLast = p2.x;
+                        yLast = p2.y;
+                      } while (ii < (data.length - 4) && (data[ii + 1].length() > 1 || !Character.isAlphabetic(data[ii + 1].charAt(0))));
+                      break;
+                    case "t":
+                      do {
+                        // Shorthand quadratic Bézier curveto  (start point is lastPoint, ctrl point is reflected from prior Q curve)
+                        p1 = new Point2D.Double(parseCoord(data[++ii]), parseCoord(data[++ii]));  // End point
+                        if (relative) {
+                          p1.setLocation(p1.x + xLast, p1.y + yLast);
+                        }
+                        path.quadTo(reflect.x, reflect.y, p1.x, p1.y);
+                        debugPrintln("  Quad-" + item + ": " + scp(reflect) + ", " + scp(p1));
+                        reflect = reflectControlPoint(p1, reflect);
+                        xLast = p1.x;
+                        yLast = p1.y;
+                      } while (ii < (data.length - 2) && (data[ii + 1].length() > 1 || !Character.isAlphabetic(data[ii + 1].charAt(0))));
+                      break;
+                    case "a":
+                      // Elliptical Arc (7 values?)
+                      //
+                      break;
+                    case "l":
+                      do {
+                        // LineTo (2 points)
+                        xLoc = relative ? parseCoord(data[++ii]) + xLast : parseCoord(data[++ii]);
+                        yLoc = relative ? parseCoord(data[++ii]) + yLast : parseCoord(data[++ii]);
+                        path.lineTo(xLast = xLoc, yLast = yLoc);
+                        debugPrintln("  LineTo: " + scX(xLoc) + ", " + scY(yLoc));
+                      } while (ii < (data.length - 2) && (data[ii + 1].length() > 1 || !Character.isAlphabetic(data[ii + 1].charAt(0))));
+                      break;
+                    case "h":
+                      // Horizontal LineTo (xLoc)
+                      xLoc = relative ? parseCoord(data[++ii]) + xLast : parseCoord(data[++ii]);
+                      path.lineTo(xLast = xLoc, yLast);
+                      debugPrintln("  HLineTo: " + scX(xLoc) + ", " + scY(yLast));
+                      break;
+                    case "v":
+                      // Vertical LineTo (yLoc)
+                      yLoc = relative ? parseCoord(data[++ii]) + yLast : parseCoord(data[++ii]);
+                      path.lineTo(xLast, yLast = yLoc);
+                      debugPrintln("  VLineTo: " + scX(xLast) + ", " + scY(yLoc));
+                      break;
+                    case "z":
+                      // Close Path
+                      path.closePath();
+                      break;
+                    default:
+                      debugPrintln("  *** unknown cmd '" + item + "' ***");
+                      break;
+                  }
                 }
               }
+              shape = path;
             }
-            shape = path;
             break;
           case "rect":
             xLoc = parseCoord(attributes.getValue("x"));
@@ -277,6 +289,11 @@ public class SVGParser {
       }
 
       public void endElement (String uri, String localName, String qName) throws SAXException {
+        switch (qName.toLowerCase()) {
+          case "marker":
+            inMarker = false;
+            break;
+        }
         debugPrintln("End Element: " + qName);
       }
 
@@ -413,7 +430,7 @@ public class SVGParser {
   public static void main (String[] args) throws Exception {
     SVGParser parser = new SVGParser(true);
     parser.enableDebug(true);
-    Shape[] shapes = parser.parseSVG(new File("Test/SVG Files/Chistmas Carols.svg"));
+    Shape[] shapes = parser.parseSVG(new File("Test/SVG Files/letter_reg-marks.svg"));
     shapes = removeOffset(shapes);
     shapes = new Shape[]{combinePaths(shapes)};
     new ShapeWindow(shapes, .25);
