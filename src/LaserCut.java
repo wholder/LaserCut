@@ -3094,6 +3094,23 @@ public class LaserCut extends JFrame {
           prefs.putInt("window.height", bounds.height);
         }
       });
+      // Add KeyListener to detect ESC key press
+      addKeyListener(new KeyAdapter() {
+        @Override
+        public void keyTyped (KeyEvent ev) {
+          super.keyTyped(ev);
+          int key = ev.getExtendedKeyCode();
+          if (key == KeyEvent.VK_ESCAPE) {
+            if (shapeToPlace != null || shapesToPlace != null) {
+              shapeToPlace = null;
+              shapesToPlace = null;
+              setSelected(null);
+              itemInfo.setText("Place shape cancelled");
+              repaint();
+            }
+          }
+        }
+      });
     }
 
     @Override
@@ -3318,11 +3335,13 @@ public class LaserCut extends JFrame {
     void placeShape (CADShape shape) {
       shapeToPlace = shape;
       itemInfo.setText("Click to place Shape");
+      requestFocus();
       repaint();
     }
 
     void placeShapes (List<CADShape> shapes) {
       shapesToPlace = shapes;
+      requestFocus();
       itemInfo.setText("Click to place imported Shapes");
     }
 
