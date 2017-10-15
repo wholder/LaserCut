@@ -3213,19 +3213,22 @@ public class LaserCut extends JFrame {
     }
 
     void popFromUndoStack () {
-      if (undoStack.size() > 0) {
-        try {
-          redoStack.addFirst(shapesListToBytes());
-          shapes = bytesToShapeList(undoStack.pollFirst());
-          for (ActionUndoListener lst : undoListerners) {
-            lst.undoEnable(undoStack.size() > 0);
+      // Suppress Undo while placing objects
+      if (shapeToPlace == null && shapesToPlace == null) {
+        if (undoStack.size() > 0) {
+          try {
+            redoStack.addFirst(shapesListToBytes());
+            shapes = bytesToShapeList(undoStack.pollFirst());
+            for (ActionUndoListener lst : undoListerners) {
+              lst.undoEnable(undoStack.size() > 0);
+            }
+            for (ActionRedoListener lst : redoListerners) {
+              lst.redoEnable(redoStack.size() > 0);
+            }
+            repaint();
+          } catch (Exception ex) {
+            ex.printStackTrace();
           }
-          for (ActionRedoListener lst : redoListerners) {
-            lst.redoEnable(redoStack.size() > 0);
-          }
-          repaint();
-        } catch (Exception ex) {
-          ex.printStackTrace();
         }
       }
     }
