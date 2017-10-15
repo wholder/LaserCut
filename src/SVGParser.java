@@ -18,6 +18,7 @@ import java.util.regex.Pattern;
   // http://ptolemy.eecs.berkeley.edu/ptolemyII/ptII8.1/ptII8.0.1/diva/canvas/toolbox/SVGParser.java
   // https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths
   // https://www.w3.org/TR/SVG/paths.html
+  // http://tutorials.jenkov.com/svg/svg-viewport-view-box.html
 
 /**
  * This is my attempt at a crude parser that tries to extract the vector portion of an SVG file

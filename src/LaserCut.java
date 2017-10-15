@@ -445,7 +445,7 @@ public class LaserCut extends JFrame {
         try {
           Class ref = Class.forName(LaserCut.class.getSimpleName() + '$' + parts[1]);
           CADShape shp = (CADShape) ref.getDeclaredConstructor().newInstance();
-          if (shp instanceof CADReference || shp instanceof CADShapeSpline) {
+          if (shp instanceof CADShapeSpline) {
             surface.placeShape(shp);
           } else if (shp instanceof CADRasterImage) {
             // Prompt for Image file
@@ -459,7 +459,9 @@ public class LaserCut extends JFrame {
                 File iFile = fileChooser.getSelectedFile();
                 prefs.put("image.dir", iFile.getAbsolutePath());
                 ((CADRasterImage) shp).loadImage(iFile);
-                surface.placeShape(shp);
+                if (shp.placeParameterDialog(surface)) {
+                  surface.placeShape(shp);
+                }
               } catch (Exception ex) {
                 showErrorDialog("Unable to load file");
                 ex.printStackTrace(System.out);
@@ -715,7 +717,9 @@ public class LaserCut extends JFrame {
           AffineTransform at = AffineTransform.getTranslateInstance(-offX, -offY);
           shape = at.createTransformedShape(shape);
           CADShape shp = new CADScaledShape(shape, offX, offY, 0, false, 100.0);
-          surface.placeShape(shp);
+          if (shp.placeParameterDialog(surface)) {
+            surface.placeShape(shp);
+          }
         } catch (Exception ex) {
           showErrorDialog("Unable to load SVG file");
           ex.printStackTrace(System.out);
@@ -1925,6 +1929,15 @@ public class LaserCut extends JFrame {
             ex.printStackTrace();
           }
         }
+        // Position shape where user clicked on the "Place" butto
+        if ("Place".equals(actionButton)) {
+          Point mLoc = dialog.getMouseLoc();
+          Point dLoc = surface.getLocationOnScreen();
+          int xx = mLoc.x - dLoc.x;
+          int yy = mLoc.y - dLoc.y;
+          xLoc = xx / surface.getScreenScale();
+          yLoc = yy / surface.getScreenScale();
+        }
         return true;
       }
       return false;
@@ -2075,6 +2088,11 @@ public class LaserCut extends JFrame {
     @Override
     protected List<String> getEditFields () {
       return Arrays.asList("xLoc|in", "yLoc|in", "*width|in", "*height|in", "*imageDpi", "rotation|deg", "scale|%", "centered");
+    }
+
+    @Override
+    protected List<String> getPlaceFields () {
+      return Arrays.asList("*imageDpi", "rotation|deg", "scale|%", "centered");
     }
 
     // Custom write serializer for BufferedImage
@@ -3023,6 +3041,7 @@ public class LaserCut extends JFrame {
       addMouseMotionListener(new MouseMotionAdapter() {
         @Override
         public void mouseDragged (MouseEvent ev) {
+          super.mouseDragged(ev);
           if (dragged != null) {
             if (!pushedToStack) {
               pushedToStack = true;
@@ -3053,6 +3072,16 @@ public class LaserCut extends JFrame {
             view.x += (int) deltaX;
             view.y += (int) deltaY;
             scrollRectToVisible(view);
+            repaint();
+          }
+        }
+
+        @Override
+        public void mouseMoved (MouseEvent ev) {
+          super.mouseMoved(ev);
+          Point2D.Double newLoc = new Point2D.Double(ev.getX() / getScreenScale(), ev.getY() / getScreenScale());
+          if (shapeToPlace != null) {
+            shapeToPlace.setPosition(newLoc);
             repaint();
           }
         }
@@ -3286,6 +3315,7 @@ public class LaserCut extends JFrame {
     void placeShape (CADShape shape) {
       shapeToPlace = shape;
       itemInfo.setText("Click to place Shape");
+      repaint();
     }
 
     void placeShapes (List<CADShape> shapes) {
@@ -3598,6 +3628,12 @@ public class LaserCut extends JFrame {
         g2.fill(LineWithArrow.getArrow(measure1.x, maxY, measure2.x, maxY, true));
         g2.fill(LineWithArrow.getArrow(maxX, measure1.y, maxX, measure2.y, false));
         g2.fill(LineWithArrow.getArrow(maxX, measure1.y, maxX, measure2.y, true));
+      }
+      if (shapeToPlace != null) {
+        g2.setColor(Color.black);
+        g2.setStroke(new BasicStroke(1.0f));
+        g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.5f));
+        shapeToPlace.draw(g2, getScreenScale());
       }
     }
 
