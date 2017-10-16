@@ -706,7 +706,7 @@ public class LaserCut extends JFrame {
         try {
           File tFile = fileChooser.getSelectedFile();
           prefs.put("default.svg.dir", tFile.getAbsolutePath());
-          SVGParser parser = new SVGParser(true);
+          SVGParser parser = new SVGParser();
           //parser.enableDebug(true);
           Shape[] shapes = parser.parseSVG(tFile);
           shapes = SVGParser.removeOffset(shapes);

@@ -8,9 +8,7 @@ import java.awt.*;
 import java.awt.geom.*;
 import java.io.File;
 import java.text.DecimalFormat;
-import java.util.List;
 import java.util.ArrayList;
-import java.util.StringTokenizer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -19,21 +17,22 @@ import java.util.regex.Pattern;
   // https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths
   // https://www.w3.org/TR/SVG/paths.html
   // http://tutorials.jenkov.com/svg/svg-viewport-view-box.html
+  // https://mpetroff.net/2013/08/analysis-of-svg-units/
 
 /**
  * This is my attempt at a crude parser that tries to extract the vector portion of an SVG file
+ * It does not currently handle filled shapes, color, strokes, or text.
  */
 
 public class SVGParser {
-  private boolean         debug, pxIs72;
-  private DecimalFormat   df = new DecimalFormat("#.###");
-  private DecimalFormat   sf = new DecimalFormat("#.########");
-  private double          scaleX = 1, scaleY = 1;
-  private boolean         inMarker;
-  private AffineTransform gTrans;
+  private static DecimalFormat  df = new DecimalFormat("#.###");
+  private static DecimalFormat  sf = new DecimalFormat("#.########");
+  private boolean               debug;
+  private double                scaleX = 1, scaleY = 1, pxDpi = 96;
+  private boolean               inMarker;
+  private AffineTransform       gTrans;
 
-  public SVGParser (boolean pxIs72) {
-    this.pxIs72 = pxIs72;
+  public SVGParser () {
   }
 
   public void enableDebug (boolean enable) {
@@ -320,27 +319,32 @@ public class SVGParser {
     return shapes.toArray(new Shape[shapes.size()]);
   }
 
+  /**
+   * Converts the various units used by SVG files to inches
+   * Note: The px unit can vary depending on the software that generated the SVG file.  By default this code assumes
+   * 96px equals 1 inch (see: section 4.3.2 of https://www.w3.org/TR/2011/REC-CSS2-20110607/syndata.html#length-units)
+   * However, I may change the parser so it can alter this value if it detects an older file format, such as versions
+   * of inkscape prior to version 0.92 (see: https://github.com/t-oster/VisiCut/issues/347)
+   * @param data String version of value to parse
+   * @return value in inches
+   */
   private double getInches (String data) {
     if (data != null && data.length() > 0) {
       data = data.toLowerCase();
       if (data.endsWith("pt")) {
-        return Double.parseDouble(data.substring(0, data.length() - 2)) / 72;     // 72pt = 1 inch
+        return Double.parseDouble(data.substring(0, data.length() - 2)) / 72;       // 72pt = 1 inch
       } else if (data.endsWith("px")) {
-        if (pxIs72) {
-          return Double.parseDouble(data.substring(0, data.length() - 2)) / 72;   // 72px = 1 inch (Abobe uses 72px/inch!)
-        } else {
-          return Double.parseDouble(data.substring(0, data.length() - 2)) / 96;   // 96px = 1 inch (Abobe uses 72px/inch!)
-        }
+        return Double.parseDouble(data.substring(0, data.length() - 2)) / pxDpi;    // 96px = 1 inch (see note)
       } else if (data.endsWith("pc")) {
-        return Double.parseDouble(data.substring(0, data.length() - 2)) / 6;      // 6pc = 1 inch
+        return Double.parseDouble(data.substring(0, data.length() - 2)) / 6;        // 6pc = 1 inch
       } else if (data.endsWith("cm")) {
-        return Double.parseDouble(data.substring(0, data.length() - 2)) / 2.52;   // 2.54cm = 1 inch
+        return Double.parseDouble(data.substring(0, data.length() - 2)) / 2.52;     // 2.54cm = 1 inch
       } else if (data.endsWith("mm")) {
-        return Double.parseDouble(data.substring(0, data.length() - 2)) / 25.4;   // 25.4mm = 1 inch
+        return Double.parseDouble(data.substring(0, data.length() - 2)) / 25.4;     // 25.4mm = 1 inch
       } else if (data.endsWith("in")) {
-        return Double.parseDouble(data.substring(0, data.length() - 2));          // inches
+        return Double.parseDouble(data.substring(0, data.length() - 2));            // inches
       } else {
-        return Double.parseDouble(data) / 96;                                     // 96px = 1 inch
+        return Double.parseDouble(data) / pxDpi;                                    // 96px (see note)
       }
     }
     return 0;
@@ -375,9 +379,9 @@ public class SVGParser {
           break;
         case "rotate":      // 1 or 3 parameters
           if (parms.length == 1) {
-            at.rotate(parms[0]);
+            at.rotate(Math.toRadians(parms[0]));
           } else if (parms.length == 3) {
-            at.rotate(parms[0], parms[1], parms[2]);
+            at.rotate(Math.toRadians(parms[0]), parms[1], parms[2]);
           }
           break;
         case "skewX":       // 1 parameter
@@ -486,18 +490,113 @@ public class SVGParser {
     return tmp.toArray(new String[tmp.size()]);
   }
 
+  static String shapeToSVGPath (Shape shape, AffineTransform at) {
+    StringBuilder buf = new StringBuilder();
+    // Use PathIterator to generate sequence of line or curve segments
+    PathIterator pi = shape.getPathIterator(at);
+    while (!pi.isDone()) {
+      double[] coords = new double[6];      // p1.x, p1.y, p2.x, p2.y, p3.x, p3.y
+      int type = pi.currentSegment(coords);
+      switch (type) {
+        case PathIterator.SEG_MOVETO:   // 0
+          // Move to start of a line, or bezier curve segment
+          buf.append('M');
+          buf.append(df.format(coords[0]));
+          buf.append("in,");
+          buf.append(df.format(coords[1]));
+          buf.append("in ");
+          break;
+        case PathIterator.SEG_LINETO:   // 1
+          // Draw line from previous point to new point
+          buf.append('L');
+          buf.append(df.format(coords[0]));
+          buf.append("in,");
+          buf.append(df.format(coords[1]));
+          buf.append("in ");
+          break;
+        case PathIterator.SEG_QUADTO:   // 2
+          // Write 3 point, quadratic bezier curve from previous point to new point using one control point
+          buf.append('Q');
+          for (int ii = 0; ii < 4; ii += 2) {
+            buf.append(df.format(coords[ii]));
+            buf.append("in,");
+            buf.append(df.format(coords[ii + 1]));
+            buf.append("in ");
+          }
+          break;
+        case PathIterator.SEG_CUBICTO:  // 3
+          // Write 4 point, cubic bezier curve from previous point to new point using two control points
+          buf.append('C');
+          for (int ii = 0; ii < 6; ii += 2) {
+            buf.append(df.format(coords[ii]));
+            buf.append("in,");
+            buf.append(df.format(coords[ii + 1]));
+            buf.append("in ");
+          }
+          break;
+        case PathIterator.SEG_CLOSE:    // 4
+          // Close and write out the current curve
+          buf.append("z");
+          break;
+        default:
+          System.out.println("Error, Unknown PathIterator Type: " + type);
+          break;
+      }
+      pi.next();
+    }
+    return buf.toString();
+  }
+
+  /*
+   * * * * * * * * * * DEBUGGING and TEST TOOLS * * * * * * * * * *
+   */
+
   private void debugPrintln (String txt) {
     if (debug) {
       System.out.println(txt);
     }
   }
 
+  static String pad (String val, int size) {
+    while (val.length() < size) {
+      val = " " + val;
+    }
+    return val;
+  }
+
   public static void main (String[] args) throws Exception {
-    SVGParser parser = new SVGParser(true);
-    parser.enableDebug(true);
-    Shape[] shapes = parser.parseSVG(new File("Test/SVG Files/ArtSupplies.svg"));
-    shapes = removeOffset(shapes);
-    shapes = new Shape[]{combinePaths(shapes)};
-    new ShapeWindow(shapes, .25);
+    if (false) {
+      Shape shape = new Ellipse2D.Double(1, 1, 2, 2);
+      String path =  shapeToSVGPath(shape, new AffineTransform());
+      System.out.println(path);
+    } else {
+      if (false) {
+        File[] files = (new File("Test/SVG Files/")).listFiles((dir, name) -> name.toLowerCase().endsWith(".svg"));
+        int maxLen = 0;
+        for (File file : files) {
+          maxLen = Math.max(maxLen, file.getName().length() - 4);
+        }
+        for (File file : files) {
+          SVGParser parser = new SVGParser();
+          Shape[] shapes = parser.parseSVG(file);
+          shapes = removeOffset(shapes);
+          Shape shape = combinePaths(shapes);
+          Rectangle2D bounds = shape.getBounds2D();
+          String fName = file.getName().substring(0, file.getName().length() - 4);
+          String bx = pad(df.format(bounds.getX()), 7);
+          String by = pad(df.format(bounds.getY()), 7);
+          String bw = pad(df.format(bounds.getWidth()), 7);
+          String bh = pad(df.format(bounds.getHeight()), 7);
+          System.out.println(pad(fName + ": ", maxLen + 2) + bx + ", " + by + ", " + bw + ", " + bh);
+        }
+      } else {
+        SVGParser parser = new SVGParser();
+        parser.enableDebug(true);
+        Shape[] shapes = parser.parseSVG(new File("Test/SVG Files/rotate.svg"));
+        shapes = removeOffset(shapes);
+        Shape shape = combinePaths(shapes);
+        new ShapeWindow(new Shape[]{shape}, .25);
+      }
+    }
   }
 }
