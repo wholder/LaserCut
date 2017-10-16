@@ -30,6 +30,7 @@ public class SVGParser {
   private DecimalFormat   sf = new DecimalFormat("#.########");
   private double          scaleX = 1, scaleY = 1;
   private boolean         inMarker;
+  private AffineTransform gTrans;
 
   public SVGParser (boolean pxIs72) {
     this.pxIs72 = pxIs72;
@@ -61,7 +62,13 @@ public class SVGParser {
         Shape shape = null;
         switch (qName.toLowerCase()) {
           case "marker":
-            inMarker  = true;
+            inMarker = true;
+            break;
+          case "g":
+            String trans = attributes.getValue("transform");
+            if (trans != null) {
+              gTrans = getSVGTransform(trans, atScale);
+            }
             break;
           case "svg":
             String wAttr = attributes.getValue("width");
@@ -280,11 +287,16 @@ public class SVGParser {
             break;
         }
         if (shape != null) {
-          String transform = attributes.getValue("transform");
-          if (transform != null) {
-            debugPrintln("attribute 'transform' not supported!");
+          if (gTrans != null) {
+            shapes.add(gTrans.createTransformedShape(shape));
+          } else {
+            String trans = attributes.getValue("transform");
+            if (trans != null) {
+              shapes.add(getSVGTransform(trans, atScale).createTransformedShape(shape));
+            } else {
+              shapes.add(atScale.createTransformedShape(shape));
+            }
           }
-          shapes.add(atScale.createTransformedShape(shape));
         }
       }
 
@@ -292,6 +304,9 @@ public class SVGParser {
         switch (qName.toLowerCase()) {
           case "marker":
             inMarker = false;
+            break;
+          case "g":
+            gTrans = null;
             break;
         }
         debugPrintln("End Element: " + qName);
@@ -329,6 +344,56 @@ public class SVGParser {
       }
     }
     return 0;
+  }
+
+  // In development
+  private AffineTransform getSVGTransform (String trans, AffineTransform inTrans) {
+    AffineTransform at = new AffineTransform(inTrans);
+    Pattern iPat = Pattern.compile("((\\w+)\\(((\\-?\\d+\\.?\\d*e?\\-?\\d*,?)+)\\))+");
+    Matcher mat = iPat.matcher(trans.toLowerCase());
+    while (mat.find()) {
+      String func = mat.group(2);
+      String[] tmp = mat.group(3).split(",");
+      double[] parms = new double[tmp.length];
+      for (int ii = 0; ii < tmp.length; ii++) {
+        parms[ii] = Double.parseDouble(tmp[ii]);
+      }
+      switch (func) {
+        case "translate":   // 1 or 2 parameters
+          if (parms.length == 1) {
+            at.translate(parms[0], 0);
+          } else if (parms.length == 2) {
+            at.translate(parms[0], parms[1]);
+          }
+          break;
+        case "scale":       // 1 or 2 parameters
+          if (parms.length == 1) {
+            at.scale(parms[0], parms[0]);
+          } else if (parms.length == 2) {
+            at.scale(parms[0], parms[1]);
+          }
+          break;
+        case "rotate":      // 1 or 3 parameters
+          if (parms.length == 1) {
+            at.rotate(parms[0]);
+          } else if (parms.length == 3) {
+            at.rotate(parms[0], parms[1], parms[2]);
+          }
+          break;
+        case "skewX":       // 1 parameter
+          at.shear(parms[0], at.getShearY());
+          break;
+        case "skewY":       // 1 parameter
+          at.shear(at.getShearX(), parms[0]);
+          break;
+        case "matrix":      // 6 parameters
+          if (parms.length == 6) {
+            at.setTransform(parms[0] * inTrans.getScaleX(), parms[1], parms[2], parms[3] * inTrans.getScaleY(), parms[4], parms[5]);
+          }
+          break;
+      }
+    }
+    return at;
   }
 
   /**
@@ -430,7 +495,7 @@ public class SVGParser {
   public static void main (String[] args) throws Exception {
     SVGParser parser = new SVGParser(true);
     parser.enableDebug(true);
-    Shape[] shapes = parser.parseSVG(new File("Test/SVG Files/letter_reg-marks.svg"));
+    Shape[] shapes = parser.parseSVG(new File("Test/SVG Files/ArtSupplies.svg"));
     shapes = removeOffset(shapes);
     shapes = new Shape[]{combinePaths(shapes)};
     new ShapeWindow(shapes, .25);
