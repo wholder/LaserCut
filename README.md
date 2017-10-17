@@ -30,8 +30,9 @@ LaserCut uses the Java Language's reflection and object serialization features t
 - All shapes can be set to be cut or engraved by the laser cutter (Zing only)
 - Send jobs to an Eplilog™ Zing™ over an Ethernet connection (USB not supported)
 - Send jobs to a GRBL-based laser cutter with support for jogging position of laser head (experimental)
-- Import vector outlines from an SVG files (experimental)
+- Import vector outlines from an SVG files (beta)
 - Import drill holes and outlines from a Gerber file (experimental)
+- Export designs to SVG vector files (beta)
 - Export vector designs to a PDF file (experimental)
 - Freeform drawing of shapes (Beta) using [Catmull-Rom Splines](https://en.wikipedia.org/wiki/Centripetal_Catmull–Rom_spline) and then automatically convert them into [Bézier Curve](https://en.wikipedia.org/wiki/Bézier_curve)-based shapes.
 - Background reference images which can be used as templates
