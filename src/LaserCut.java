@@ -331,6 +331,8 @@ public class LaserCut extends JFrame {
           return;
       }
       JFileChooser fileChooser = new JFileChooser();
+      fileChooser.setDialogTitle("Open a LaserCut File");
+      fileChooser.setDialogType(JFileChooser.OPEN_DIALOG);
       FileNameExtensionFilter nameFilter = new FileNameExtensionFilter("LaserCut files (*.lzr)", "lzr");
       fileChooser.addChoosableFileFilter(nameFilter);
       fileChooser.setFileFilter(nameFilter);
@@ -355,6 +357,8 @@ public class LaserCut extends JFrame {
     saveAs.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, cmdMask));
     saveAs.addActionListener(ev -> {
       JFileChooser fileChooser = new JFileChooser();
+      fileChooser.setDialogTitle("Save a LaserCut File");
+      fileChooser.setDialogType(JFileChooser.SAVE_DIALOG);
       FileNameExtensionFilter nameFilter = new FileNameExtensionFilter("LaserCut files (*.lzr)", "lzr");
       fileChooser.addChoosableFileFilter(nameFilter);
       fileChooser.setFileFilter(nameFilter);
@@ -383,10 +387,12 @@ public class LaserCut extends JFrame {
     });
     fileMenu.add(saveAs);
     // Add "Save As" Item to File menu
-    JMenuItem saveSelected = new JMenuItem("Save Selected");
+    JMenuItem saveSelected = new JMenuItem("Save Selected As");
     saveSelected.setEnabled(false);
     saveSelected.addActionListener(ev -> {
       JFileChooser fileChooser = new JFileChooser();
+      fileChooser.setDialogTitle("Save Selected Shape as LaserCut File");
+      fileChooser.setDialogType(JFileChooser.SAVE_DIALOG);
       FileNameExtensionFilter nameFilter = new FileNameExtensionFilter("LaserCut files (*.lzr)", "lzr");
       fileChooser.addChoosableFileFilter(nameFilter);
       fileChooser.setFileFilter(nameFilter);
@@ -456,7 +462,9 @@ public class LaserCut extends JFrame {
           } else if (shp instanceof CADRasterImage) {
             // Prompt for Image file
             JFileChooser fileChooser = new JFileChooser();
-            FileNameExtensionFilter nameFilter = new FileNameExtensionFilter("Image files (jpg,jpeg,png,gif,bmp)", "jpg", "jpeg", "png", "gif", "bmp");
+            fileChooser.setDialogTitle("Select an Image File");
+            fileChooser.setDialogType(JFileChooser.OPEN_DIALOG);
+            FileNameExtensionFilter nameFilter = new FileNameExtensionFilter("Image files (jpg, jpeg, png, gif, bmp)", "jpg", "jpeg", "png", "gif", "bmp");
             fileChooser.addChoosableFileFilter(nameFilter);
             fileChooser.setFileFilter(nameFilter);
             fileChooser.setSelectedFile(new File(prefs.get("image.dir", "/")));
@@ -542,14 +550,19 @@ public class LaserCut extends JFrame {
     // Add "Zoom" Menu
     JMenu zoomMenu = new JMenu("Zoom");
     ButtonGroup zoomGroup = new ButtonGroup();
-    double[] zoomFactors = {1, 2, 3, 4};
-    for (double zoom : zoomFactors) {
-      JMenuItem zItem = new JRadioButtonMenuItem(zoom + " : 1");
+    for (double zoom : surface.getZoomFactors()) {
+      JRadioButtonMenuItem zItem = new JRadioButtonMenuItem(zoom + " : 1");
       zItem.setSelected(zoom == surface.getZoomFactor());
       zoomMenu.add(zItem);
       zoomGroup.add(zItem);
       zItem.addActionListener(ev -> surface.setZoomFactor(zoom));
     }
+    surface.addZoomListener((index) -> {
+      for (int ii = 0; ii < zoomMenu.getMenuComponentCount(); ii++) {
+        JRadioButtonMenuItem item = (JRadioButtonMenuItem) zoomMenu.getMenuComponent(ii);
+        item.setSelected(ii == index);
+      }
+    });
     menuBar.add(zoomMenu);
     // Add "Edit" Menu
     JMenu editMenu = new JMenu("Edit");
@@ -679,10 +692,12 @@ public class LaserCut extends JFrame {
      */
     JMenu importMenu = new JMenu("Import");
     // Add "LaserCut File" Item to File menu
-    JMenuItem importObj = new JMenuItem("LaserCut File");
+    JMenuItem importObj = new JMenuItem("Import LaserCut File");
     importObj.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_I, cmdMask));
     importObj.addActionListener(ev -> {
       JFileChooser fileChooser = new JFileChooser();
+      fileChooser.setDialogTitle("Select a LaserCut File");
+      fileChooser.setDialogType(JFileChooser.OPEN_DIALOG);
       FileNameExtensionFilter nameFilter = new FileNameExtensionFilter("LaserCut files (*.lzr)", "lzr");
       fileChooser.addChoosableFileFilter(nameFilter);
       fileChooser.setFileFilter(nameFilter);
@@ -701,9 +716,11 @@ public class LaserCut extends JFrame {
     });
     importMenu.add(importObj);
     // Add "SVG File" menu item
-    JMenuItem svgRead = new JMenuItem("SVG File");
+    JMenuItem svgRead = new JMenuItem("Import SVG File");
     svgRead.addActionListener(ev -> {
       JFileChooser fileChooser = new JFileChooser();
+      fileChooser.setDialogTitle("Select an SVG File");
+      fileChooser.setDialogType(JFileChooser.OPEN_DIALOG);
       FileNameExtensionFilter nameFilter = new FileNameExtensionFilter("Scalable Vector Graphics files (*.svg)", "svg");
       fileChooser.addChoosableFileFilter(nameFilter);
       fileChooser.setFileFilter(nameFilter);
@@ -735,10 +752,12 @@ public class LaserCut extends JFrame {
     });
     importMenu.add(svgRead);
      // Add Gerber menu item
-    gerberZip = new JMenuItem("Gerber Zip");
+    gerberZip = new JMenuItem("Import Gerber Zip");
     gerberZip.setVisible(prefs.getBoolean("gerber.import", false));
     gerberZip.addActionListener((ActionEvent ev) -> {
       JFileChooser fileChooser = new JFileChooser();
+      fileChooser.setDialogTitle("Select a Zip-encoded Gerber File");
+      fileChooser.setDialogType(JFileChooser.OPEN_DIALOG);
       FileNameExtensionFilter nameFilter = new FileNameExtensionFilter("Gerber .zip files (*.zip)", "zip");
       fileChooser.addChoosableFileFilter(nameFilter);
       fileChooser.setFileFilter(nameFilter);
@@ -1130,6 +1149,8 @@ public class LaserCut extends JFrame {
     JMenuItem pdfOutput = new JMenuItem("Export to PDF File");
     pdfOutput.addActionListener(ev -> {
       JFileChooser fileChooser = new JFileChooser();
+      fileChooser.setDialogTitle("Export to PDF File");
+      fileChooser.setDialogType(JFileChooser.SAVE_DIALOG);
       FileNameExtensionFilter nameFilter = new FileNameExtensionFilter("LaserCut files (*.pdf)", "pdf");
       fileChooser.addChoosableFileFilter(nameFilter);
       fileChooser.setFileFilter(nameFilter);
@@ -1157,6 +1178,8 @@ public class LaserCut extends JFrame {
     JMenuItem svgOutput = new JMenuItem("Export to SVG File");
     svgOutput.addActionListener(ev -> {
       JFileChooser fileChooser = new JFileChooser();
+      fileChooser.setDialogTitle("Export to SVG File");
+      fileChooser.setDialogType(JFileChooser.SAVE_DIALOG);
       FileNameExtensionFilter nameFilter = new FileNameExtensionFilter("LaserCut files (*.svg)", "svg");
       fileChooser.addChoosableFileFilter(nameFilter);
       fileChooser.setFileFilter(nameFilter);
@@ -2900,17 +2923,23 @@ public class LaserCut extends JFrame {
     void redoEnable (boolean enable);
   }
 
+  interface ZoomListener {
+    void setZoom (int zIndex);
+  }
+
   public class DrawSurface extends JPanel {
     private Dimension                       workSize;
     private List<CADShape>                  shapes = new ArrayList<>(), shapesToPlace;
     private CADShape                        selected, dragged, shapeToPlace;
     private double                          gridSpacing = prefs.getDouble("gridSpacing", 0);
     private int                             gridMajor = prefs.getInt("gridMajor", 0);
+    private double[]                        zoomFactors = {1, 2, 4};
     private double                          zoomFactor = 1;
     private Point2D.Double                  scrollPoint, measure1, measure2;
     private List<ShapeSelectListener>       selectListerners = new ArrayList<>();
     private List<ActionUndoListener>        undoListerners = new ArrayList<>();
     private List<ActionRedoListener>        redoListerners = new ArrayList<>();
+    private List<ZoomListener>              zoomListeners = new ArrayList<>();
     private LinkedList<byte[]>              undoStack = new LinkedList<>();
     private LinkedList<byte[]>              redoStack = new LinkedList<>();
     private boolean                         pushedToStack, showMeasure, doSnap, showGrid;
@@ -3060,6 +3089,41 @@ public class LaserCut extends JFrame {
         }
 
         @Override
+        public void mouseClicked (MouseEvent ev) {
+          super.mouseClicked(ev);
+          if (ev.getClickCount() == 2) {
+            // Double click to zoom in or out on location clicked
+            double newZoom;
+            int newX, newY;
+            Point pos = scrollPane.getViewport().getViewPosition();
+            if (ev.isShiftDown()) {
+              newZoom = Math.max(zoomFactor / 2, 1);
+              newX = pos.x - ev.getX() / 2;
+              newY = pos.y - ev.getY() / 2;
+            } else {
+              newZoom = Math.min(zoomFactor * 2, 4);
+              newX = pos.x + ev.getX();
+              newY = pos.y + ev.getY();
+            }
+            if (newZoom != zoomFactor) {
+              double zRatio = newZoom / zoomFactor;
+              zoomFactor = newZoom;
+              setSize(new Dimension((int) (workSize.getWidth() * zoomFactor), (int) (workSize.getHeight() * zoomFactor)));
+              scrollPane.getViewport().setViewPosition(new Point(newX, newY));
+              scrollPane.revalidate();
+              repaint();
+              for (int ii = 0; ii < zoomFactors.length; ii++) {
+                if (newZoom == zoomFactors[ii]) {
+                  for (ZoomListener listener : zoomListeners) {
+                    listener.setZoom(ii);
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        @Override
         public void mouseReleased (MouseEvent ev) {
           dragged = null;
           scrollPoint = null;
@@ -3164,6 +3228,14 @@ public class LaserCut extends JFrame {
       zoomFactor = tmp;
       getParent().revalidate();
       repaint();
+    }
+
+    double[] getZoomFactors () {
+      return zoomFactors;
+    }
+
+    void addZoomListener (ZoomListener listener) {
+      zoomListeners.add(listener);
     }
 
     void setZoomFactor (double zoom) {

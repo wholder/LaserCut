@@ -51,6 +51,7 @@ I'm working on more comprehensive documentation to be built into the code but, i
 - Select a shape and select **Edit->Move Selected** (or press the **CMD-M** shortcut key) to reposition a shape, or a group of shapes.
 - Select a shape and select **Edit->Delete Selected** (or press the **CMD-X** shortcut key) to delete a shape, or a group of shapes.
 - Select a shape and select **Edit->Duplicate Selected** (or press the **CMD-D** shortcut key) to create a duplicate shape you can then reposition.
+- Double Click to zoom in on location clicked, Shift-Double Click to zoom out.
 - Spline Shapes
   - Select `Spline Curve` from the `Shapes` menu then click to place the origin of the shape (does not create a point on the curve)
   - Click again to place first control point then again to place another (repeat to trace out curve.)
