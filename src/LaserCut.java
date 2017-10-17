@@ -106,6 +106,7 @@ public class LaserCut extends JFrame {
   private int                   zingEngraveFreq = prefs.getInt("zing.efreq", 500);
   private int                   miniPower = prefs.getInt("mini.power", 255);
   private int                   miniSpeed = prefs.getInt("mini.speed", 10);
+  private int                   pxDpi = prefs.getInt("svg.pxDpi", 96);
   private long                  savedCrc;
   private boolean               useMouseWheel = prefs.getBoolean("useMouseWheel", false);
   private boolean               miniDynamicLaser = prefs.getBoolean("mini.dynamicLaser", true);
@@ -170,7 +171,8 @@ public class LaserCut extends JFrame {
             "  LibLaserCut " + com.t_oster.liblasercut.LibInfo.getVersion() + "\n" +
             "  Java Simple Serial Connector " + SerialNativeInterface.getLibraryVersion() + "\n" +
             "  JSSC Native Code DLL Version " + SerialNativeInterface.getNativeLibraryVersion() + "\n" +
-            "  Apache PDFBox " + org.apache.pdfbox.util.Version.getVersion(),
+            "  Apache PDFBox " + org.apache.pdfbox.util.Version.getVersion() + "\n" +
+            "  Screen PPI " + SCREEN_PPI,
         "LaserCut " + VERSION,
         JOptionPane.INFORMATION_MESSAGE,
         new ImageIcon(getClass().getResource("/images/laser_wip_black.png")));
@@ -180,6 +182,7 @@ public class LaserCut extends JFrame {
     Map<String,ParameterDialog.ParmItem> items = new LinkedHashMap<>();
     items.put("useMouseWheel", new ParameterDialog.ParmItem("Enable Mouse Wheel Scrolling", prefs.getBoolean("useMouseWheel", false)));
     items.put("enableGerber", new ParameterDialog.ParmItem("Enable Gerber ZIP Import", prefs.getBoolean("gerber.import", false)));
+    items.put("pxDpi", new ParameterDialog.ParmItem("px per Inch (SVG Import/Export)", prefs.getInt("svg.pxDpi", 96)));
     ParameterDialog.ParmItem[] parmSet = items.values().toArray(new ParameterDialog.ParmItem[items.size()]);
     ParameterDialog dialog = (new ParameterDialog(parmSet, new String[] {"Save", "Cancel"}));
     dialog.setLocationRelativeTo(this);
@@ -194,6 +197,9 @@ public class LaserCut extends JFrame {
           boolean enabled = (Boolean) parm.value;
           prefs.putBoolean("gerber.import", enabled);
           gerberZip.setVisible(enabled);
+        } else if ("pxDpi".equals(name)) {
+          pxDpi = (Integer) parm.value;
+          prefs.putInt("svg.pxDpi", pxDpi);
         } else {
           System.out.println(name + ": " + parm.value);
         }
@@ -707,6 +713,7 @@ public class LaserCut extends JFrame {
           File tFile = fileChooser.getSelectedFile();
           prefs.put("default.svg.dir", tFile.getAbsolutePath());
           SVGParser parser = new SVGParser();
+          parser.setPxDpi(pxDpi);
           //parser.enableDebug(true);
           Shape[] shapes = parser.parseSVG(tFile);
           shapes = SVGParser.removeOffset(shapes);
@@ -1134,11 +1141,7 @@ public class LaserCut extends JFrame {
           sFile = new File(fName + ".pdf");
         }
         try {
-          if (sFile.exists()) {
-            if (showWarningDialog("Overwrite Existing file?")) {
-              surface.writePDF(sFile);
-            }
-          } else {
+          if (!sFile.exists() || showWarningDialog("Overwrite Existing file?")) {
             surface.writePDF(sFile);
           }
         } catch (Exception ex) {
@@ -1149,6 +1152,35 @@ public class LaserCut extends JFrame {
       }
     });
     exportMenu.add(pdfOutput);
+
+    // Add "Export to SVG File"" Menu Item
+    JMenuItem svgOutput = new JMenuItem("Export to SVG File");
+    svgOutput.addActionListener(ev -> {
+      JFileChooser fileChooser = new JFileChooser();
+      FileNameExtensionFilter nameFilter = new FileNameExtensionFilter("LaserCut files (*.svg)", "svg");
+      fileChooser.addChoosableFileFilter(nameFilter);
+      fileChooser.setFileFilter(nameFilter);
+      fileChooser.setSelectedFile(new File(prefs.get("default.svg", "/")));
+      if (fileChooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
+        File sFile = fileChooser.getSelectedFile();
+        String fName = sFile.getName();
+        if (!fName.contains(".")) {
+          sFile = new File(fName + ".svg");
+        }
+        try {
+          if (!sFile.exists() || showWarningDialog("Overwrite Existing file?")) {
+            surface.writeSVG(sFile);
+          }
+        } catch (Exception ex) {
+          showErrorDialog("Unable to save file");
+          ex.printStackTrace();
+        }
+        prefs.put("default.svg", sFile.getAbsolutePath());
+      }
+    });
+    exportMenu.add(svgOutput);
+
+
     menuBar.add(exportMenu);
     // Track window move events and save in prefs
     addComponentListener(new ComponentAdapter() {
@@ -3657,6 +3689,21 @@ public class LaserCut extends JFrame {
         g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.5f));
         shapeToPlace.draw(g2, getScreenScale());
       }
+    }
+
+    void writeSVG (File file) throws Exception {
+      List<Shape> sList = new ArrayList<>();
+      for (CADShape item : getDesign()) {
+        if (item instanceof CADReference)
+          continue;
+        Shape shape = item.getScreenTranslatedShape();
+        sList.add(shape);
+      }
+      Shape[] shapes = sList.toArray(new Shape[sList.size()]);
+      String xml = SVGParser.shapesToSVG(shapes, workSize, pxDpi);
+      FileOutputStream out = new FileOutputStream(file);
+      out.write(xml.getBytes("UTF8"));
+      out.close();
     }
 
     void writePDF (File file) throws Exception {

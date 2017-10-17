@@ -1,11 +1,21 @@
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
 import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
 
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
+import javax.xml.transform.OutputKeys;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
 import java.awt.*;
 import java.awt.geom.*;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
@@ -37,6 +47,10 @@ public class SVGParser {
 
   public void enableDebug (boolean enable) {
     debug = enable;
+  }
+
+  public void setPxDpi (int pxDpi) {
+    this.pxDpi = pxDpi;
   }
 
   public Shape[] parseSVG (File file) throws Exception {
@@ -502,26 +516,26 @@ public class SVGParser {
           // Move to start of a line, or bezier curve segment
           buf.append('M');
           buf.append(df.format(coords[0]));
-          buf.append("in,");
+          buf.append(",");
           buf.append(df.format(coords[1]));
-          buf.append("in ");
+          buf.append(" ");
           break;
         case PathIterator.SEG_LINETO:   // 1
           // Draw line from previous point to new point
           buf.append('L');
           buf.append(df.format(coords[0]));
-          buf.append("in,");
+          buf.append(",");
           buf.append(df.format(coords[1]));
-          buf.append("in ");
+          buf.append(" ");
           break;
         case PathIterator.SEG_QUADTO:   // 2
           // Write 3 point, quadratic bezier curve from previous point to new point using one control point
           buf.append('Q');
           for (int ii = 0; ii < 4; ii += 2) {
             buf.append(df.format(coords[ii]));
-            buf.append("in,");
+            buf.append(",");
             buf.append(df.format(coords[ii + 1]));
-            buf.append("in ");
+            buf.append(" ");
           }
           break;
         case PathIterator.SEG_CUBICTO:  // 3
@@ -529,9 +543,9 @@ public class SVGParser {
           buf.append('C');
           for (int ii = 0; ii < 6; ii += 2) {
             buf.append(df.format(coords[ii]));
-            buf.append("in,");
+            buf.append(",");
             buf.append(df.format(coords[ii + 1]));
-            buf.append("in ");
+            buf.append(" ");
           }
           break;
         case PathIterator.SEG_CLOSE:    // 4
@@ -545,6 +559,40 @@ public class SVGParser {
       pi.next();
     }
     return buf.toString();
+  }
+
+  public static String shapesToSVG (Shape[] shapes, Dimension size, double pxDpi) throws Exception {
+    DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
+    DocumentBuilder docBuilder = docFactory.newDocumentBuilder();
+    Document doc = docBuilder.newDocument();
+    Element svg = doc.createElement("svg");
+    svg.setAttribute("version", "1.0");
+    svg.setAttribute("width", Double.toString(size.width / pxDpi) + "in");
+    svg.setAttribute("height", Double.toString(size.height / pxDpi) + "in");
+    svg.setAttribute("viewBox", "0 0 " + Integer.toString(size.width) + " " + Integer.toString(size.height));
+    doc.appendChild(svg);
+    Element g = doc.createElement("g");
+    svg.appendChild(g);
+    g.setAttribute("fill", "none");
+    g.setAttribute("stroke", "black");
+    g.setAttribute("stroke-width", "0.001in");
+    AffineTransform at = new AffineTransform();
+    at.scale(pxDpi, pxDpi);
+    for (Shape shape : shapes) {
+      Element path = doc.createElement("path");
+      g.appendChild(path);
+      path.setAttribute("d", shapeToSVGPath(shape, at));
+    }
+    TransformerFactory transFac = TransformerFactory.newInstance();
+    Transformer trans = transFac.newTransformer();
+    trans.setOutputProperty(OutputKeys.INDENT, "yes");
+    trans.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
+    DOMSource source = new DOMSource(doc);
+    ByteArrayOutputStream out = new ByteArrayOutputStream();
+    StreamResult result =  new StreamResult(out);
+    out.close();
+    trans.transform(source, result);
+    return out.toString();
   }
 
   /*
