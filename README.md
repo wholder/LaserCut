@@ -35,7 +35,7 @@ LaserCut uses the Java Language's reflection and object serialization features t
 - Export designs to SVG vector files (beta)
 - Export vector designs to a PDF file (experimental)
 - Freeform drawing of shapes (Beta) using [Catmull-Rom Splines](https://en.wikipedia.org/wiki/Centripetal_Catmull–Rom_spline) and then automatically convert them into [Bézier Curve](https://en.wikipedia.org/wiki/Bézier_curve)-based shapes.
-- Background reference images which can be used as templates
+- Raster images which can be engraved on Zing or used as tracing templates for spline shapes
 ## Under Development
 - Support for a user-extendable library of specialized cutout shapes, such as for mounting RC Servos (to replace and extend the current Nema Stepper code)
 - Import vector shapes from EPS (Encapsulated PostScript®) files
