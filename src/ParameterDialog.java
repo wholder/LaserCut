@@ -11,9 +11,13 @@ class ParameterDialog extends JDialog {
     String      name, units = "", hint;
     Object      value, valueType;
     JComponent  field;
-    boolean     readOnly;
+    boolean     readOnly, sepBefore;
 
     ParmItem (String name, Object value) {
+      this(name, value, false);
+    }
+
+    ParmItem (String name, Object value, boolean sepBefore) {
       int idx1 = name.indexOf("{");
       int idx2 = name.indexOf("}");
       if (idx1 >= 0 && idx2 >= 0 && idx2 > idx1) {
@@ -39,6 +43,7 @@ class ParameterDialog extends JDialog {
         this.units = tmp[1];
       }
       this.value  = value;
+      this.sepBefore = sepBefore;
     }
 
     void setValue (Object value) {
@@ -130,9 +135,19 @@ class ParameterDialog extends JDialog {
     setTitle("Edit Parameters");
     JPanel fields = new JPanel();
     fields.setLayout(new GridBagLayout());
+    int jj = 0;
     for (int ii = 0; ii < parms.length; ii++) {
       ParmItem parm = parms[ii];
-      fields.add(new JLabel(parm.name + ": "), getGbc(0, ii));
+      if (parm.sepBefore) {
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.weightx = 1;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.gridwidth = GridBagConstraints.REMAINDER;
+        fields.add(new JSeparator(), gbc);
+        jj++;
+      }
+      fields.add(new JLabel(parm.name + ": "), getGbc(0, jj));
       if (parm.valueType instanceof Boolean) {
         JCheckBox select  = new JCheckBox();
         select.setBorderPainted(false);
@@ -140,13 +155,13 @@ class ParameterDialog extends JDialog {
         select.setBorderPaintedFlat(true);
         select.setSelected((Boolean) parm.value);
         select.setHorizontalAlignment(JCheckBox.RIGHT);
-        fields.add(parm.field = select, getGbc(1, ii));
+        fields.add(parm.field = select, getGbc(1, jj));
       } else if (parm.valueType instanceof String[]) {
         String[] labels = getLabels((String[]) parm.valueType);
         JComboBox select = new JComboBox<>(labels);
         String[] values = getValues((String[]) parm.valueType);
         select.setSelectedIndex(Arrays.asList(values).indexOf((String) parm.value));
-        fields.add(parm.field = select, getGbc(1, ii));
+        fields.add(parm.field = select, getGbc(1, jj));
       } else {
         String val = parm.value instanceof Double ? LaserCut.df.format(parm.value) : parm.value.toString();
         JTextField jtf = new JTextField(val, 6);
@@ -155,7 +170,7 @@ class ParameterDialog extends JDialog {
           jtf.setForeground(Color.gray);
         }
         jtf.setHorizontalAlignment(JTextField.RIGHT);
-        fields.add(parm.field = jtf, getGbc(1, ii));
+        fields.add(parm.field = jtf, getGbc(1, jj));
         parm.field.addFocusListener(new FocusAdapter() {
           @Override
           public void focusGained (FocusEvent ev) {
@@ -167,7 +182,7 @@ class ParameterDialog extends JDialog {
         });
       }
       if (parm.units != null) {
-        fields.add(new JLabel(" " + parm.units), getGbc(2, ii));
+        fields.add(new JLabel(" " + parm.units), getGbc(2, jj));
       }
       if (parm.hint != null) {
         parm.field.setToolTipText(parm.hint);
@@ -175,6 +190,7 @@ class ParameterDialog extends JDialog {
         parm.field.setToolTipText(Double.toString(LaserCut.inchesToMM((Double) parm.value)) + " mm");
 
       }
+      jj++;
     }
     // Define a custion action button so we can catch and save the screen coordinates where the "Place" button was clicked...
     // Yeah, it's a lot of weird code bit it avoids having the placed object not show up until the mouse is moved.
@@ -262,7 +278,7 @@ class ParameterDialog extends JDialog {
         new ParmItem("Enabled", true),
         new ParmItem("*Power|%{PWM Control}", 80),
         new ParmItem("Motor:Nema 8|0:Nema 11|1:Nema 14|2:Nema 17|3:Nema 23|4", "2"),
-        new ParmItem("Font:plain:bold:italic", "bold"),
+        new ParmItem("Font:plain:bold:italic", "bold", true),
         new ParmItem("Speed", 60),
         new ParmItem("Freq|Hz", 500.123456)};
     if (showSaveCancelParameterDialog(parmSet, null)) {

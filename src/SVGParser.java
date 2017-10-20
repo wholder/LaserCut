@@ -42,18 +42,18 @@ public class SVGParser {
   private boolean               inMarker;
   private AffineTransform       gTrans;
 
-  public SVGParser () {
+  SVGParser () {
   }
 
-  public void enableDebug (boolean enable) {
+  private void enableDebug (boolean enable) {
     debug = enable;
   }
 
-  public void setPxDpi (int pxDpi) {
+  void setPxDpi (int pxDpi) {
     this.pxDpi = pxDpi;
   }
 
-  public Shape[] parseSVG (File file) throws Exception {
+  Shape[] parseSVG (File file) throws Exception {
     SAXParserFactory factory = SAXParserFactory.newInstance();
     // Turn off validation to improve parsing speed
     factory.setNamespaceAware(false);
@@ -419,7 +419,7 @@ public class SVGParser {
    * @param shapes Array of Shape objects
    * @return Array of transformed Shape objects
    */
-  public static Shape[] removeOffset (Shape[] shapes) {
+  static Shape[] removeOffset (Shape[] shapes) {
     Rectangle2D bounds = null;
     for (Shape shape : shapes) {
       bounds = bounds == null ? BetterBoundingBox.getBounds(shape) : bounds.createUnion(BetterBoundingBox.getBounds(shape));
@@ -438,7 +438,7 @@ public class SVGParser {
    * @param shapes Array of Shape objects
    * @return New Shape object that contains all the features of the Array of Shapes
    */
-  public static Shape combinePaths (Shape[] shapes) {
+  static Shape combinePaths (Shape[] shapes) {
     Path2D.Double newShape = new Path2D.Double();
     AffineTransform atScale = AffineTransform.getTranslateInstance(0, 0);
     for (Shape shape : shapes) {
@@ -504,7 +504,7 @@ public class SVGParser {
     return tmp.toArray(new String[tmp.size()]);
   }
 
-  static String shapeToSVGPath (Shape shape, AffineTransform at) {
+  private static String shapeToSVGPath (Shape shape, AffineTransform at) {
     StringBuilder buf = new StringBuilder();
     // Use PathIterator to generate sequence of line or curve segments
     PathIterator pi = shape.getPathIterator(at);
@@ -561,7 +561,7 @@ public class SVGParser {
     return buf.toString();
   }
 
-  public static String shapesToSVG (Shape[] shapes, Dimension size, double pxDpi) throws Exception {
+  static String shapesToSVG (Shape[] shapes, Dimension size, double pxDpi) throws Exception {
     DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
     DocumentBuilder docBuilder = docFactory.newDocumentBuilder();
     Document doc = docBuilder.newDocument();

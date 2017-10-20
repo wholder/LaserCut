@@ -1,9 +1,3 @@
-import com.t_oster.liblasercut.LaserJob;
-import com.t_oster.liblasercut.PowerSpeedFocusFrequencyProperty;
-import com.t_oster.liblasercut.ProgressListener;
-import com.t_oster.liblasercut.VectorPart;
-import com.t_oster.liblasercut.drivers.EpilogZing;
-
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDDocumentInformation;
 import org.apache.pdfbox.pdmodel.PDPage;
@@ -85,27 +79,13 @@ import java.util.zip.CRC32;
 public class LaserCut extends JFrame {
   static final String           VERSION = "1.0 beta";
   static final double           SCREEN_PPI = java.awt.Toolkit.getDefaultToolkit().getScreenResolution();
-  static final double           ZING_PPI = 500;
   static final DecimalFormat    df = new DecimalFormat("#0.0###");
-  private static Dimension      zingFullSize = new Dimension((int) (16 * SCREEN_PPI), (int) (12 * SCREEN_PPI));
-  private static Dimension      zing12x12Size = new Dimension((int) (12 * SCREEN_PPI), (int) (12 * SCREEN_PPI));
-  private static Dimension      miniSize = new Dimension((int) (7 * SCREEN_PPI), (int) (8 * SCREEN_PPI));
   private static int            cmdMask = Toolkit.getDefaultToolkit().getMenuShortcutKeyMask();
-  private transient Preferences prefs = Preferences.userRoot().node(this.getClass().getName());
-  private JSSCPort              jPort;
-  private DrawSurface           surface;
+  transient Preferences prefs = Preferences.userRoot().node(this.getClass().getName());
+  DrawSurface                   surface;
   private JScrollPane           scrollPane;
   private JTextField            itemInfo = new JTextField();
   private JMenuItem             gerberZip;
-  private String                zingIpAddress = prefs.get("zing.ip", "10.0.1.201");
-  private int                   zingCutPower = prefs.getInt("zing.power", 85);
-  private int                   zingCutSpeed = prefs.getInt("zing.speed", 55);
-  private int                   zingCutFreq = prefs.getInt("zing.freq", 500);
-  private int                   zingEngravePower = prefs.getInt("zing.epower", 5);
-  private int                   zingEngraveSpeed = prefs.getInt("zing.espeed", 55);
-  private int                   zingEngraveFreq = prefs.getInt("zing.efreq", 500);
-  private int                   miniPower = prefs.getInt("mini.power", 255);
-  private int                   miniSpeed = prefs.getInt("mini.speed", 10);
   private int                   pxDpi = prefs.getInt("svg.pxDpi", 96);
   private long                  savedCrc;
   private boolean               useMouseWheel = prefs.getBoolean("useMouseWheel", false);
@@ -113,52 +93,11 @@ public class LaserCut extends JFrame {
   private boolean               snapToGrid = prefs.getBoolean("snapToGrid", true);
   private boolean               displayGrid = prefs.getBoolean("displayGrid", true);
   private static final boolean  enableMiniLazer = true;
-  private static Map<String,String> grblSettings = new LinkedHashMap<>();
-
-  static {
-    // Settings map for GRBL .9, or later
-    grblSettings.put("$0",   "Step pulse, usec");
-    grblSettings.put("$1",   "Step idle delay, msec");
-    grblSettings.put("$2",   "Step port invert, mask");
-    grblSettings.put("$3",   "Direction port invert, mask");
-    grblSettings.put("$4",   "Step enable invert, boolean");
-    grblSettings.put("$5",   "Limit pins invert, boolean");
-    grblSettings.put("$6",   "Probe pin invert, boolean");
-    grblSettings.put("$10",  "Status report, mask");
-    grblSettings.put("$11",  "Junction deviation, mm");
-    grblSettings.put("$12",  "Arc tolerance, mm");
-    grblSettings.put("$13",  "Report inches, boolean");
-    grblSettings.put("$20",  "Soft limits, boolean");
-    grblSettings.put("$21",  "Hard limits, boolean");
-    grblSettings.put("$22",  "Homing cycle, boolean");
-    grblSettings.put("$23",  "Homing dir invert, mask");
-    grblSettings.put("$24",  "Homing feed, mm/min");
-    grblSettings.put("$25",  "Homing seek, mm/min");
-    grblSettings.put("$26",  "Homing debounce, msec");
-    grblSettings.put("$27",  "Homing pull-off, mm");
-    grblSettings.put("$30",  "Max spindle speed, RPM");
-    grblSettings.put("$31",  "Min spindle speed, RPM");
-    grblSettings.put("$32",  "Laser mode, boolean");
-    grblSettings.put("$100", "X steps/mm");
-    grblSettings.put("$101", "Y steps/mm");
-    grblSettings.put("$102", "Z steps/mm");
-    grblSettings.put("$110", "X Max rate, mm/min");
-    grblSettings.put("$111", "Y Max rate, mm/min");
-    grblSettings.put("$112", "Z Max rate, mm/min");
-    grblSettings.put("$120", "X Acceleration, mm/sec^2");
-    grblSettings.put("$121", "Y Acceleration, mm/sec^2");
-    grblSettings.put("$122", "Z Acceleration, mm/sec^2");
-    grblSettings.put("$130", "X Max travel, mm");
-    grblSettings.put("$131", "Y Max travel, mm");
-    grblSettings.put("$132", "Z Max travel, mm");
-    grblSettings.put("$132", "Z Max travel, mm");
-  }
+  private MiniLaser             miniLaser;
 
   private boolean quitHandler () {
     if (savedCrc == surface.getDesignChecksum() || showWarningDialog("You have unsaved changes!\nDo you really want to quit?")) {
-      if (jPort != null) {
-        jPort.close();
-      }
+      miniLaser.close();
       return true;
     }
     return false;
@@ -219,7 +158,7 @@ public class LaserCut extends JFrame {
 
   private LaserCut () {
     setTitle("LaserCut");
-    surface = new DrawSurface(zingFullSize);
+    surface = new DrawSurface(ZingLaser.zingFullSize);
     scrollPane = new JScrollPane(surface);
     configureMouseWheel();
     add(scrollPane, BorderLayout.CENTER);
@@ -439,17 +378,16 @@ public class LaserCut extends JFrame {
     JMenu shapesMenu = new JMenu("Shapes");
     // Add options for other Shapes
     String[][] shapeNames = new String[][] {
-        {"Reference Point",         "CADReference"},
-        {"Rectangle",               "CADRectangle"},
-        {"Polygon",                 "CADPolygon"},
-        {"Oval",                    "CADOval"},
-        {"Gear",                    "CADGear"},
-        {"Text",                    "CADText"},
-        {"NEMA Stepper",            "CADNemaMotor"},
-        {"Bobbin",                  "CADBobbin"},
-        {"Raster Image (beta)",     "CADRasterImage"},
-        {"Reference Image (beta)",  "CADReferenceImage"},
-        {"Spline Curve (beta)",     "CADShapeSpline"}
+        {"Reference Point",     "CADReference"},
+        {"Rectangle",           "CADRectangle"},
+        {"Polygon",             "CADPolygon"},
+        {"Oval",                "CADOval"},
+        {"Text",                "CADText"},
+        {"Gear",                "CADGear"},
+        {"NEMA Stepper",        "CADNemaMotor"},
+        {"Bobbin",              "CADBobbin"},
+        {"Raster Image",        "CADRasterImage"},
+        {"Spline Curve",        "CADShapeSpline"}
     };
     for (String[] parts : shapeNames) {
       JMenuItem mItem = new JMenuItem(parts[0]);
@@ -816,331 +754,13 @@ public class LaserCut extends JFrame {
      *  Add "Export" Menu
      */
     JMenu exportMenu = new JMenu("Export");
-     // Add "Zing Laser" Menu Item
-    JMenu zingMenu = new JMenu("Zing Laser");
-    // Add "Send to Zing" Submenu Item
-    JMenuItem sendToZing = new JMenuItem("Send Job to Zing");
-    sendToZing.addActionListener(ev -> {
-      if (zingIpAddress == null ||  zingIpAddress.length() == 0) {
-        showErrorDialog("Please set the Zing's IP Address in Export->Zing Settings");
-        return;
-      }
-      if (showWarningDialog("Press OK to Send Job to Zing")) {
-        EpilogZing lasercutter = new EpilogZing(zingIpAddress);
-        // Set Properties for Materla, such as for 3 mm birch plywood, Set: 60% speed, 80% power, 0 focus, 500 Hz.
-        PowerSpeedFocusFrequencyProperty cutProperties = new PowerSpeedFocusFrequencyProperty();
-        cutProperties.setProperty("speed", zingCutSpeed);
-        cutProperties.setProperty("power", zingCutPower);
-        cutProperties.setProperty("frequency", zingCutFreq);
-        cutProperties.setProperty("focus", 0.0f);
-        PowerSpeedFocusFrequencyProperty engraveProperties = new PowerSpeedFocusFrequencyProperty();
-        engraveProperties.setProperty("speed", zingEngraveSpeed);
-        engraveProperties.setProperty("power", zingEngravePower);
-        engraveProperties.setProperty("frequency", zingEngraveFreq);
-        engraveProperties.setProperty("focus", 0.0f);
-        LaserJob job = new LaserJob("laserCut", "laserCut", "laserCut");   // title, name, user
-        // Process raster engrave passes, if any
-
-        // Process cut and vector engrave passes
-        for (int ii = 0; ii < 2; ii++) {
-          boolean doCut = ii == 1;
-          // Transform all the shapesInGroup into a series of line segments
-          int lastX = 0, lastY = 0;
-          VectorPart vp = new VectorPart(doCut ? cutProperties : engraveProperties, ZING_PPI);
-          // Loop detects pen up/pen down based on start and end points of line segments
-          for (CADShape shape : surface.selectLaserItems(doCut)) {
-            ArrayList<Line2D.Double> lines = shape.getScaledLines(ZING_PPI);
-            if (lines.size() > 0) {
-              boolean first = true;
-              for (Line2D.Double line : lines) {
-                Point p1 = new Point((int) Math.round(line.x1), (int) Math.round(line.y1));
-                Point p2 = new Point((int) Math.round(line.x2), (int) Math.round(line.y2));
-                if (first) {
-                  vp.moveto(p1.x, p1.y);
-                  vp.lineto(lastX = p2.x, lastY = p2.y);
-                } else {
-                  if (lastX != p1.x || lastY != p1.y) {
-                    vp.moveto(p1.x, p1.y);
-                  }
-                  vp.lineto(lastX = p2.x, lastY = p2.y);
-                }
-                first = false;
-              }
-            }
-          }
-          job.addPart(vp);
-        }
-        ZingMonitor zMon = new ZingMonitor();
-        new Thread(() -> {
-          try {
-            lasercutter.sendJob(job, new ProgressListener() {
-              @Override
-              public void progressChanged (Object o, int i) {
-                zMon.setProgress(i);
-              }
-
-              @Override
-              public void taskChanged (Object o, String s) {
-                //zMon.setProgress(i);
-              }
-            });
-          } catch (Exception ex) {
-            showErrorDialog("Unable to send job to Zing");
-          } finally {
-            zMon.setVisible(false);
-            zMon.setVisible(false);
-            zMon.dispose();
-          }
-        }).start();
-      }
-    });
-    zingMenu.add(sendToZing);
-    // Add "Zing Settings" Submenu Item
-    JMenuItem zingSettings = new JMenuItem("Zing Settings");
-    zingSettings.addActionListener(ev -> {
-      ParameterDialog.ParmItem[] parmSet = {
-          new ParameterDialog.ParmItem("Zing IP Add", zingIpAddress),
-          new ParameterDialog.ParmItem("Cut Power|%", zingCutPower),
-          new ParameterDialog.ParmItem("Cut Speed", zingCutSpeed),
-          new ParameterDialog.ParmItem("Cut Freq|Hz", zingCutFreq),
-          new ParameterDialog.ParmItem("Engrave Power|%", zingEngravePower),
-          new ParameterDialog.ParmItem("Engrave Speed", zingEngraveSpeed),
-          new ParameterDialog.ParmItem("Engrave Freq|Hz", zingEngraveFreq),
-      };
-      if (ParameterDialog.showSaveCancelParameterDialog(parmSet, this)) {
-        prefs.put("zing.ip", zingIpAddress = (String) parmSet[0].value);
-        prefs.putInt("zing.power", zingCutPower = (Integer) parmSet[1].value);
-        prefs.putInt("zing.speed", zingCutSpeed = (Integer) parmSet[2].value);
-        prefs.putInt("zing.freq",  zingCutFreq =  (Integer) parmSet[3].value);
-        prefs.putInt("zing.epower", zingCutPower = (Integer) parmSet[4].value);
-        prefs.putInt("zing.espeed", zingCutSpeed = (Integer) parmSet[5].value);
-        prefs.putInt("zing.efreq",  zingCutFreq =  (Integer) parmSet[6].value);
-      }
-    });
-    zingMenu.add(zingSettings);
-    // Add "Resize for Zing" Full Size Submenu Items
-    JMenuItem zingResize = new JMenuItem("Resize for Zing (" + (zingFullSize.width / SCREEN_PPI) + "x" + (zingFullSize.height / SCREEN_PPI) + ")");
-    zingResize.addActionListener(ev -> {
-      surface.setSurfaceSize(zingFullSize);
-    });
-    zingMenu.add(zingResize);
-    JMenuItem zing12x12 = new JMenuItem("Resize for Zing (" + (zing12x12Size.width / SCREEN_PPI) + "x" + (zing12x12Size.height / SCREEN_PPI) + ")");
-    zing12x12.addActionListener(ev -> {
-      surface.setSurfaceSize(zing12x12Size);
-    });
-    zingMenu.add(zing12x12);
-    exportMenu.add(zingMenu);
+     // Add "Zing Laser" Menu to Export Menu
+    exportMenu.add(ZingLaser.getZingMenu(this));
     boolean jPortError = false;
     if (enableMiniLazer) {
       try {
-        jPort = new JSSCPort(prefs);
-         // Add "Mini Laser" Menu Item
-        JMenu miniLaserMenu = new JMenu("Mini Laser");
-        // Add "Send to Mini Laser" Submenu Item
-        JPanel panel = new JPanel(new GridLayout(1, 2));
-        panel.add(new JLabel("Iterations: ", JLabel.RIGHT));
-        JTextField tf = new JTextField("1", 4);
-        panel.add(tf);
-        JMenuItem sendToMiniLazer = new JMenuItem("Send to GRBL to Mini Laser");
-        sendToMiniLazer.addActionListener((ActionEvent ex) -> {
-          int result = JOptionPane.showConfirmDialog(this, panel, "Send GRBL to Mini Laser", JOptionPane.YES_NO_OPTION,
-              JOptionPane.PLAIN_MESSAGE, null);
-          if (result == JOptionPane.OK_OPTION) {
-            try {
-              int iterations = Integer.parseInt(tf.getText());
-              // Generate G_Code for GRBL 1.1
-              ArrayList<String> cmds = new ArrayList<>();
-              // Add starting G-codes
-              cmds.add("G20");                                          // Set Inches as Units
-              int speed = Math.max(1, miniSpeed);
-              cmds.add("M05");                                          // Set Laser Off
-              int power = Math.min(1000, miniPower);
-              cmds.add("S" + power);                                    // Set Laser Power (0 - 255)
-              cmds.add("F" + speed);                                    // Set cut speed
-              double lastX = 0, lastY = 0;
-              for (int ii = 0; ii < iterations; ii++) {
-                boolean laserOn = false;
-                for (CADShape shape : surface.selectLaserItems(true)) {
-                  ArrayList<Line2D.Double> lines = shape.getScaledLines(1);
-                  boolean first = true;
-                  for (Line2D.Double line : lines) {
-                    String x1 = LaserCut.df.format(line.x1);
-                    String y1 = LaserCut.df.format(line.y1);
-                    String x2 = LaserCut.df.format(line.x2);
-                    String y2 = LaserCut.df.format(line.y2);
-                    if (first) {
-                      cmds.add("M05");                                      // Set Laser Off
-                      cmds.add("G00 X" + x1 + " Y" + y1);                   // Move to x1 y1
-                      if (power > 0) {
-                        cmds.add(miniDynamicLaser ? "M04" : "M03");        // Set Laser On
-                        laserOn = true;                                     // Leave Laser On
-                      }
-                      cmds.add("G01 X" + x2 + " Y" + y2);                   // Line to x2 y2
-                      lastX = line.x2;
-                      lastY = line.y2;
-                    } else {
-                      if (lastX != line.x1 || lastY != line.y1) {
-                        cmds.add("M05");                                    // Set Laser Off
-                        cmds.add("G00 X" + x1 + " Y" + y1);                 // Move to x1 y1
-                        laserOn = false;                                    // Leave Laser Off
-                      }
-                      if (!laserOn && power > 0) {
-                        cmds.add(miniDynamicLaser ? "M04" : "M03");        // Set Laser On
-                        laserOn = true;                                     // Leave Laser On
-                      }
-                      cmds.add("G01 X" + x2 + " Y" + y2);                   // Line to x2 y2
-                      lastX = line.x2;
-                      lastY = line.y2;
-                    }
-                    first = false;
-                  }
-                }
-              }
-              // Add ending G-codes
-              cmds.add("M5");                                           // Set Laser Off
-              cmds.add("G00 X0 Y0");                                    // Move back to Origin
-              new GRBLSender(cmds.toArray(new String[cmds.size()]));
-            } catch (Exception ex2) {
-              showErrorDialog("Invalid parameter " + tf.getText());
-            }
-          }
-        });
-        miniLaserMenu.add(sendToMiniLazer);
-        // Add "Mini Lazer Settings" Submenu Item
-        JMenuItem miniLazerSettings = new JMenuItem("Mini Lazer Settings");
-        miniLazerSettings.addActionListener(ev -> {
-          // Edit Mini Lazer Settings
-          ParameterDialog.ParmItem[] parmSet = {new ParameterDialog.ParmItem("Dynamic Laser", miniDynamicLaser),
-                                                new ParameterDialog.ParmItem("Power|%", miniPower),
-                                                new ParameterDialog.ParmItem("Speed", miniSpeed)};
-          if (ParameterDialog.showSaveCancelParameterDialog(parmSet, this)) {
-            prefs.putBoolean("dynamicLaser", miniDynamicLaser = (Boolean) parmSet[0].value);
-            prefs.putInt("mini.power", miniPower = (Integer) parmSet[1].value);
-            prefs.putInt("mini.speed", miniSpeed = (Integer) parmSet[2].value);
-          }
-        });
-        miniLaserMenu.add(miniLazerSettings);
-        // Add "Resize for Mini Lazer" Submenu Item
-        JMenuItem miniResize = new JMenuItem("Resize for Mini Lazer (" + (miniSize.width / SCREEN_PPI) + "x" + (miniSize.height / SCREEN_PPI) + ")");
-        miniResize.addActionListener(ev -> {
-          surface.setSurfaceSize(miniSize);
-        });
-        miniLaserMenu.add(miniResize);
-        // Add "Jog Controls" Submenu Item
-        JMenuItem jog = new JMenuItem("Jog Controls");
-        jog.addActionListener((ev) -> {
-          // Build Jog Controls
-          JPanel frame = new JPanel(new BorderLayout(0, 2));
-          JSlider speed = new JSlider(10, 100, 100);
-          speed.setMajorTickSpacing(10);
-          speed.setPaintTicks(true);
-          speed.setPaintLabels(true);
-          frame.add(speed, BorderLayout.NORTH);
-          JPanel buttons = new JPanel(new GridLayout(3, 4, 4, 4));
-          JLabel tmp;
-          Font font2 = new Font("Monospaced", Font.PLAIN, 20);
-          // Row 1
-          buttons.add(new JogButton(new Arrow(135), jPort, speed, "Y-% X-%"));   // Up Left
-          buttons.add(new JogButton(new Arrow(180), jPort, speed, "Y-%"));       // Up
-          buttons.add(new JogButton(new Arrow(225), jPort, speed, "Y-% X+%"));   // Up Right
-          buttons.add(new JogButton(new Arrow(180), jPort, speed, "Z+%"));       // Up
-          // Row 2
-          buttons.add(new JogButton(new Arrow(90), jPort, speed, "X-%"));        // Left
-          buttons.add(tmp = new JLabel("X/Y", JLabel.CENTER));
-          tmp.setFont(font2);
-          buttons.add(new JogButton(new Arrow(270), jPort, speed, "X+%"));       // Right
-          buttons.add(tmp = new JLabel("Z", JLabel.CENTER));
-          tmp.setFont(font2);
-          // Row 3
-          buttons.add(new JogButton(new Arrow(45), jPort, speed, "Y+% X-%"));    // Down Left
-          buttons.add(new JogButton(new Arrow(0), jPort, speed, "Y+%"));         // Down
-          buttons.add(new JogButton(new Arrow(315), jPort, speed, "Y+% X+%"));   // Down Right
-          buttons.add(new JogButton(new Arrow(0), jPort, speed, "Z-%"));         // Down
-          frame.add(buttons, BorderLayout.CENTER);
-          // Bring up Jog Controls
-          Object[] options = {"Set Origin", "Cancel"};
-          int res = JOptionPane.showOptionDialog(this, frame, "Jog Controls",
-              JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE,
-              null, options, options[0]);
-          if (res == JOptionPane.OK_OPTION) {
-            // Reset coords to new position after jog
-            try {
-              jPort.sendString("G92 X0 Y0 Z0\n");
-            } catch (Exception ex) {
-              ex.printStackTrace();
-            }
-          } else {
-            // Return to old home position
-            try {
-              jPort.sendString("G00 X0 Y0 Z0\n");
-            } catch (Exception ex) {
-              ex.printStackTrace();
-            }
-          }
-        });
-        miniLaserMenu.add(jog);
-        // Add "Get GRBL Settings" Menu Item
-        JMenuItem settings = new JMenuItem("Get GRBL Settings");
-        settings.addActionListener(ev -> {
-          StringBuilder buf = new StringBuilder();
-          new GRBLRunner("$I", buf);
-          String[] rsps = buf.toString().split("\n");
-          String grblVersion = null;
-          String grblOptions = null;
-          for (String rsp : rsps ) {
-            int idx1 = rsp.indexOf("[VER:");
-            int idx2 = rsp.indexOf("]");
-            if (idx1 >= 0 && idx2 > 0) {
-              grblVersion = rsp.substring(5, rsp.length() - 2);
-              if (grblVersion.contains(":")) {
-                grblVersion = grblVersion.split(":")[0];
-              }
-            }
-            idx1 = rsp.indexOf("[OPT:");
-            idx2 = rsp.indexOf("]");
-            if (idx1 >= 0 && idx2 > 0) {
-              grblOptions = rsp.substring(5, rsp.length() - 2);
-            }
-          }
-          buf.setLength(0);
-          new GRBLRunner("$$", buf);
-          String[] opts = buf.toString().split("\n");
-          HashMap<String,String> map = new LinkedHashMap<>();
-          for (String opt : opts) {
-            String[] vals = opt.split("=");
-            if (vals.length == 2) {
-              map.put(vals[0], vals[1]);
-            }
-          }
-          JPanel sPanel;
-          if (grblVersion != null) {
-            sPanel = new JPanel(new GridLayout(grblSettings.size() + 2, 2, 4, 0));
-            sPanel.add(new JLabel("GRBL Version: "));
-            sPanel.add(new JLabel(grblVersion));
-            sPanel.add(new JLabel("GRBL Options: "));
-            sPanel.add(new JLabel(grblOptions));
-            for (String key : grblSettings.keySet()) {
-              sPanel.add(new JLabel(key + " - " + grblSettings.get(key) + ": "));
-              sPanel.add(new JLabel(map.get(key)));
-            }
-          } else {
-            sPanel = new JPanel(new GridLayout(map.size() + 1, 2, 4, 0));
-            sPanel.add(new JLabel("GRBL Version: unknown"));
-            for (String key : map.keySet()) {
-              sPanel.add(new JLabel(map.get(key)));
-            }
-          }
-          Object[] options = {"OK"};
-          JOptionPane.showOptionDialog(this, sPanel, "GRBL Settings",
-              JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE,
-              null, options, options[0]);
-        });
-        miniLaserMenu.add(settings);
-        // Add "Port" and "Baud" Submenu to MenuBar
-        miniLaserMenu.add(jPort.getPortMenu());
-        miniLaserMenu.add(jPort.getBaudMenu());
-        // Add Mini Laser Menu Item to MenuBar
-        exportMenu.add(miniLaserMenu);
+         // Add "Mini Laser" Menu to Export Menu
+        exportMenu.add((miniLaser = new MiniLaser(this)).getMiniLaserMenu());
       } catch (Exception ex) {
         jPortError = true;
       }
@@ -1260,259 +880,6 @@ public class LaserCut extends JFrame {
     }
   }
 
-  class ZingMonitor extends JDialog {
-    private JProgressBar    progress;
-    private JTextArea       status;
-
-    ZingMonitor () {
-      super(LaserCut.this, "Zing Monitor");
-      add(progress = new JProgressBar(), BorderLayout.NORTH);
-      progress.setMaximum(100);
-      JScrollPane sPane = new JScrollPane(status = new JTextArea());
-      status.append("Starting Job...\n");
-      status.setMargin(new Insets(3, 3, 3, 3));
-      DefaultCaret caret = (DefaultCaret) status.getCaret();
-      caret.setUpdatePolicy(DefaultCaret.ALWAYS_UPDATE);
-      add(sPane, BorderLayout.CENTER);
-      Rectangle loc = LaserCut.this.getBounds();
-      setSize(300, 150);
-      setLocation(loc.x + loc.width / 2 - 150, loc.y + loc.height / 2 - 75);
-      setVisible(true);
-    }
-
-    void setProgress(int prog) {
-      progress.setValue(prog);
-      status.append("Completed prog" + prog + "%\n");
-    }
-  }
-
-  static class Arrow extends ImageIcon {
-    Rectangle bounds = new Rectangle(26, 26);
-    private Polygon arrow;
-
-    Arrow (double rotation) {
-      arrow = new Polygon();
-      arrow.addPoint(0, 11);
-      arrow.addPoint(10, -7);
-      arrow.addPoint(-10, -7);
-      arrow.addPoint(0, 11);
-      BufferedImage bImg = new BufferedImage(bounds.width, bounds.height, BufferedImage.TYPE_INT_RGB);
-      Graphics2D g2 = bImg.createGraphics();
-      g2.setBackground(Color.white);
-      g2.clearRect(0, 0, bounds.width, bounds.height);
-      g2.setColor(Color.darkGray);
-      AffineTransform at = AffineTransform.getTranslateInstance(bounds.width / 2, bounds.height / 2);
-      at.rotate(Math.toRadians(rotation));
-      g2.fill(at.createTransformedShape(arrow));
-      g2.setColor(Color.white);
-      setImage(bImg);
-    }
-  }
-
-  static class JogButton extends JButton implements Runnable, JSSCPort.RXEvent {
-    private JSSCPort    jPort;
-    private JSlider     speed;
-    private String      cmd;
-    private long        step;
-    private final Lock  lock = new Lock();
-    private int         wState;
-    transient boolean   running;
-
-    private static final class Lock { }
-
-    JogButton (Icon icon, JSSCPort jPort, JSlider speed, String cmd) {
-      super(icon);
-      this.jPort = jPort;
-      this.speed = speed;
-      this.cmd = cmd;
-      addMouseListener(new MouseAdapter() {
-        @Override
-        public void mousePressed (MouseEvent e) {
-          super.mousePressed(e);
-          running = true;
-          (new Thread(JogButton.this)).start();
-        }
-
-        @Override
-        public void mouseReleased (MouseEvent e) {
-          super.mouseReleased(e);
-          running = false;
-        }
-      });
-    }
-
-    public void run () {
-      jPort.setRXHandler(JogButton.this);
-      step = 0;
-      int nextStep = 0;
-      boolean firstPress = true;
-      try {
-        int sp = speed.getValue();
-        double ratio = sp / 100.0;
-        String fRate = "F" + (int) Math.max(75 * ratio, 5);
-        String sDist = LaserCut.df.format(.1 * ratio);
-        String jogCmd = "$J=G91 G20 " + fRate + " " + cmd + "\n";
-        jogCmd = jogCmd.replaceAll("%", sDist);
-        while (running) {
-          jPort.sendString(jogCmd);
-          nextStep++;
-          synchronized (lock) {
-            while (step < nextStep) {
-              lock.wait(20);
-            }
-            if (firstPress) {
-              Thread.sleep(100);
-            }
-            firstPress = false;
-          }
-        }
-        jPort.sendByte((byte) 0x85);
-        Thread.sleep(500);
-      } catch (Exception ex) {
-        ex.printStackTrace(System.out);
-      } finally {
-        jPort.removeRXHandler(JogButton.this);
-      }
-    }
-
-    public void rxChar (byte cc) {
-      if (cc == '\n') {
-        synchronized (lock) {
-          step++;
-        }
-      }
-    }
-  }
-
-  class GRBLRunner extends Thread implements JSSCPort.RXEvent {
-    private StringBuilder   response, line = new StringBuilder();
-    private CountDownLatch  latch = new CountDownLatch(1);
-    transient boolean       running = true;
-
-    GRBLRunner (String cmd, StringBuilder response) {
-      this.response = response;
-      jPort.setRXHandler(GRBLRunner.this);
-      start();
-      try {
-        jPort.sendString(cmd + '\n');
-        latch.await();
-      } catch (Exception ex) {
-        ex.printStackTrace();
-      }
-    }
-
-      public void rxChar (byte cc) {
-      if (cc == '\n') {
-        if ("ok".equalsIgnoreCase(line.toString().trim())) {
-          running = false;
-        }
-        line.setLength(0);
-        response.append('\n');
-      } else if (cc != '\r'){
-        line.append((char) cc);
-        response.append((char) cc);
-      }
-    }
-
-    public void run () {
-      int timeout = 10;
-      while (running) {
-        try {
-          Thread.sleep(100);
-          if (timeout-- < 0)
-            break;
-        } catch (InterruptedException ex) {
-          ex.printStackTrace();
-        }
-      }
-      latch.countDown();
-      jPort.removeRXHandler(GRBLRunner.this);
-    }
-  }
-
-  // https://github.com/gnea/grbl/wiki
-
-  class GRBLSender extends Thread implements JSSCPort.RXEvent {
-    private StringBuilder   response = new StringBuilder();
-    private String[]        cmds;
-    private JDialog         frame;
-    private JTextArea       grbl;
-    private JProgressBar    progress;
-    private long            step, nextStep;
-    private final Lock      lock = new Lock();
-    private boolean         doAbort;
-
-    final class Lock { }
-
-    GRBLSender (String[] cmds) {
-      this.cmds = cmds;
-      frame = new JDialog(LaserCut.this, "G-Code Monitor");
-      frame.add(progress = new JProgressBar(), BorderLayout.NORTH);
-      progress.setMaximum(cmds.length);
-      JScrollPane sPane = new JScrollPane(grbl = new JTextArea());
-      grbl.setMargin(new Insets(3, 3, 3, 3));
-      DefaultCaret caret = (DefaultCaret) grbl.getCaret();
-      caret.setUpdatePolicy(DefaultCaret.ALWAYS_UPDATE);
-      grbl.setEditable(false);
-      frame.add(sPane, BorderLayout.CENTER);
-      JButton abort = new JButton("Abort Job");
-      frame.add(abort, BorderLayout.SOUTH);
-      abort.addActionListener(ev -> doAbort = true);
-      Rectangle loc = LaserCut.this.getBounds();
-      frame.setSize(300, 300);
-      frame.setLocation(loc.x + loc.width / 2 - 150, loc.y + loc.height / 2 - 150);
-      frame.setVisible(true);
-      start();
-    }
-
-    public void rxChar (byte cc) {
-      if (cc == '\n') {
-        grbl.append(response.toString());
-        grbl.append("\n");
-        response.setLength(0);
-        synchronized (lock) {
-          step++;
-        }
-      } else {
-        response.append((char) cc);
-      }
-    }
-
-    private void stepWait () throws InterruptedException{
-      nextStep++;
-      synchronized (lock) {
-        while (step < nextStep) {
-          lock.wait(100);
-        }
-      }
-    }
-
-    public void run () {
-      jPort.setRXHandler(GRBLSender.this);
-      step = 0;
-      nextStep = 0;
-      try {
-        for (int ii = 0; (ii < cmds.length) && !doAbort; ii++) {
-          String gcode = cmds[ii];
-          progress.setValue(ii);
-          grbl.append(gcode + '\n');
-          jPort.sendString(gcode + '\n');
-          stepWait();
-        }
-        //jPort.sendByte((byte) 0x18);      // Locks up GRBL (can't jog after issued)
-        jPort.sendString("M5\n");           // Set Laser Off
-        stepWait();
-        jPort.sendString("G00 X0 Y0\n");    // Move back to Origin
-        stepWait();
-      } catch (Exception ex) {
-        ex.printStackTrace();
-      }
-      jPort.removeRXHandler(GRBLSender.this);
-      frame.setVisible(false);
-      frame.dispose();
-    }
-  }
-
   private List<CADShape> loadDesign (File fName) throws IOException, ClassNotFoundException {
     FileInputStream fileIn = new FileInputStream(fName);
     ObjectInputStream in = new ObjectInputStream(fileIn);
@@ -1530,13 +897,17 @@ public class LaserCut extends JFrame {
     fileOut.close();
   }
 
-  private boolean showWarningDialog (String msg) {
+  public boolean showWarningDialog (String msg) {
     return JOptionPane.showConfirmDialog(this, msg,
         "Warning", JOptionPane.YES_NO_OPTION, JOptionPane.PLAIN_MESSAGE) == JOptionPane.OK_OPTION;
   }
 
-  private void showErrorDialog (String msg) {
+  public void showErrorDialog (String msg) {
     JOptionPane.showMessageDialog(this, msg, "Error", JOptionPane.PLAIN_MESSAGE);
+  }
+
+  public void showInfoDialog (String msg) {
+    JOptionPane.showMessageDialog(this, msg);
   }
 
   static double mmToInches (double mm) {
@@ -2084,8 +1455,9 @@ public class LaserCut extends JFrame {
   static class CADRasterImage extends CADShape implements Serializable, CADNoDraw {
     private static final long serialVersionUID = 2309856254388651139L;
     public double             width, height, scale = 100.0;
-    public String             imageDpi;
-    Dimension                 dpi;
+    public boolean            engrave3D;
+    public String             imagePpi;
+    Dimension                 ppi;
     transient BufferedImage   img;
 
     CADRasterImage () {
@@ -2093,28 +1465,37 @@ public class LaserCut extends JFrame {
     }
 
     void loadImage (File imgFile) throws IOException {
-      dpi = getImageDPI(imgFile);
-      imageDpi = dpi.width + "x" + dpi.height;
+      ppi = getImageDPI(imgFile);
+      imagePpi = ppi.width + "x" + ppi.height;
       img = ImageIO.read(imgFile);
       ColorModel cm = img.getColorModel();
-      width = (double) img.getWidth() / dpi.width;
-      height = (double) img.getHeight() / dpi.height;
+      width = (double) img.getWidth() / ppi.width;
+      height = (double) img.getHeight() / ppi.height;
     }
 
     @Override
     void draw (Graphics2D g, double zoom) {
       Graphics2D g2 =  (Graphics2D)g.create();
-      BufferedImage bufimg = getImage();
+      BufferedImage bufimg;
+      if (engrave) {
+        // Convert Image to greyscale
+        bufimg = new BufferedImage(img.getWidth(), img.getHeight(), BufferedImage.TYPE_BYTE_GRAY);
+        Graphics2D g2d = bufimg.createGraphics();
+        g2d.drawImage(img, 0, 0, null);
+        g2d.dispose();
+      } else {
+        bufimg = img;
+      }
       // Transform image for centering, rotation and scale
       AffineTransform at = new AffineTransform();
       if (centered) {
         at.translate(xLoc * zoom, yLoc * zoom);
-        at.scale(scale / 100 * SCREEN_PPI / dpi.width, scale / 100 * SCREEN_PPI / dpi.height);
+        at.scale(scale / 100 * SCREEN_PPI / ppi.width, scale / 100 * SCREEN_PPI / ppi.height);
         at.rotate(Math.toRadians(rotation));
         at.translate(-bufimg.getWidth() / 2.0, -bufimg.getHeight() / 2.0);
       } else {
         at.translate(xLoc * zoom, yLoc * zoom);
-        at.scale(scale / 100 * SCREEN_PPI / dpi.width, scale / 100 * SCREEN_PPI / dpi.height);
+        at.scale(scale / 100 * SCREEN_PPI / ppi.width, scale / 100 * SCREEN_PPI / ppi.height);
         at.rotate(Math.toRadians(rotation));
       }
       // Draw with 40% Alpha to make image semi transparent
@@ -2124,13 +1505,80 @@ public class LaserCut extends JFrame {
       super.draw(g, zoom);
     }
 
-    BufferedImage getImage () {
-      // Convert Image to greyscale
-      BufferedImage bufimg = new BufferedImage(img.getWidth(), img.getHeight(), BufferedImage.TYPE_BYTE_GRAY);
-      Graphics2D g2d = bufimg.createGraphics();
-      g2d.drawImage(img, 0, 0, null);
-      g2d.dispose();
-      return bufimg;
+    /**
+     * Used to compute scale factors needed to engrave image on Zing
+     * @param destPpi destination ppi (usually ZING_PPI)
+     * @return array of double where [0] is x scale and [1] is y scale
+     */
+    double[] getScale (double destPpi) {
+      return new double[] {(double) destPpi / ppi.getWidth() * scale / 100, (double) destPpi / ppi.getHeight() * scale / 100};
+    }
+
+    /**
+     * Computes the bounding box (in pixels) after the imagea is scaled and rotated
+     * @param scale Array of double from getScale() where [0] is x scale and [1] is y scale
+     * @return Bounding box for scaled and rotated image
+     */
+    Rectangle2D getScaledRotatedBounds (double[] scale) {
+      AffineTransform at = new AffineTransform();
+      at.scale(scale[0], scale[1]);
+      at.rotate(Math.toRadians(rotation), (double) img.getWidth() / 2, (double) img.getHeight() / 2);
+      Path2D.Double tShape = (Path2D.Double) at.createTransformedShape(new Rectangle2D.Double(0, 0, img.getWidth(), img.getHeight()));
+      return tShape.getBounds2D();
+    }
+
+    /**
+     * Compute the AffineTransform needed to scale and rotate the image
+     * @param bb Bounding box computed by getScaledRotatedBounds()
+     * @param scale Array of double from getScale() where [0] is x scale and [1] is y scale
+     * @return AffineTransform which will scale and rotate image into bounding box computed by getScaledRotatedBounds()
+     */
+    AffineTransform getScaledRotatedTransform (Rectangle2D bb, double[] scale) {
+      AffineTransform at = new AffineTransform();
+      at.translate(-bb.getX(), -bb.getY());
+      at.scale(scale[0], scale[1]);
+      at.rotate(Math.toRadians(rotation), (double) img.getWidth() / 2, (double) img.getHeight() / 2);
+      return at;
+    }
+
+    /**
+     * Compute the origin point on the edge of the scaled and rotated image
+     * @param at AffineTransform used to scale and rotate
+     * @param bb Bounding box computed by getScaledRotatedBounds()
+     * @return Origin point on the edge of the image (offset by the negative of these amounts when drawing)
+     */
+    Point2D.Double getScaledRotatedOrigin (AffineTransform at, Rectangle2D bb) {
+      if (centered) {
+        return new Point2D.Double(bb.getWidth() / 2, bb.getHeight() / 2);
+      } else {
+        Point2D.Double origin = new Point2D.Double(0, 0);
+        at.transform(origin, origin);
+        return origin;
+      }
+    }
+
+    /**
+     * Generate a scaled and rotated image that fits inside the bounding box computed by getScaledRotatedBounds()
+     * @param at AffineTransform used to scale and rotate
+     * @param bb Bounding box computed by getScaledRotatedBounds()
+     * @param scale Array of double from getScale() where [0] is x scale and [1] is y scale
+     * @return BufferedImage containing scaled and rotated image
+     */
+    BufferedImage getScaledRotatedImage (AffineTransform at, Rectangle2D bb, double[] scale) {
+      // Create new BufferedImage the size of the bounding for for the scaled and rotated image
+      int wid = (int) Math.round(bb.getWidth());
+      int hyt = (int) Math.round(bb.getHeight());
+      BufferedImage bufImg = new BufferedImage(wid, hyt, BufferedImage.TYPE_INT_RGB);
+      Graphics2D g2 = bufImg.createGraphics();
+      g2.setColor(Color.white);
+      g2.fillRect(0, 0, wid, hyt);
+      // Draw scaled and rotated image into newly-created BufferedImage
+      at = new AffineTransform();
+      at.translate(-bb.getX(), -bb.getY());
+      at.scale(scale[0], scale[1]);
+      at.rotate(Math.toRadians(rotation), (double) img.getWidth() / 2, (double) img.getHeight() / 2);
+      g2.drawImage(img, at, null);
+      return bufImg;
     }
 
     @Override
@@ -2142,12 +1590,12 @@ public class LaserCut extends JFrame {
 
     @Override
     protected List<String> getEditFields () {
-      return Arrays.asList("xLoc|in", "yLoc|in", "*width|in", "*height|in", "*imageDpi", "rotation|deg", "scale|%", "centered");
+      return Arrays.asList("xLoc|in", "yLoc|in", "*width|in", "*height|in", "*imagePpi", "rotation|deg", "scale|%", "centered", "engrave", "engrave3D");
     }
 
     @Override
     protected List<String> getPlaceFields () {
-      return Arrays.asList("*imageDpi", "rotation|deg", "scale|%", "centered");
+      return Arrays.asList("*imagePpi", "rotation|deg", "scale|%", "centered", "engrave", "engrave3D");
     }
 
     // Custom write serializer for BufferedImage
@@ -2222,19 +1670,6 @@ public class LaserCut extends JFrame {
       }
       // Assume it's 72 DPI if there's no Metadata that specifies it
       return new Dimension(72, 72);
-    }
-  }
-
-  static class CADReferenceImage extends CADRasterImage implements Serializable {
-    private static final long serialVersionUID = 1171659976420013588L;
-
-    CADReferenceImage () {
-      engrave = false;
-    }
-
-    @Override
-    BufferedImage getImage () {
-      return img;
     }
   }
 
