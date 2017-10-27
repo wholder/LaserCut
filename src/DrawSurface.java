@@ -19,8 +19,8 @@ import java.util.zip.CRC32;
 
 public class DrawSurface extends JPanel {
   private LaserCut                        laserCut;
-  private Preferences prefs;
-  private Dimension workSize;
+  private Preferences                     prefs;
+  private Dimension                       workSize;
   private JTextField                      infoText;
   private java.util.List<LaserCut.CADShape> shapes = new ArrayList<>(), shapesToPlace;
   private LaserCut.CADShape selected, dragged, shapeToPlace;
@@ -152,7 +152,7 @@ public class DrawSurface extends JPanel {
                 dragged = shape;
                 setSelected(shape);
                 if (infoText != null) {
-                  infoText.setText("xLoc: " + dragged.xLoc + ", yLoc: " + dragged.yLoc);
+                  infoText.setText("xLoc: " + LaserCut.df.format(dragged.xLoc) + ", yLoc: " + LaserCut.df.format(dragged.yLoc));
                 }
                 showMeasure = false;
                 return;
@@ -254,7 +254,7 @@ public class DrawSurface extends JPanel {
           if (!dragged.doMovePoints(newLoc)) {
             Point2D.Double delta = dragged.setPosition(newLoc);
             if (infoText != null) {
-              infoText.setText("xLoc: " + dragged.xLoc + ", yLoc: " + dragged.yLoc);
+              infoText.setText("xLoc: " + LaserCut.df.format(dragged.xLoc) + ", yLoc: " + LaserCut.df.format(dragged.yLoc));
             }
             LaserCut.CADShapeGroup group = dragged.getGroup();
             if (group != null) {

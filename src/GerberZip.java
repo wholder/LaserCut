@@ -44,7 +44,7 @@ public class GerberZip {
   }
 
   public static void main (String[] args) throws Exception {
-    GerberZip gerber = new GerberZip(new File("archive.zip"));
+    GerberZip gerber = new GerberZip(new File("Test/archive.zip"));
       List<ExcellonHole> holes = gerber.parseExcellon();
       for (ExcellonHole hole : holes) {
         System.out.println(hole.xLoc + "," + hole.yLoc + "," + hole.diameter);
