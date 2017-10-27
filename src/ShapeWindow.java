@@ -56,7 +56,7 @@ class ShapeWindow extends JFrame {
 
   public static void main (String[] args) throws Exception {
     SVGParser parser = new SVGParser();
-    Shape[] shapes = parser.parseSVG(new File("svg/heart.svg"));
+    Shape[] shapes = parser.parseSVG(new File("Test/SVG Files/heart.svg"));
     new ShapeWindow(SVGParser.removeOffset(shapes), 0.125);
   }
 }

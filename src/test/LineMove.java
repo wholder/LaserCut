@@ -1,3 +1,5 @@
+package test;
+
 import java.awt.geom.Point2D;
 
   // See: http://math.stackexchange.com/questions/175896/finding-a-point-along-a-line-a-certain-distance-away-from-another-point

@@ -131,7 +131,7 @@ class ZingLaser {
             zMon.setVisible(false);
             zMon.dispose();
             if (hadError) {
-              laserCut.showInfoDialog("Unable to send job to Zing");
+              laserCut.showErrorDialog("Unable to send job to Zing");
             } else if (warnings.size() > 0) {
               StringBuilder buf = new StringBuilder();
               boolean addLf = false;
