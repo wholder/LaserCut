@@ -158,11 +158,16 @@ public class DrawSurface extends JPanel {
                 return;
               }
             }
+            if (selected.updateInternalState(DrawSurface.this, newLoc)) {
+              repaint();
+              return;
+            }
           }
           LaserCut.CADShape procShape = null;
           for (LaserCut.CADShape shape : shapes) {
             // Check for selection or deselection of shapes
-            if (shape.isShapeClicked(newLoc) || ((shape instanceof LaserCut.CADReference || shape instanceof LaserCut.CADShapeSpline) && shape.isPositionClicked(newLoc)) ) {
+            if (shape.isShapeClicked(newLoc) || ((shape instanceof LaserCut.CADReference || shape instanceof LaserCut.CADShapeSpline) &&
+                shape.isPositionClicked(newLoc)) ) {
               procShape = shape;
               break;
             }

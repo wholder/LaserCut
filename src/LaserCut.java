@@ -1,3 +1,4 @@
+import com.t_oster.liblasercut.utils.ShapeRecognizer;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDDocumentInformation;
 import org.apache.pdfbox.pdmodel.PDPage;
@@ -305,17 +306,19 @@ public class LaserCut extends JFrame {
       fileChooser.setSelectedFile(new File(prefs.get("default.dir", "/")));
       if (fileChooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
         File sFile = fileChooser.getSelectedFile();
-        String fName = sFile.getName();
-        if (!fName.contains(".")) {
-          sFile = new File(fName + ".lzr");
+        String fPath = sFile.getPath();
+        if (!fPath.contains(".")) {
+          sFile = new File(fPath + ".lzr");
         }
         try {
           if (sFile.exists()) {
             if (showWarningDialog("Overwrite Existing file?")) {
               saveDesign(sFile, surface.getDesign());
+              savedCrc = surface.getDesignChecksum();
             }
           } else {
             saveDesign(sFile, surface.getDesign());
+            savedCrc = surface.getDesignChecksum();
           }
           setTitle("LaserCut - (" + sFile + ")");
         } catch (IOException ex) {
@@ -339,9 +342,9 @@ public class LaserCut extends JFrame {
       fileChooser.setCurrentDirectory(new File(prefs.get("default.dir", "/")));
       if (fileChooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
         File sFile = fileChooser.getSelectedFile();
-        String fName = sFile.getName();
-        if (!fName.contains(".")) {
-          sFile = new File(fName + ".lzr");
+        String fPath = sFile.getPath();
+        if (!fPath.contains(".")) {
+          sFile = new File(fPath + ".lzr");
         }
         try {
           if (sFile.exists()) {
@@ -388,7 +391,8 @@ public class LaserCut extends JFrame {
         {"NEMA Stepper",        "CADNemaMotor"},
         {"Bobbin",              "CADBobbin"},
         {"Raster Image",        "CADRasterImage"},
-        {"Spline Curve",        "CADShapeSpline"}
+        {"Spline Curve",        "CADShapeSpline"},
+        {"Music Box Strip",     "CADMusicStrip"}
     };
     for (String[] parts : shapeNames) {
       JMenuItem mItem = new JMenuItem(parts[0]);
@@ -780,9 +784,9 @@ public class LaserCut extends JFrame {
       fileChooser.setSelectedFile(new File(prefs.get("default.pdf", "/")));
       if (fileChooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
         File sFile = fileChooser.getSelectedFile();
-        String fName = sFile.getName();
-        if (!fName.contains(".")) {
-          sFile = new File(fName + ".pdf");
+        String fPath = sFile.getPath();
+        if (!fPath.contains(".")) {
+          sFile = new File(fPath + ".pdf");
         }
         try {
           if (!sFile.exists() || showWarningDialog("Overwrite Existing file?")) {
@@ -809,9 +813,9 @@ public class LaserCut extends JFrame {
       fileChooser.setSelectedFile(new File(prefs.get("default.svg", "/")));
       if (fileChooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
         File sFile = fileChooser.getSelectedFile();
-        String fName = sFile.getName();
-        if (!fName.contains(".")) {
-          sFile = new File(fName + ".svg");
+        String fPath = sFile.getPath();
+        if (!fPath.contains(".")) {
+          sFile = new File(fPath + ".svg");
         }
         try {
           if (!sFile.exists() || showWarningDialog("Overwrite Existing file?")) {
@@ -1231,6 +1235,11 @@ public class LaserCut extends JFrame {
      * @return true if a moveable internal point is was clicked, else false
      */
     boolean selectMovePoint (DrawSurface surface, Point2D.Double point, Point2D.Double gPoint) {
+      return false;
+    }
+
+    boolean updateInternalState (DrawSurface surface, Point2D.Double point) {
+      // override in subclass, as needed
       return false;
     }
 
@@ -1684,6 +1693,128 @@ public class LaserCut extends JFrame {
       }
       // Assume it's 72 DPI if there's no Metadata that specifies it
       return new Dimension(72, 72);
+    }
+  }
+
+  static class CADMusicStrip extends CADShape implements Serializable {
+    private static final long serialVersionUID = 7398125917619364676L;
+    private static String[] symb = {"E ", "D ", "C ", "B ", "A#", "A ", "G#", "G ", "F#", "F ", "E ", "D#", "D ", "C#", "C ",
+                                    "B ", "A#", "A ", "G#", "G ", "F#", "F ", "E ", "D ", "C ", "B ", "A ", "G ", "D ", "C "};
+    private static double     xStep = 4.0;
+    private static double     yStep = 2.017;
+    private static double     xOff = mmToInches(8);
+    private static double     yOff = mmToInches(6);
+    private static double     holeDiam = mmToInches(2.4);
+    private static final int  cols = 60;
+    private boolean           checkClicked;
+    public double width,      height;
+    public boolean[][]        notes = new boolean[cols][30];
+    private transient Shape   rect;
+
+    @SuppressWarnings("unused")
+    CADMusicStrip () {
+      width = mmToInches(cols * 4 + 16);
+      height = mmToInches(70);
+    }
+
+    @Override
+    void draw (Graphics2D g, double zoom) {
+      Graphics2D g2 = (Graphics2D) g.create();
+      Stroke thick = new BasicStroke(1.0f);
+      Stroke thin = new BasicStroke(0.8f);
+      double mx = (xLoc + xOff) * zoom;
+      double my = (yLoc + yOff) * zoom;
+      double zf = zoom / SCREEN_PPI;
+      g2.setFont(new Font("Arial", Font.PLAIN, (int) (8 * zf)));
+      for (int ii = 0; ii <= notes.length; ii++) {
+        double sx = mx + mmToInches(ii * xStep * zoom);
+        g2.setColor((ii & 1) == 0 ? Color.black : Color.lightGray);
+        g2.setStroke((ii & 1) == 0 ? thick : thin);
+        g2.draw(new Line2D.Double(sx, my, sx, my + mmToInches(29 * yStep * zoom)));
+        for (int jj = 0; jj < 30; jj++) {
+          double sy = my + mmToInches(jj * yStep * zoom);
+          g2.setColor(jj == 0 || jj == 29 ? Color.black : Color.lightGray);
+          g2.setStroke(jj == 0 || jj == 29 ? thick : thin);
+          g2.draw(new Line2D.Double(mx, sy, mx + mmToInches(cols * xStep * zoom), sy));
+          if (ii == 0 ) {
+            g2.setColor(Color.orange);
+            g2.drawString(symb[jj], (int) (sx - 16 * zf), (int) (sy + 2.5 * zf));
+          }
+        }
+      }
+      g2.dispose();
+      super.draw(g, zoom);
+    }
+
+    @Override
+    boolean updateInternalState (DrawSurface surface, Point2D.Double point) {
+      // See if user clicked on one of the note spots (Note: point in screen inch coords)
+      double xx = inchesToMM(point.x - xLoc - xOff);
+      double yy = inchesToMM(point.y - yLoc - yOff);
+      double gridX = Math.floor((xx / xStep) + 0.5);
+      double gridY = Math.floor((yy / yStep) + 0.5);
+      double dX = xx - gridX * xStep;
+      double dY = yy - gridY * yStep;
+      double dist = Math.sqrt(dX * dX + dY * dY);
+      //System.out.println(df.format(gridX) + ", " + df.format(gridY) + " - " +  df.format(dist));
+      if (dist <= .75 && gridX < notes.length && gridY < 30) {
+        // Used has clicked in a note circle
+        notes[(int) gridX][(int) gridY] ^= true;
+        updateShape();
+        surface.pushToUndoStack();
+        return true;
+      }
+      return false;
+    }
+
+    @Override
+    Shape getShape () {
+      if (checkClicked && rect != null) {
+        return rect;
+      }
+      return super.getShape();
+    }
+
+    @Override
+    boolean isShapeClicked (Point2D.Double point) {
+      checkClicked = true;
+      boolean clicked = super.isShapeClicked(point);
+      checkClicked = false;
+      return clicked;
+    }
+
+    @Override
+    Shape buildShape () {
+      Path2D.Double path = new Path2D.Double();
+      double xx = -width / 2;
+      double yy = -height / 2;
+      path.append(rect = new Rectangle2D.Double(xx, yy, width, height), false);
+      double rad = holeDiam / 2;
+      for (int ii = 0; ii < notes.length; ii++) {
+        double sx = xx + xOff + mmToInches(ii * xStep);
+        for (int jj = 0; jj < 30; jj++) {
+          double sy = yy + yOff + mmToInches(jj * yStep);
+          if (notes[ii][jj]) {
+            path.append(new Ellipse2D.Double(sx - rad, sy - rad, holeDiam, holeDiam), false);
+          }
+        }
+      }
+      return path;
+    }
+
+    @Override
+    String[] getParameterNames () {
+      return new String[0];
+    }
+
+    @Override
+    protected List<String> getEditFields () {
+      return Arrays.asList("xLoc|in", "yLoc|in");
+    }
+
+    @Override
+    protected List<String> getPlaceFields () {
+      return Arrays.asList("xLoc|in", "yLoc|in");
     }
   }
 
@@ -2250,6 +2381,7 @@ public class LaserCut extends JFrame {
       }
     }
   }
+
   static class CADGear extends CADShape implements Serializable {
     private static final long serialVersionUID = 2334548672295293845L;
     public double module, pressAngle, profileShift, holeSize, diameter;
