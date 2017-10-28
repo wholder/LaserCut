@@ -121,6 +121,8 @@ public class LaserCut extends JFrame {
   private void showPreferencesBox () {
     Map<String,ParameterDialog.ParmItem> items = new LinkedHashMap<>();
     items.put("useMouseWheel", new ParameterDialog.ParmItem("Enable Mouse Wheel Scrolling", prefs.getBoolean("useMouseWheel", false)));
+    items.put("useDblClkZoom", new ParameterDialog.ParmItem("Enable Double-click Zoom{Dbl click to Zoom 2x, Shift + dbl click to unZoom}",
+        prefs.getBoolean("useDblClkZoom", false)));
     items.put("enableGerber", new ParameterDialog.ParmItem("Enable Gerber ZIP Import", prefs.getBoolean("gerber.import", false)));
     items.put("pxDpi", new ParameterDialog.ParmItem("px per Inch (SVG Import/Export)", prefs.getInt("svg.pxDpi", 96)));
     ParameterDialog.ParmItem[] parmSet = items.values().toArray(new ParameterDialog.ParmItem[items.size()]);
@@ -133,7 +135,9 @@ public class LaserCut extends JFrame {
         if ("useMouseWheel".equals(name)) {
           prefs.putBoolean("useMouseWheel", useMouseWheel = (Boolean) parm.value);
           configureMouseWheel();
-        } else if ("enableGerber".equals(name)) {
+        } else if ("useDblClkZoom".equals(name)) {
+            surface.setDoubleClickZoomEnable((Boolean) parm.value);
+          } else if ("enableGerber".equals(name)) {
           boolean enabled = (Boolean) parm.value;
           prefs.putBoolean("gerber.import", enabled);
           gerberZip.setVisible(enabled);
@@ -1176,8 +1180,8 @@ public class LaserCut extends JFrame {
       return lines.toArray(new Line2D.Double[lines.size()]);
     }
 
-    void draw (Graphics2D g2, double zoom) {
-      Stroke saveStroke = g2.getStroke();
+    void draw (Graphics g, double zoom) {
+      Graphics2D g2 = (Graphics2D) g.create();
       Shape dShape = getScreenTranslatedShape();
       boolean inGroup = getGroup() != null && getGroup().isGroupSelected();
       boolean highlight = isSelected || inGroup;
@@ -1203,7 +1207,7 @@ public class LaserCut extends JFrame {
         g2.draw(new Line2D.Double(mx - mWid, my, mx + mWid, my));
         g2.draw(new Line2D.Double(mx, my - mWid, mx, my + mWid));
       }
-      g2.setStroke(saveStroke);
+      g2.dispose();
     }
 
     Color getShapeColor (boolean highlight, boolean engrave) {
@@ -1497,8 +1501,8 @@ public class LaserCut extends JFrame {
     }
 
     @Override
-    void draw (Graphics2D g, double zoom) {
-      Graphics2D g2 =  (Graphics2D)g.create();
+    void draw (Graphics g, double zoom) {
+      Graphics2D g2 =  (Graphics2D) g.create();
       BufferedImage bufimg;
       if (engrave) {
         // Convert Image to greyscale
@@ -1718,7 +1722,7 @@ public class LaserCut extends JFrame {
     }
 
     @Override
-    void draw (Graphics2D g, double zoom) {
+    void draw (Graphics g, double zoom) {
       Graphics2D g2 = (Graphics2D) g.create();
       Stroke thick = new BasicStroke(1.0f);
       Stroke thin = new BasicStroke(0.8f);
@@ -2368,8 +2372,9 @@ public class LaserCut extends JFrame {
     }
 
     @Override
-    void draw (Graphics2D g2, double zoom) {
-      super.draw(g2, zoom);
+    void draw (Graphics g, double zoom) {
+      super.draw(g, zoom);
+      Graphics2D g2 = (Graphics2D) g;
       // Draw all Catmull-Rom Control Points
       g2.setColor(isSelected ? Color.red : closePath ? Color.lightGray : Color.darkGray);
       for (Point2D.Double cp : points) {
@@ -2426,8 +2431,9 @@ public class LaserCut extends JFrame {
     }
 
     @Override
-    void draw (Graphics2D g2, double zoom) {
-      super.draw(g2, zoom);
+    void draw (Graphics g, double zoom) {
+      super.draw(g, zoom);
+      Graphics2D g2 = (Graphics2D) g;
       // Draw dashed line in magenta to show gear diameter
       g2.setColor(Color.MAGENTA);
       BasicStroke dashed = new BasicStroke(1.0f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 10.0f, new float[] {10.0f}, 0.0f);

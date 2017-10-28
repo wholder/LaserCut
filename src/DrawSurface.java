@@ -29,6 +29,7 @@ public class DrawSurface extends JPanel {
   private double[]                        zoomFactors = {1, 2, 4};
   private double                          zoomFactor = 1;
   private Point2D.Double                  scrollPoint, measure1, measure2;
+  private boolean                         useDblClkZoom;
   private java.util.List<LaserCut.ShapeSelectListener> selectListerners = new ArrayList<>();
   private java.util.List<LaserCut.ActionUndoListener> undoListerners = new ArrayList<>();
   private java.util.List<LaserCut.ActionRedoListener> redoListerners = new ArrayList<>();
@@ -43,6 +44,7 @@ public class DrawSurface extends JPanel {
     this.prefs = prefs;
     gridSpacing = prefs.getDouble("gridSpacing", 0);
     gridMajor = prefs.getInt("gridMajor", 0);
+    useDblClkZoom = prefs.getBoolean("useDblClkZoom", false);
     // Set JPanel size for Zing's maximum work area, or other, if resized by user
     setPreferredSize(this.workSize = workSize);
     addMouseListener(new MouseAdapter() {
@@ -201,7 +203,7 @@ public class DrawSurface extends JPanel {
       @Override
       public void mouseClicked (MouseEvent ev) {
         super.mouseClicked(ev);
-        if (ev.getClickCount() == 2) {
+        if (ev.getClickCount() == 2 && useDblClkZoom) {
           // Double click to zoom in or out on location clicked
           double newZoom;
           int newX, newY;
@@ -320,6 +322,10 @@ public class DrawSurface extends JPanel {
         }
       }
     });
+  }
+
+  void setDoubleClickZoomEnable (boolean enable) {
+    prefs.putBoolean("useDblClkZoom", useDblClkZoom = enable);
   }
 
   @Override

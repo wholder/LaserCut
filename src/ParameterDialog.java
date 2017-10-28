@@ -276,7 +276,7 @@ class ParameterDialog extends JDialog {
   public static void main (String... args) {
     ParmItem[] parmSet = {
         new ParmItem("Enabled", true),
-        new ParmItem("*Power|%{PWM Control}", 80),
+        new ParmItem("*Power|%{tool tip}", 80),
         new ParmItem("Motor:Nema 8|0:Nema 11|1:Nema 14|2:Nema 17|3:Nema 23|4", "2"),
         new ParmItem("Font:plain:bold:italic", "bold", true),
         new ParmItem("Speed", 60),
