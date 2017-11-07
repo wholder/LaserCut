@@ -111,17 +111,24 @@ public class LaserCut extends JFrame {
   }
 
   private void showAboutBox () {
+    ImageIcon icon = null;
+    try {
+      icon = new ImageIcon(getClass().getResource("/images/laser_wip_black.png"));
+    } catch (Exception ex) {
+      ex.printStackTrace();
+    }
     JOptionPane.showMessageDialog(this,
         "By: Wayne Holder\n" +
             "  Java Runtime  " + Runtime.version() + "\n" +
             "  LibLaserCut " + com.t_oster.liblasercut.LibInfo.getVersion() + "\n" +
+            (enableMiniLazer ?
             "  Java Simple Serial Connector " + SerialNativeInterface.getLibraryVersion() + "\n" +
-            "  JSSC Native Code DLL Version " + SerialNativeInterface.getNativeLibraryVersion() + "\n" +
+            "  JSSC Native Code DLL Version " + SerialNativeInterface.getNativeLibraryVersion() + "\n" : "") +
             "  Apache PDFBox " + org.apache.pdfbox.util.Version.getVersion() + "\n" +
             "  Screen PPI " + SCREEN_PPI,
         "LaserCut " + VERSION,
         JOptionPane.INFORMATION_MESSAGE,
-        new ImageIcon(getClass().getResource("/images/laser_wip_black.png")));
+        icon);
   }
 
   private void showPreferencesBox () {
