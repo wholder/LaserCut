@@ -1,5 +1,5 @@
 <component name="ArtifactManager">
-  <artifact type="jar" name="LaserCut:jar">
+  <artifact type="jar" build-on-make="true" name="LaserCut:jar">
     <output-path>$PROJECT_DIR$/out/artifacts/LaserCut_jar</output-path>
     <root id="archive" name="LaserCut.jar">
       <element id="module-output" name="LaserCut" />

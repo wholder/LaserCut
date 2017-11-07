@@ -160,7 +160,8 @@ public class DrawSurface extends JPanel {
                 return;
               }
             }
-            if (selected.updateInternalState(DrawSurface.this, newLoc)) {
+            if (selected.updateInternalState(newLoc)) {
+              pushToUndoStack();
               repaint();
               return;
             }

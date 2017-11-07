@@ -45,7 +45,7 @@ import java.util.zip.CRC32;
   Zoom & Pan: https://community.oracle.com/thread/1263955
   https://developer.apple.com/library/content/documentation/Java/Conceptual/Java14Development/07-NativePlatformIntegration/NativePlatformIntegration.html
 
-  Note: unable to use CMD-A, CMD-C, CMD-H, CMD-Q, CMD-X as shortcut keys
+  Note: unable to use CMD-A, CMD-C, CMD-H, CMD-Q as shortcut keys
   */
 
   /*
@@ -82,7 +82,7 @@ public class LaserCut extends JFrame {
   static final double           SCREEN_PPI = java.awt.Toolkit.getDefaultToolkit().getScreenResolution();
   static final DecimalFormat    df = new DecimalFormat("#0.0###");
   private static int            cmdMask = Toolkit.getDefaultToolkit().getMenuShortcutKeyMask();
-  transient Preferences prefs = Preferences.userRoot().node(this.getClass().getName());
+  transient Preferences         prefs = Preferences.userRoot().node(this.getClass().getName());
   DrawSurface                   surface;
   private JScrollPane           scrollPane;
   private JTextField            itemInfo = new JTextField();
@@ -93,12 +93,18 @@ public class LaserCut extends JFrame {
   private boolean               miniDynamicLaser = prefs.getBoolean("mini.dynamicLaser", true);
   private boolean               snapToGrid = prefs.getBoolean("snapToGrid", true);
   private boolean               displayGrid = prefs.getBoolean("displayGrid", true);
-  private static final boolean  enableMiniLazer = true;
+  private static final boolean  enableMiniLazer = !System.getProperty("os.name").toLowerCase().contains("win");
   private MiniLaser             miniLaser;
 
   private boolean quitHandler () {
     if (savedCrc == surface.getDesignChecksum() || showWarningDialog("You have unsaved changes!\nDo you really want to quit?")) {
-      miniLaser.close();
+      if (enableMiniLazer) {
+        try {
+          miniLaser.close();
+        } catch (Exception ex) {
+          ex.printStackTrace();
+        }
+      }
       return true;
     }
     return false;
@@ -1242,7 +1248,7 @@ public class LaserCut extends JFrame {
       return false;
     }
 
-    boolean updateInternalState (DrawSurface surface, Point2D.Double point) {
+    boolean updateInternalState (Point2D.Double point) {
       // override in subclass, as needed
       return false;
     }
@@ -1751,7 +1757,7 @@ public class LaserCut extends JFrame {
     }
 
     @Override
-    boolean updateInternalState (DrawSurface surface, Point2D.Double point) {
+    boolean updateInternalState (Point2D.Double point) {
       // See if user clicked on one of the note spots (Note: point in screen inch coords)
       double xx = inchesToMM(point.x - xLoc - xOff);
       double yy = inchesToMM(point.y - yLoc - yOff);
@@ -1765,7 +1771,6 @@ public class LaserCut extends JFrame {
         // Used has clicked in a note circle
         notes[(int) gridX][(int) gridY] ^= true;
         updateShape();
-        surface.pushToUndoStack();
         return true;
       }
       return false;
@@ -1792,7 +1797,14 @@ public class LaserCut extends JFrame {
       Path2D.Double path = new Path2D.Double();
       double xx = -width / 2;
       double yy = -height / 2;
-      path.append(rect = new Rectangle2D.Double(xx, yy, width, height), false);
+      // Draw enclosing box with notched corner to indicate orientation of strip
+      path.moveTo(xx, yy);
+      path.lineTo(xx + width, yy);
+      path.lineTo(xx + width, yy + height);
+      path.lineTo(xx + .2, yy + height);
+      path.lineTo(xx, yy - .4 + height);
+      path.lineTo(xx, yy);
+      // Draw the holes that need to be cut for active notes
       double rad = holeDiam / 2;
       for (int ii = 0; ii < notes.length; ii++) {
         double sx = xx + xOff + mmToInches(ii * xStep);
