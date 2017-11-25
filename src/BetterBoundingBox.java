@@ -5,7 +5,7 @@ import java.awt.geom.*;
 class BetterBoundingBox {
 
   static Rectangle2D getBounds (Shape shape) {
-    Rectangle2D bounds = new Rectangle2D.Double();
+    Rectangle2D bounds = null;    // Note: must be null
     PathIterator pi = shape.getPathIterator(null);
     double xLoc = 0, yLoc = 0;
     double mX = 0, mY = 0;
