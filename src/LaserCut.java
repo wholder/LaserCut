@@ -93,7 +93,7 @@ public class LaserCut extends JFrame {
   private boolean               miniDynamicLaser = prefs.getBoolean("mini.dynamicLaser", true);
   private boolean               snapToGrid = prefs.getBoolean("snapToGrid", true);
   private boolean               displayGrid = prefs.getBoolean("displayGrid", true);
-  private static final boolean  enableMiniLazer = !System.getProperty("os.name").toLowerCase().contains("win");
+  private static final boolean  enableMiniLazer = true;// !System.getProperty("os.name").toLowerCase().contains("win");
   private MiniLaser             miniLaser;
 
   private boolean quitHandler () {
