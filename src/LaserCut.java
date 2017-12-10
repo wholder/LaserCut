@@ -20,7 +20,7 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.text.DefaultCaret;
 import java.awt.*;
-import java.awt.desktop.*;
+// Uncomment for Java9 import java.awt.desktop.*;
 import java.awt.event.*;
 import java.awt.font.GlyphVector;
 import java.awt.font.TextAttribute;
@@ -119,7 +119,7 @@ public class LaserCut extends JFrame {
     }
     JOptionPane.showMessageDialog(this,
         "By: Wayne Holder\n" +
-            "  Java Runtime  " + Runtime.version() + "\n" +
+            //Uncomment for Java 9 "  Java Runtime  " + Runtime.version() + "\n" +
             "  LibLaserCut " + com.t_oster.liblasercut.LibInfo.getVersion() + "\n" +
             (enableMiniLazer ?
             "  Java Simple Serial Connector " + SerialNativeInterface.getLibraryVersion() + "\n" +
@@ -190,15 +190,16 @@ public class LaserCut extends JFrame {
     bottomPane.setFocusable(false);
     add(bottomPane, BorderLayout.SOUTH);
     requestFocusInWindow();
+    boolean hasAboutHandler = false;
+    boolean hasPreferencesHandler = false;
+    boolean hasQuitHandler = false;
+    /* Uncomment for Java 9
     if (Taskbar.isTaskbarSupported()) {
       Taskbar taskbar = Taskbar.getTaskbar();
       if (taskbar.isSupported(Taskbar.Feature.ICON_IMAGE)) {
         taskbar.setIconImage(new ImageIcon(getClass().getResource("/images/laser_wip_black.png")).getImage());
       }
     }
-    boolean hasAboutHandler = false;
-    boolean hasPreferencesHandler = false;
-    boolean hasQuitHandler = false;
     if (Desktop.isDesktopSupported()) {
       Desktop desktop = Desktop.getDesktop();
       if (desktop.isSupported(Desktop.Action.APP_SUDDEN_TERMINATION)) {
@@ -233,6 +234,7 @@ public class LaserCut extends JFrame {
         });
       }
     }
+    */
     addWindowListener(new WindowAdapter() {
       @Override
       public void windowClosing (WindowEvent e) {
