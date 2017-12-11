@@ -402,7 +402,7 @@ public class DrawSurface extends JPanel {
 
   private double toGrid (double coord) {
     // From: https://stackoverflow.com/a/5421681 (answer #2)
-    return gridSpacing * Math.floor((coord / gridSpacing) + 0.5);
+    return gridSpacing > 0 ? gridSpacing * Math.floor((coord / gridSpacing) + 0.5) : coord;
   }
 
   private Point2D.Double toGrid (Point2D.Double loc) {
