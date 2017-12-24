@@ -48,10 +48,10 @@ class ZingLaser {
         engraveProperties.setProperty("frequency", laserCut.prefs.getInt("zing.efreq", ZING_FREQ_DEFAUlT));
         engraveProperties.setProperty("focus", 0.0f);
         PowerSpeedFocusFrequencyProperty rasterProperties = new PowerSpeedFocusFrequencyProperty();
-        engraveProperties.setProperty("speed", laserCut.prefs.getInt("zing.rspeed", ZING_SPEED_DEFAUlT));
-        engraveProperties.setProperty("power", laserCut.prefs.getInt("zing.rpower", ZING_RASTER_POWER_DEFAUlT));
-        engraveProperties.setProperty("frequency", laserCut.prefs.getInt("zing.rfreq", ZING_FREQ_DEFAUlT));
-        engraveProperties.setProperty("focus", 0.0f);
+        rasterProperties.setProperty("speed", laserCut.prefs.getInt("zing.rspeed", ZING_SPEED_DEFAUlT));
+        rasterProperties.setProperty("power", laserCut.prefs.getInt("zing.rpower", ZING_RASTER_POWER_DEFAUlT));
+        rasterProperties.setProperty("frequency", laserCut.prefs.getInt("zing.rfreq", ZING_FREQ_DEFAUlT));
+        rasterProperties.setProperty("focus", 0.0f);
         LaserJob job = new LaserJob("laserCut", "laserCut", "laserCut");   // title, name, user
         // Process raster engrave passes, if any
         for (LaserCut.CADShape shape : laserCut.surface.getDesign()) {
@@ -113,6 +113,7 @@ class ZingLaser {
         new Thread(() -> {
           List<String> warnings = new LinkedList<>();
           boolean hadError = false;
+          String errMsg = "Unknown error";
           try {
             lasercutter.sendJob(job, new ProgressListener() {
               @Override
@@ -127,11 +128,12 @@ class ZingLaser {
             }, warnings);
           } catch (Exception ex) {
             hadError = true;
+            errMsg = ex.getMessage();
           } finally {
             zMon.setVisible(false);
             zMon.dispose();
             if (hadError) {
-              laserCut.showErrorDialog("Unable to send job to Zing");
+              laserCut.showErrorDialog("Unable to send job to Zing.\n" + errMsg);
             } else if (warnings.size() > 0) {
               StringBuilder buf = new StringBuilder();
               boolean addLf = false;
