@@ -1398,9 +1398,9 @@ public class LaserCut extends JFrame {
           }
         }
         // Position shape where user clicked on the "Place" butto
-        if ("Place".equals(actionButton)) {
-          Point mLoc = dialog.getMouseLoc();
-          Point dLoc = surface.getLocationOnScreen();
+        Point dLoc = surface.getLocationOnScreen();
+        Point mLoc = dialog.getMouseLoc();
+        if ("Place".equals(actionButton) && dLoc != null && mLoc != null) {
           int xx = mLoc.x - dLoc.x;
           int yy = mLoc.y - dLoc.y;
           xLoc = xx / surface.getScreenScale();
