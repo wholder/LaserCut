@@ -90,7 +90,7 @@ public class CornerFinder {
     return plus;
   }
 
-  static ArrayList<Point2D.Double> getPoints (Shape shape) {
+  private static ArrayList<Point2D.Double> getPoints (Shape shape) {
     PathIterator pi = shape.getPathIterator(null);
     ArrayList<Point2D.Double> points = new ArrayList<>();
     Point2D.Double start = null;
@@ -126,7 +126,7 @@ public class CornerFinder {
     return points;
   }
 
-  static boolean checkForCorner (Point2D.Double p1, Point2D.Double p2, Point2D.Double p3) {
+  private static boolean checkForCorner (Point2D.Double p1, Point2D.Double p2, Point2D.Double p3) {
     double dx12 = Math.abs(p1.x - p2.x);
     double dy12 = Math.abs(p1.y - p2.y);
     double dx23 = Math.abs(p2.x - p3.x);
@@ -149,7 +149,7 @@ public class CornerFinder {
    * @param to to point
    * @return new point that is 'dist' away from 'from' point
    */
-  static Point2D.Double moveDistance (double dist, Point2D.Double from, Point2D.Double to) {
+  private static Point2D.Double moveDistance (double dist, Point2D.Double from, Point2D.Double to) {
     double v = from.distance(to);
     double t = dist / v;
     return new Point2D.Double(from.x + (from.x * -t) + (to.x * t), from.y + (from.y * -t) + (to.y * t));

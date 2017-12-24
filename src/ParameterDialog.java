@@ -5,7 +5,7 @@ import javax.swing.*;
 
 class ParameterDialog extends JDialog {
   private boolean   cancelled = true;
-  Point             mouseLoc;
+  private Point     mouseLoc;
 
   static class ParmItem {
     String      name, units = "", hint;
@@ -136,8 +136,7 @@ class ParameterDialog extends JDialog {
     JPanel fields = new JPanel();
     fields.setLayout(new GridBagLayout());
     int jj = 0;
-    for (int ii = 0; ii < parms.length; ii++) {
-      ParmItem parm = parms[ii];
+    for (ParmItem parm : parms) {
       if (parm.sepBefore) {
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.gridx = 0;
@@ -149,7 +148,7 @@ class ParameterDialog extends JDialog {
       }
       fields.add(new JLabel(parm.name + ": "), getGbc(0, jj));
       if (parm.valueType instanceof Boolean) {
-        JCheckBox select  = new JCheckBox();
+        JCheckBox select = new JCheckBox();
         select.setBorderPainted(false);
         select.setFocusable(false);
         select.setBorderPaintedFlat(true);
@@ -195,13 +194,11 @@ class ParameterDialog extends JDialog {
     // Define a custion action button so we can catch and save the screen coordinates where the "Place" button was clicked...
     // Yeah, it's a lot of weird code bit it avoids having the placed object not show up until the mouse is moved.
     JButton b0 = new JButton( options[0]);
-    b0.addActionListener(new ActionListener() {
-      public void actionPerformed(ActionEvent actionEvent) {
-        JButton but = ((JButton) actionEvent.getSource());
-        JOptionPane pane = (JOptionPane) but.getParent().getParent();
-        pane.setValue(options[0]);
-        JOptionPane.getRootFrame().dispose();
-      }
+    b0.addActionListener(actionEvent -> {
+      JButton but = ((JButton) actionEvent.getSource());
+      JOptionPane pane = (JOptionPane) but.getParent().getParent();
+      pane.setValue(options[0]);
+      JOptionPane.getRootFrame().dispose();
     });
     b0.addMouseListener(new MouseAdapter() {
       @Override

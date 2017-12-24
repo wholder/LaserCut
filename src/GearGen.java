@@ -19,7 +19,7 @@ public class GearGen {
    * Test code for GearGen
    */
   @SuppressWarnings("ConstantIfStatement")
-  public static void main (String[] args) throws Exception {
+  public static void main (String[] args) {
     DEBUG = true;
     ShapeWindow sWin = new ShapeWindow();
     if (true) {

@@ -1,7 +1,6 @@
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.xml.sax.Attributes;
-import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
 
 import javax.xml.parsers.DocumentBuilder;
@@ -66,7 +65,7 @@ public class SVGParser {
     ArrayList<Shape> shapes = new ArrayList<>();
     DefaultHandler handler = new DefaultHandler() {
       AffineTransform atScale = AffineTransform.getScaleInstance(1 / 96d, 1 / 96d);
-      public void startElement (String uri, String localName, String qName, Attributes attributes) throws SAXException {
+      public void startElement (String uri, String localName, String qName, Attributes attributes) {
         debugPrintln("Start Element: " + qName);
         double xLoc, yLoc, xLast = 0, yLast = 0, width, height, rx, ry;
         Point2D.Double p1, p2, p3, reflect = new Point2D.Double(0, 0);
@@ -313,7 +312,7 @@ public class SVGParser {
         }
       }
 
-      public void endElement (String uri, String localName, String qName) throws SAXException {
+      public void endElement (String uri, String localName, String qName) {
         switch (qName.toLowerCase()) {
           case "marker":
             inMarker = false;
@@ -325,7 +324,7 @@ public class SVGParser {
         debugPrintln("End Element: " + qName);
       }
 
-      public void characters (char ch[], int start, int length) throws SAXException {
+      public void characters (char ch[], int start, int length) {
         debugPrintln("Chars: " + new String(ch, start, length));
       }
     };
@@ -605,10 +604,12 @@ public class SVGParser {
     }
   }
 
-  static String pad (String val, int size) {
-    while (val.length() < size) {
-      val = " " + val;
+  private static String pad (String val, int size) {
+    StringBuilder valBuilder = new StringBuilder(val);
+    while (valBuilder.length() < size) {
+      valBuilder.insert(0, " ");
     }
+    val = valBuilder.toString();
     return val;
   }
 

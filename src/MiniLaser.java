@@ -57,7 +57,6 @@ class MiniLaser {
     grblSettings.put("$130", "X Max travel, mm");
     grblSettings.put("$131", "Y Max travel, mm");
     grblSettings.put("$132", "Z Max travel, mm");
-    grblSettings.put("$132", "Z Max travel, mm");
   }
 
   MiniLaser (LaserCut laserCut) {
@@ -310,7 +309,6 @@ class MiniLaser {
     private String      cmd;
     private long        step;
     private final Lock  lock = new Lock();
-    private int         wState;
     transient boolean   running;
 
     private static final class Lock { }

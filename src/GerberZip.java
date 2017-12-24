@@ -1,7 +1,6 @@
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
@@ -14,7 +13,7 @@ import java.util.zip.ZipFile;
 public class GerberZip {
   private String    excellon, outline;
 
-  public GerberZip (File zipFile) throws IOException {
+  GerberZip (File zipFile) throws IOException {
     ZipFile zip = new ZipFile(zipFile);
     Enumeration<? extends ZipEntry> entries = zip.entries();
     while (entries.hasMoreElements()) {
@@ -36,7 +35,7 @@ public class GerberZip {
   static class ExcellonHole {
     double  xLoc, yLoc, diameter;
 
-    public ExcellonHole(double x, double y, double dia) {
+    ExcellonHole (double x, double y, double dia) {
       xLoc = x;
       yLoc = y;
       diameter = dia;
@@ -151,13 +150,5 @@ public class GerberZip {
     }
     val = valBuilder.toString();
     return Double.parseDouble(val.substring(0, 2) + "." + val.substring(2));
-  }
-
-  private static String getFile (String file) throws IOException {
-    InputStream fis = new FileInputStream(new File(file));
-    byte[] data = new byte[fis.available()];
-    fis.read(data);
-    fis.close();
-    return new String(data);
   }
 }
