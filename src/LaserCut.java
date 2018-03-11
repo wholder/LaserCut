@@ -251,7 +251,9 @@ public class LaserCut extends JFrame {
      */
     JMenu fileMenu = new JMenu("File");
     if (!hasAboutHandler) {
+      //
       // Add "About" Item to File Menu
+      //
       JMenuItem aboutBox = new JMenuItem("About " + getClass().getSimpleName());
       aboutBox.addActionListener(ev -> {
         showAboutBox();
@@ -259,7 +261,9 @@ public class LaserCut extends JFrame {
       fileMenu.add(aboutBox);
     }
     if (!hasPreferencesHandler) {
+      //
       // Add "Preferences" Item to File Menu
+      //
       JMenuItem preferencesBox = new JMenuItem("Preferences");
       preferencesBox.addActionListener(ev -> {
         showPreferencesBox();
@@ -269,7 +273,9 @@ public class LaserCut extends JFrame {
     if (!hasAboutHandler || !hasPreferencesHandler) {
       fileMenu.addSeparator();
     }
+    //
     // Add "New" Item to File Menu
+    //
     JMenuItem newObj = new JMenuItem("New");
     newObj.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_N, cmdMask));
     newObj.addActionListener(ev -> {
@@ -282,7 +288,9 @@ public class LaserCut extends JFrame {
       }
     });
     fileMenu.add(newObj);
+    //
     // Add "Open" Item to File menu
+    //
     JMenuItem loadObj = new JMenuItem("Open");
     loadObj.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, cmdMask));
     loadObj.addActionListener(ev -> {
@@ -312,7 +320,9 @@ public class LaserCut extends JFrame {
       }
     });
     fileMenu.add(loadObj);
+    //
     // Add "Save As" Item to File menu
+    //
     JMenuItem saveAs = new JMenuItem("Save As");
     saveAs.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, cmdMask));
     saveAs.addActionListener(ev -> {
@@ -348,7 +358,9 @@ public class LaserCut extends JFrame {
       }
     });
     fileMenu.add(saveAs);
+    //
     // Add "Save As" Item to File menu
+    //
     JMenuItem saveSelected = new JMenuItem("Save Selected As");
     saveSelected.setEnabled(false);
     saveSelected.addActionListener(ev -> {
@@ -458,7 +470,9 @@ public class LaserCut extends JFrame {
      */
     JMenu gridMenu = new JMenu("Grid");
     ButtonGroup gridGroup = new ButtonGroup();
+    //
     // Add "Snap to Grid" Menu Item
+    //
     JCheckBoxMenuItem gridSnap = new JCheckBoxMenuItem("Snap to Grid", snapToGrid);
     gridSnap.addActionListener(ev -> {
       prefs.putBoolean("snapToGrid", snapToGrid = gridSnap.getState());
@@ -466,7 +480,9 @@ public class LaserCut extends JFrame {
     });
     surface.enableGridSnap(snapToGrid);
     gridMenu.add(gridSnap);
+    //
     // Add "Show Grid" Menu Item
+    //
     JCheckBoxMenuItem gridShow = new JCheckBoxMenuItem("Show Grid", displayGrid);
     gridShow.addActionListener(ev -> {
       prefs.putBoolean("displayGrid", displayGrid = gridShow.getState());
@@ -474,7 +490,9 @@ public class LaserCut extends JFrame {
     });
     surface.enableGridDisplay(displayGrid);
     gridMenu.add(gridShow);
+    //
     // Add grid size options
+    //
     String[] gridSizes = new String[] {"|", "0.0625/16 in", "0.1/10 in", "0.125/8 in", "0.25/4 in", "0.5/2 in", "|",
         "1/10 mm", "2/10 mm", "2.5/5 mm", "5/10 mm", "10/0 mm"};
     for (String gridItem : gridSizes) {
@@ -509,7 +527,9 @@ public class LaserCut extends JFrame {
       }
     }
     menuBar.add(gridMenu);
+    //
     // Add "Zoom" Menu
+    //
     JMenu zoomMenu = new JMenu("Zoom");
     ButtonGroup zoomGroup = new ButtonGroup();
     for (double zoom : surface.getZoomFactors()) {
@@ -526,58 +546,83 @@ public class LaserCut extends JFrame {
       }
     });
     menuBar.add(zoomMenu);
-    // Add "Edit" Menu
+    /*
+     *  Add "Edit" Menu
+    */
     JMenu editMenu = new JMenu("Edit");
+    //
     // Add "Undo" Menu Item
+    //
     JMenuItem undo = new JMenuItem("Undo");
     undo.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Z, cmdMask));
     undo.setEnabled(false);
     undo.addActionListener((ev) -> surface.popFromUndoStack());
     editMenu.add(undo);
     surface.addUndoListener(undo::setEnabled);
+    //
     // Add "Redo" Menu Item
+    //
     JMenuItem redo = new JMenuItem("Redo");
     redo.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Z, cmdMask + InputEvent.SHIFT_DOWN_MASK));
     redo.setEnabled(false);
     redo.addActionListener((ev) -> surface.popFromRedoStack());
     editMenu.add(redo);
     surface.addRedoListener(redo::setEnabled);
+    //
     // Add "Remove Selected" Menu Item
+    //
     JMenuItem removeSelected = new JMenuItem("Delete Selected");
     removeSelected.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_X, cmdMask));
     removeSelected.setEnabled(false);
     removeSelected.addActionListener((ev) -> surface.removeSelected());
     editMenu.add(removeSelected);
+    //
     // Add "Duplicate Selected" Menu Item
+    //
     JMenuItem dupSelected = new JMenuItem("Duplicate Selected");
     dupSelected.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_D, cmdMask));
     dupSelected.setEnabled(false);
     dupSelected.addActionListener((ev) -> surface.duplicateSelected());
     editMenu.add(dupSelected);
+    //
     // Add "Edit Selected" Menu Item
+    //
     JMenuItem editSelected = new JMenuItem("Edit Selected");
     editSelected.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_E, cmdMask));
     editSelected.setEnabled(false);
     editSelected.addActionListener((ev) -> {
       CADShape sel = surface.getSelected();
+      boolean centered = sel.centered;
       if (sel != null && sel.editParameterDialog(surface)) {
         // User clicked dialog's OK button
         surface.getSelected().updateShape();
+        if (centered != sel.centered) {
+          Rectangle2D bounds = sel.getBounds();
+          if (sel.centered) {
+            sel.xLoc += bounds.getWidth()/ 2;
+            sel.yLoc += bounds.getHeight() / 2;
+          } else {
+            sel.xLoc -= bounds.getWidth()/ 2;
+            sel.yLoc -= bounds.getHeight() / 2;
+          }
+        }
         surface.repaint();
       }
     });
     editMenu.add(editSelected);
+    //
     // Add "Move Selected" Menu Item
+    //
     JMenuItem moveSelected = new JMenuItem("Move Selected");
     moveSelected.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_M, cmdMask));
     moveSelected.setEnabled(false);
     moveSelected.addActionListener((ev) -> {
-
-
       surface.moveSelected();
     });
     editMenu.add(moveSelected);
+    //
     // Add "Move Selected" Menu Item
+    //
     JMenuItem rotateSelected = new JMenuItem("Rotate Group Around Selected");
     rotateSelected.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_R, cmdMask));
     rotateSelected.setEnabled(false);
@@ -585,23 +630,27 @@ public class LaserCut extends JFrame {
       surface.rotateGroupAroundSelected();
     });
     editMenu.add(rotateSelected);
+    //
     // Add "Round Corners of Selected Shape" Menu Item
+    //
     JMenuItem roundCorners = new JMenuItem("Round Corners of Selected Shape");
     roundCorners.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_B, cmdMask));
     roundCorners.setEnabled(false);
-    ParameterDialog.ParmItem[] parms = {new ParameterDialog.ParmItem("radius|in", 0d)};
-    ParameterDialog dialog = (new ParameterDialog(parms, new String[] {"Round", "Cancel"}));
-    dialog.setLocationRelativeTo(surface.getParent());
+    ParameterDialog.ParmItem[] rParms = {new ParameterDialog.ParmItem("radius|in", 0d)};
+    ParameterDialog rDialog = (new ParameterDialog(rParms, new String[] {"Round", "Cancel"}));
+    rDialog.setLocationRelativeTo(surface.getParent());
     roundCorners.addActionListener((ev) -> {
-      dialog.setVisible(true);              // Note: this call invokes dialog
-      if (dialog.doAction()) {
+      rDialog.setVisible(true);              // Note: this call invokes dialog
+      if (rDialog.doAction()) {
         surface.pushToUndoStack();
-        double val = (Double) parms[0].value;
+        double val = (Double) rParms[0].value;
         surface.roundSelected(val);
       }
     });
     editMenu.add(roundCorners);
+    //
     // Add "Ungroup Selected" Menu Item
+    //
     JMenuItem unGroupSelected = new JMenuItem("Ungroup Selected");
     unGroupSelected.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_U, cmdMask));
     unGroupSelected.setEnabled(false);
@@ -610,32 +659,44 @@ public class LaserCut extends JFrame {
     // Add "Align Grouped Shape(s) to Selected Shape's" submenu
     JMenu alignMenu = new JMenu("Align Grouped Shape(s) to Selected Shape's");
     alignMenu.setEnabled(false);
+    //
     // Add "X Coord" Submenu Item
+    //
     JMenuItem alignXSelected = new JMenuItem("X Coord");
     alignXSelected.addActionListener((ev) -> surface.alignSelectedShapes(true, false));
     alignMenu.add(alignXSelected);
+    //
     // Add "Y Coord" Submenu Item
+    //
     JMenuItem alignYSelected = new JMenuItem("Y Coord");
     alignYSelected.addActionListener((ev) -> surface.alignSelectedShapes(false, true));
     alignMenu.add(alignYSelected);
+    //
     // Add "X & Y Coord" Submenu Item
+    //
     JMenuItem alignXYSelected = new JMenuItem("X & Y Coords");
     alignXYSelected.addActionListener((ev) -> surface.alignSelectedShapes(true, true));
     alignMenu.add(alignXYSelected);
     editMenu.add(alignMenu);
+    //
     // Add "Add Grouped Shapes" Menu Item
+    //
     JMenuItem addSelected = new JMenuItem("Add Grouped Shape{s) to Selected Shape");
     addSelected.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_A, cmdMask));
     addSelected.setEnabled(false);
     addSelected.addActionListener((ev) -> surface.addOrSubtractSelectedShapes(true));
     editMenu.add(addSelected);
+    //
     // Add "Subtract Group from Selected" Menu Item
+    //
     JMenuItem subtractSelected = new JMenuItem("Take Away Grouped Shape(s) from Selected Shape");
     subtractSelected.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_T, cmdMask));
     subtractSelected.setEnabled(false);
     subtractSelected.addActionListener((ev) -> surface.addOrSubtractSelectedShapes(false));
     editMenu.add(subtractSelected);
+    //
     // Add SelectListener to enable/disable menus, as needed
+    //
     surface.addSelectListener((shape, selected) -> {
       removeSelected.setEnabled(selected);
       dupSelected.setEnabled(selected);
@@ -655,7 +716,9 @@ public class LaserCut extends JFrame {
      *  Add "Import" Menu
      */
     JMenu importMenu = new JMenu("Import");
-    // Add "LaserCut File" Item to File menu
+    //
+    // Add "Import LaserCut File" Item to File menu
+    //
     JMenuItem importObj = new JMenuItem("Import LaserCut File");
     importObj.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_I, cmdMask));
     importObj.addActionListener(ev -> {
@@ -679,11 +742,13 @@ public class LaserCut extends JFrame {
       }
     });
     importMenu.add(importObj);
-    // Add "SVG File" menu item
+    //
+    // Add "Import SVG File" menu item
+    //
     JMenuItem svgRead = new JMenuItem("Import SVG File");
     svgRead.addActionListener(ev -> {
       JFileChooser fileChooser = new JFileChooser();
-      fileChooser.setDialogTitle("Select an SVG File");
+      fileChooser.setDialogTitle("Select a SVG File");
       fileChooser.setDialogType(JFileChooser.OPEN_DIALOG);
       FileNameExtensionFilter nameFilter = new FileNameExtensionFilter("Scalable Vector Graphics files (*.svg)", "svg");
       fileChooser.addChoosableFileFilter(nameFilter);
@@ -715,7 +780,50 @@ public class LaserCut extends JFrame {
       }
     });
     importMenu.add(svgRead);
-     // Add Gerber menu item
+    //
+    // Add "Import DXF File" menu item
+    //
+    JMenuItem dxfRead = new JMenuItem("Import DXF File");
+    dxfRead.addActionListener(ev -> {
+      JFileChooser fileChooser = new JFileChooser();
+      fileChooser.setDialogTitle("Select a DXF File");
+      fileChooser.setDialogType(JFileChooser.OPEN_DIALOG);
+      FileNameExtensionFilter nameFilter = new FileNameExtensionFilter("AutoCad DXF files (*.dxf)", "dxf");
+      fileChooser.addChoosableFileFilter(nameFilter);
+      fileChooser.setFileFilter(nameFilter);
+      fileChooser.setSelectedFile(new File(prefs.get("default.dxf.dir", "/")));
+      if (fileChooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
+        try {
+          File tFile = fileChooser.getSelectedFile();
+          prefs.put("default.dxf.dir", tFile.getAbsolutePath());
+          DXFReader dxf = new DXFReader();
+          Shape[] shapes = dxf.parseFile(tFile, 12, 2);
+          shapes = SVGParser.removeOffset(shapes);
+          CADShapeGroup group = new CADShapeGroup();
+          List<CADShape> gShapes = new ArrayList<>();
+          for (Shape shape : shapes) {
+            Rectangle2D sBnds = shape.getBounds2D();
+            double xLoc = sBnds.getX();
+            double yLoc = sBnds.getY();
+            double wid = sBnds.getWidth();
+            double hyt = sBnds.getHeight();
+            AffineTransform at = AffineTransform.getTranslateInstance(-xLoc - (wid / 2), -yLoc - (hyt / 2));
+            shape = at.createTransformedShape(shape);
+            CADShape cShape = new CADShape(shape, xLoc, yLoc, 0, false);
+            group.addToGroup(cShape);
+            gShapes.add(cShape);
+          }
+          surface.placeShapes(gShapes);
+        } catch (Exception ex) {
+          showErrorDialog("Unable to load DXF file");
+          ex.printStackTrace(System.out);
+        }
+      }
+    });
+    importMenu.add(dxfRead);
+    //
+    // Add "Import Gerber Zip" menu item
+    //
     gerberZip = new JMenuItem("Import Gerber Zip");
     gerberZip.setVisible(prefs.getBoolean("gerber.import", false));
     gerberZip.addActionListener((ActionEvent ev) -> {
@@ -780,18 +888,24 @@ public class LaserCut extends JFrame {
      *  Add "Export" Menu
      */
     JMenu exportMenu = new JMenu("Export");
-     // Add "Zing Laser" Menu to Export Menu
+    //
+    // Add "Zing Laser" Menu to Export Menu
+    //
     exportMenu.add(ZingLaser.getZingMenu(this));
     boolean jPortError = false;
     if (enableMiniLazer) {
       try {
+        //
          // Add "Mini Laser" Menu to Export Menu
+        //
         exportMenu.add((miniLaser = new MiniLaser(this)).getMiniLaserMenu());
       } catch (Exception ex) {
         jPortError = true;
       }
     }
+    //
     // Add "Export to PDF File" Menu Item
+    //
     JMenuItem pdfOutput = new JMenuItem("Export to PDF File");
     pdfOutput.addActionListener(ev -> {
       JFileChooser fileChooser = new JFileChooser();
@@ -819,8 +933,9 @@ public class LaserCut extends JFrame {
       }
     });
     exportMenu.add(pdfOutput);
-
+    //
     // Add "Export to SVG File"" Menu Item
+    //
     JMenuItem svgOutput = new JMenuItem("Export to SVG File");
     svgOutput.addActionListener(ev -> {
       JFileChooser fileChooser = new JFileChooser();

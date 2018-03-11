@@ -22,21 +22,51 @@ public class DrawSurface extends JPanel {
   private Preferences                     prefs;
   private Dimension                       workSize;
   private JTextField                      infoText;
-  private java.util.List<LaserCut.CADShape> shapes = new ArrayList<>(), shapesToPlace;
-  private LaserCut.CADShape selected, dragged, shapeToPlace;
+  private List<LaserCut.CADShape>         shapes = new ArrayList<>();
+  private LaserCut.CADShape               selected, dragged;
+  private Placer                          placer;
   private double                          gridSpacing;
   private int                             gridMajor;
   private double[]                        zoomFactors = {1, 2, 4};
   private double                          zoomFactor = 1;
   private Point2D.Double                  scrollPoint, measure1, measure2;
   private boolean                         useDblClkZoom;
-  private java.util.List<LaserCut.ShapeSelectListener> selectListerners = new ArrayList<>();
-  private java.util.List<LaserCut.ActionUndoListener> undoListerners = new ArrayList<>();
-  private java.util.List<LaserCut.ActionRedoListener> redoListerners = new ArrayList<>();
-  private java.util.List<LaserCut.ZoomListener> zoomListeners = new ArrayList<>();
+  private List<LaserCut.ShapeSelectListener> selectListerners = new ArrayList<>();
+  private List<LaserCut.ActionUndoListener> undoListerners = new ArrayList<>();
+  private List<LaserCut.ActionRedoListener> redoListerners = new ArrayList<>();
+  private List<LaserCut.ZoomListener> zoomListeners = new ArrayList<>();
   private LinkedList<byte[]> undoStack = new LinkedList<>();
   private LinkedList<byte[]>              redoStack = new LinkedList<>();
   private boolean                         pushedToStack, showMeasure, doSnap, showGrid;
+
+  static class Placer {
+    private List<LaserCut.CADShape> shapes;
+    private Point2D.Double                    curLoc = new Point2D.Double(0, 0);
+
+    Placer (List<LaserCut.CADShape> shapes) {
+      this.shapes = shapes;
+    }
+
+    void setPosition (Point2D.Double newLoc) {
+      for (LaserCut.CADShape shape : shapes) {
+        shape.xLoc = shape.xLoc - curLoc.getX() + newLoc.getX();
+        shape.yLoc = shape.yLoc - curLoc.getY() + newLoc.getY();
+      }
+      curLoc = newLoc;
+    }
+
+    void draw (Graphics2D g2, double scale) {
+      for (LaserCut.CADShape shape : shapes) {
+        shape.draw(g2, scale);
+      }
+    }
+
+    void addToSurface (DrawSurface surface) {
+      surface.addShapes(shapes);
+      surface.setSelected(shapes.get(0));
+    }
+  }
+
 
   DrawSurface (LaserCut laserCut, Preferences prefs, JScrollPane scrollPane, Dimension workSize) {
     super(true);
@@ -45,6 +75,7 @@ public class DrawSurface extends JPanel {
     gridSpacing = prefs.getDouble("gridSpacing", 0);
     gridMajor = prefs.getInt("gridMajor", 0);
     useDblClkZoom = prefs.getBoolean("useDblClkZoom", false);
+    DrawSurface thisSurface = this;
     // Set JPanel size for Zing's maximum work area, or other, if resized by user
     setPreferredSize(this.workSize = workSize);
     addMouseListener(new MouseAdapter() {
@@ -52,19 +83,15 @@ public class DrawSurface extends JPanel {
       public void mousePressed (MouseEvent ev) {
         requestFocus();
         Point2D.Double newLoc = new Point2D.Double(ev.getX() / getScreenScale(), ev.getY() / getScreenScale());
-        if (shapeToPlace != null || shapesToPlace != null) {
+        if (placer != null) {
           if (doSnap && gridSpacing > 0) {
             newLoc = toGrid(newLoc);
           }
-          if (shapeToPlace != null) {
-            // Set location of shape to location user clicked
-            shapeToPlace.setPosition(newLoc);
-            addShape(shapeToPlace);
-            setSelected(shapeToPlace);
-            shapeToPlace = null;
-          } else {
-            importShapes(shapesToPlace, newLoc);
-            shapesToPlace = null;
+          if (placer != null) {
+            // Place into DrawSurface
+            placer.setPosition(newLoc);
+            placer.addToSurface(thisSurface);
+            placer = null;
           }
         } else if (ev.isControlDown()) {
           // Select shape and then do CTRL-Click on second shape to measure distance from origin to origin
@@ -74,10 +101,8 @@ public class DrawSurface extends JPanel {
               if (shape.isPositionClicked(newLoc) || shape.isShapeClicked(newLoc)) {
                 double dx = shape.xLoc - selected.xLoc;
                 double dy = shape.yLoc - selected.yLoc;
-                if (infoText != null) {
-                  infoText.setText(" dx: " + LaserCut.df.format(dx) + " in, dy: " + LaserCut.df.format(dy) +
-                      " in (" + LaserCut.df.format(LaserCut.inchesToMM(dx)) + " mm, " + LaserCut.df.format(LaserCut.inchesToMM(dy)) + " mm)");
-                }
+                setInfoText(" dx: " + LaserCut.df.format(dx) + " in, dy: " + LaserCut.df.format(dy) +
+                            " in (" + LaserCut.df.format(LaserCut.inchesToMM(dx)) + " mm, " + LaserCut.df.format(LaserCut.inchesToMM(dy)) + " mm)");
                 measure1 = new Point2D.Double(selected.xLoc * LaserCut.SCREEN_PPI, selected.yLoc * LaserCut.SCREEN_PPI);
                 measure2 = new Point2D.Double(shape.xLoc * LaserCut.SCREEN_PPI, shape.yLoc * LaserCut.SCREEN_PPI);
                 showMeasure = true;
@@ -153,9 +178,7 @@ public class DrawSurface extends JPanel {
               if (shape.isPositionClicked(newLoc)) {
                 dragged = shape;
                 setSelected(shape);
-                if (infoText != null) {
-                  infoText.setText("xLoc: " + LaserCut.df.format(dragged.xLoc) + ", yLoc: " + LaserCut.df.format(dragged.yLoc));
-                }
+                setInfoText("xLoc: " + LaserCut.df.format(dragged.xLoc) + ", yLoc: " + LaserCut.df.format(dragged.yLoc));
                 showMeasure = false;
                 return;
               }
@@ -183,16 +206,12 @@ public class DrawSurface extends JPanel {
           if (procShape != null) {
             pushToUndoStack();
             setSelected(procShape);
-            if (infoText != null) {
-              infoText.setText(procShape.getInfo());
-            }
+            setInfoText(procShape.getInfo());
             showMeasure = false;
           } else {
             pushToUndoStack();
             setSelected(null);
-            if (infoText != null) {
-              infoText.setText("");
-            }
+            setInfoText("");
             showMeasure = false;
             scrollPoint = newLoc;
             laserCut.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
@@ -261,9 +280,7 @@ public class DrawSurface extends JPanel {
           }
           if (!dragged.doMovePoints(newLoc)) {
             Point2D.Double delta = dragged.setPosition(newLoc);
-            if (infoText != null) {
-              infoText.setText("xLoc: " + LaserCut.df.format(dragged.xLoc) + ", yLoc: " + LaserCut.df.format(dragged.yLoc));
-            }
+            setInfoText("xLoc: " + LaserCut.df.format(dragged.xLoc) + ", yLoc: " + LaserCut.df.format(dragged.yLoc));
             LaserCut.CADShapeGroup group = dragged.getGroup();
             if (group != null) {
               for (LaserCut.CADShape shape : group.getShapesInGroup()) {
@@ -290,8 +307,8 @@ public class DrawSurface extends JPanel {
       public void mouseMoved (MouseEvent ev) {
         super.mouseMoved(ev);
         Point2D.Double newLoc = new Point2D.Double(ev.getX() / getScreenScale(), ev.getY() / getScreenScale());
-        if (shapeToPlace != null) {
-          shapeToPlace.setPosition(newLoc);
+        if (placer != null) {
+          placer.setPosition(newLoc);
           repaint();
         }
       }
@@ -311,18 +328,21 @@ public class DrawSurface extends JPanel {
         super.keyTyped(ev);
         int key = ev.getExtendedKeyCode();
         if (key == KeyEvent.VK_ESCAPE) {
-          if (shapeToPlace != null || shapesToPlace != null) {
-            shapeToPlace = null;
-            shapesToPlace = null;
+          if (placer != null) {
+            placer = null;
             setSelected(null);
-            if (infoText != null) {
-              infoText.setText("Place shape cancelled");
-            }
+            setInfoText("Place shape cancelled");
             repaint();
           }
         }
       }
     });
+  }
+
+  private void setInfoText (String text) {
+    if (infoText != null) {
+      infoText.setText(text);
+    }
   }
 
   void setDoubleClickZoomEnable (boolean enable) {
@@ -459,7 +479,7 @@ public class DrawSurface extends JPanel {
 
   void popFromUndoStack () {
     // Suppress Undo while placing objects
-    if (shapeToPlace == null && shapesToPlace == null) {
+    if (placer == null) {
       if (undoStack.size() > 0) {
         try {
           redoStack.addFirst(shapesListToBytes());
@@ -494,7 +514,7 @@ public class DrawSurface extends JPanel {
     }
   }
 
-  java.util.List<LaserCut.CADShape> getDesign () {
+  List<LaserCut.CADShape> getDesign () {
     return shapes;
   }
 
@@ -531,33 +551,21 @@ public class DrawSurface extends JPanel {
     return crc.getValue();
   }
 
-  void setDesign (java.util.List<LaserCut.CADShape> shapes) {
+  void setDesign (List<LaserCut.CADShape> shapes) {
     this.shapes = shapes;
     repaint();
   }
 
-  void addShape (LaserCut.CADShape shape) {
+  void addShape (LaserCut.CADShape addShapes) {
     pushToUndoStack();
-    shapes.add(shape);
+    shapes.add(addShapes);
     repaint();
   }
 
-  private void importShapes (java.util.List<LaserCut.CADShape> addShapes, Point2D.Double newLoc) {
+  void addShapes (List<LaserCut.CADShape> addShapes) {
     pushToUndoStack();
-    // Determine upper left offset to set of import shapes
-    double minX = Double.MAX_VALUE;
-    double minY = Double.MAX_VALUE;
-    for (LaserCut.CADShape shape : addShapes) {
-      Rectangle2D bounds = shape.getBounds();
-      minX = Math.min(minX, shape.xLoc + bounds.getX());
-      minY = Math.min(minY, shape.yLoc + bounds.getY());
-    }
-    // Place all imported shapes so upper left position of set is now where used clicked
-    for (LaserCut.CADShape shape : addShapes) {
-      shape.xLoc = shape.xLoc - minX + newLoc.x;
-      shape.yLoc = shape.yLoc - minY + newLoc.y;
-      shapes.add(shape);
-    }
+    shapes.addAll(addShapes);
+    repaint();
   }
 
   void registerInfoJTextField (JTextField itemInfo) {
@@ -565,20 +573,43 @@ public class DrawSurface extends JPanel {
   }
 
   void placeShape (LaserCut.CADShape shape) {
-    shapeToPlace = shape;
-    if (infoText != null) {
-      infoText.setText("Click to place Shape");
-    }
-    requestFocus();
-    repaint();
+    List<LaserCut.CADShape> items = new ArrayList<>();
+    items.add(shape);
+    placeShapes(items);
   }
 
   void placeShapes (List<LaserCut.CADShape> shapes) {
-    shapesToPlace = shapes;
-    requestFocus();
-    if (infoText != null) {
-      infoText.setText("Click to place imported Shapes");
+    Rectangle2D bounds = getSetBounds(shapes);
+    // Subtract offset from all the shapes to position set at 0,0
+    for (LaserCut.CADShape shape : shapes) {
+      shape.xLoc = shape.xLoc - bounds.getX();
+      shape.yLoc = shape.yLoc - bounds.getY();
     }
+    placer = new Placer(shapes);
+    requestFocus();
+    setInfoText("Click to place imported Shapes");
+    repaint();
+  }
+
+  // Compute bounds for a set of CADShape objects
+  private Rectangle2D getSetBounds (List<LaserCut.CADShape> shapes) {
+    double minX = Double.MAX_VALUE;
+    double minY = Double.MAX_VALUE;
+    double maxWid = 0;
+    double maxHyt = 0;
+    for (LaserCut.CADShape shape : shapes) {
+      Rectangle2D bounds = shape.getBounds();
+      if (shape.centered) {
+        minX = Math.min(minX, shape.xLoc - bounds.getWidth() / 2);
+        minY = Math.min(minY, shape.yLoc - bounds.getHeight() / 2);
+      } else {
+        minX = Math.min(minX, shape.xLoc);
+        minY = Math.min(minY, shape.yLoc);
+      }
+      maxWid = Math.max(maxWid, bounds.getWidth());
+      maxHyt = Math.max(maxHyt, bounds.getHeight());
+    }
+    return new Rectangle2D.Double(minX, minY, maxWid, maxHyt);
   }
 
   boolean hasData () {
@@ -885,11 +916,11 @@ public class DrawSurface extends JPanel {
       g2.fill(getArrow(maxX, measure1.y, maxX, measure2.y, false));
       g2.fill(getArrow(maxX, measure1.y, maxX, measure2.y, true));
     }
-    if (shapeToPlace != null) {
+    if (placer != null) {
       g2.setColor(Color.black);
       g2.setStroke(new BasicStroke(1.0f));
       g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.5f));
-      shapeToPlace.draw(g2, getScreenScale());
+      placer.draw(g2, getScreenScale());
     }
   }
 

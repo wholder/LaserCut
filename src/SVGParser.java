@@ -423,8 +423,10 @@ public class SVGParser {
     for (Shape shape : shapes) {
       bounds = bounds == null ? BetterBoundingBox.getBounds(shape) : bounds.createUnion(BetterBoundingBox.getBounds(shape));
     }
-    if (bounds.getMinX() != 0 || bounds.getMinY() != 0) {
-      AffineTransform atScale = AffineTransform.getTranslateInstance(-bounds.getMinX(), -bounds.getMinY());
+    double minX = bounds.getX();
+    double minY = bounds.getY();
+    if (minX != 0 || minY != 0) {
+      AffineTransform atScale = AffineTransform.getTranslateInstance(-minX, -minY);
       for (int ii = 0; ii < shapes.length; ii++) {
         shapes[ii] = atScale.createTransformedShape(shapes[ii]);
       }

@@ -32,6 +32,7 @@ LaserCut uses the Java Language's reflection and object serialization features t
 - Send jobs to an Eplilog™ Zing™ over an Ethernet connection (USB not supported)
 - Send jobs to a GRBL-based laser cutter with support for jogging position of laser head (experimental)
 - Import vector outlines from an SVG files (beta)
+- Import vector outlines from a DXF files (beta)
 - Import drill holes and outlines from a Gerber file (experimental)
 - Export designs to SVG vector files (beta)
 - Export vector designs to a PDF file (experimental)
