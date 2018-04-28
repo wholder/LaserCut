@@ -106,6 +106,11 @@ public class GerberZip {
           outlines.add(points);
         }
         points.add(new Point2D.Double(lastX = xVal, lastY = yVal));
+      } else if (item.startsWith("X")  &&  item.contains("Y")) {
+          int yIdx = item.indexOf("Y");
+          double xVal = parseExcellonValue(item.substring(1, yIdx));
+          double yVal = parseExcellonValue(item.substring(yIdx + 1));
+          points.add(new Point2D.Double(lastX = xVal, lastY = yVal));
       } else if (item.startsWith("X")  &&  item.contains("D")) {
         int dIdx = item.indexOf("D");
         double xVal = parseExcellonValue(item.substring(1, dIdx));
@@ -115,6 +120,9 @@ public class GerberZip {
           outlines.add(points);
         }
         points.add(new Point2D.Double(lastX = xVal, lastY));
+      } else if (item.startsWith("X")) {
+        double xVal = parseExcellonValue(item.substring(1));
+        points.add(new Point2D.Double(lastX = xVal, lastY));
       } else if (item.startsWith("Y")  &&  item.contains("D")) {
         int dIdx = item.indexOf("D");
         double yVal = parseExcellonValue(item.substring(1, dIdx));
@@ -123,6 +131,9 @@ public class GerberZip {
           points = new ArrayList<>();
           outlines.add(points);
         }
+        points.add(new Point2D.Double(lastX, lastY = yVal));
+      } else if (item.startsWith("Y")) {
+        double yVal = parseExcellonValue(item.substring(1));
         points.add(new Point2D.Double(lastX, lastY = yVal));
       }
     }
