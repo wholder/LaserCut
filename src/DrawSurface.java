@@ -34,23 +34,25 @@ public class DrawSurface extends JPanel {
   private List<LaserCut.ShapeSelectListener> selectListerners = new ArrayList<>();
   private List<LaserCut.ActionUndoListener> undoListerners = new ArrayList<>();
   private List<LaserCut.ActionRedoListener> redoListerners = new ArrayList<>();
-  private List<LaserCut.ZoomListener> zoomListeners = new ArrayList<>();
-  private LinkedList<byte[]> undoStack = new LinkedList<>();
+  private List<LaserCut.ZoomListener>     zoomListeners = new ArrayList<>();
+  private LinkedList<byte[]>              undoStack = new LinkedList<>();
   private LinkedList<byte[]>              redoStack = new LinkedList<>();
   private boolean                         pushedToStack, showMeasure, doSnap, showGrid;
 
   static class Placer {
     private List<LaserCut.CADShape> shapes;
-    private Point2D.Double                    curLoc = new Point2D.Double(0, 0);
+    private Point2D.Double          curLoc = new Point2D.Double(0, 0);
 
     Placer (List<LaserCut.CADShape> shapes) {
       this.shapes = shapes;
     }
 
     void setPosition (Point2D.Double newLoc) {
+      double dx = newLoc.getX() - curLoc.getX();
+      double dy = newLoc.getY() - curLoc.getY();
       for (LaserCut.CADShape shape : shapes) {
-        shape.xLoc = shape.xLoc - curLoc.getX() + newLoc.getX();
-        shape.yLoc = shape.yLoc - curLoc.getY() + newLoc.getY();
+        shape.xLoc += dx;
+        shape.yLoc += dy;
       }
       curLoc = newLoc;
     }
@@ -573,17 +575,22 @@ public class DrawSurface extends JPanel {
   }
 
   void placeShape (LaserCut.CADShape shape) {
+    shape.xLoc = 0;
+    shape.yLoc = 0;
     List<LaserCut.CADShape> items = new ArrayList<>();
     items.add(shape);
-    placeShapes(items);
+    placer = new Placer(items);
+    requestFocus();
+    setInfoText("Click to place Shape");
+    repaint();
   }
 
   void placeShapes (List<LaserCut.CADShape> shapes) {
     Rectangle2D bounds = getSetBounds(shapes);
     // Subtract offset from all the shapes to position set at 0,0
     for (LaserCut.CADShape shape : shapes) {
-      shape.xLoc = shape.xLoc - bounds.getX();
-      shape.yLoc = shape.yLoc - bounds.getY();
+      shape.xLoc -= bounds.getX();
+      shape.yLoc -= bounds.getY();
     }
     placer = new Placer(shapes);
     requestFocus();
