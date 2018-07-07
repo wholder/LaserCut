@@ -28,6 +28,8 @@ import java.awt.geom.*;
 import java.awt.image.*;
 import java.io.*;
 import java.lang.reflect.Field;
+import java.net.URL;
+import java.nio.file.Paths;
 import java.text.DecimalFormat;
 import java.util.*;
 import java.util.List;
@@ -974,8 +976,6 @@ public class LaserCut extends JFrame {
       }
     });
     exportMenu.add(svgOutput);
-
-
     menuBar.add(exportMenu);
     // Track window move events and save in prefs
     addComponentListener(new ComponentAdapter() {
@@ -1068,6 +1068,43 @@ public class LaserCut extends JFrame {
 
   static double inchesToMM (double inches) {
     return inches * 25.4;
+  }
+
+  public String[] getResourceList (String resourcePath) throws Exception {
+    URL url = getClass().getResource(resourcePath);
+    java.nio.file.Path path = Paths.get(url.toURI());
+    List<String> resources = new ArrayList<>();
+    java.nio.file.Files.walk(path, 1).forEach(p -> {
+      String tmp = p.toString();
+      int idx = tmp.indexOf(resourcePath);
+      if (idx >= 0 && tmp.endsWith(".prop")) {
+        resources.add(tmp.substring(idx));
+      }
+    });
+    return resources.toArray(new String[resources.size()]);
+  }
+
+  /*
+  public String getResourceFile (String file) throws IOException {
+    InputStream fis = getClass().getResourceAsStream(file);
+    if (fis != null) {
+      byte[] data = new byte[fis.available()];
+      fis.read(data);
+      fis.close();
+      return new String(data);
+    }
+    throw new IllegalStateException("getFile() " + file + " not found");
+  }
+  */
+
+  public Properties geProperties (String file) throws IOException {
+    InputStream fis = getClass().getResourceAsStream(file);
+    if (fis != null) {
+      Properties props = new Properties();
+      props.load(fis);
+      return props;
+    }
+    throw new IllegalStateException("getFile() " + file + " not found");
   }
 
   static class CADShape implements Serializable {

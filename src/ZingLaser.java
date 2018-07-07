@@ -13,6 +13,7 @@ import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Properties;
 
 class ZingLaser {
   private static final double   ZING_PPI = 500;
@@ -50,7 +51,7 @@ class ZingLaser {
         PowerSpeedFocusFrequencyProperty rasterProperties = new PowerSpeedFocusFrequencyProperty();
         rasterProperties.setProperty("speed", laserCut.prefs.getInt("zing.rspeed", ZING_SPEED_DEFAUlT));
         rasterProperties.setProperty("power", laserCut.prefs.getInt("zing.rpower", ZING_RASTER_POWER_DEFAUlT));
-        rasterProperties.setProperty("frequency", laserCut.prefs.getInt("zing.rfreq", ZING_FREQ_DEFAUlT));
+        rasterProperties.setProperty("frequency", ZING_FREQ_DEFAUlT);
         rasterProperties.setProperty("focus", 0.0f);
         LaserJob job = new LaserJob("laserCut", "laserCut", "laserCut");   // title, name, user
         // Process raster engrave passes, if any
@@ -164,7 +165,6 @@ class ZingLaser {
           new ParameterDialog.ParmItem("Engrave Freq|Hz", laserCut.prefs.getInt("zing.efreq", ZING_FREQ_DEFAUlT)),
           new ParameterDialog.ParmItem("Raster Power|%", laserCut.prefs.getInt("zing.rpower", ZING_RASTER_POWER_DEFAUlT), true),
           new ParameterDialog.ParmItem("Raster Speed", laserCut.prefs.getInt("zing.rspeed", ZING_SPEED_DEFAUlT)),
-          new ParameterDialog.ParmItem("Raster Freq|Hz", laserCut.prefs.getInt("zing.rfreq", ZING_FREQ_DEFAUlT)),
       };
       if (ParameterDialog.showSaveCancelParameterDialog(parmSet, laserCut)) {
         int ii = 0;
@@ -177,10 +177,33 @@ class ZingLaser {
         laserCut.prefs.putInt("zing.efreq",  (Integer) parmSet[ii++].value);
         laserCut.prefs.putInt("zing.rpower", (Integer) parmSet[ii++].value);
         laserCut.prefs.putInt("zing.rspeed", (Integer) parmSet[ii++].value);
-        laserCut.prefs.putInt("zing.rfreq",  (Integer) parmSet[ii++].value);
       }
     });
     zingMenu.add(zingSettings);
+    // Add "Materials" Submenu Item
+    JMenu matMenu = new JMenu("Zing Materials");
+    try {
+      String[] list = laserCut.getResourceList("/materials/zing/");
+      for (String material : list) {
+        Properties props = laserCut.geProperties(material);
+        JMenuItem matItem = new JMenuItem(props.getProperty("name"));
+        matMenu.add(matItem);
+        matItem.addActionListener(ev -> {
+          //System.out.println(props.getProperty("name"));
+          laserCut.prefs.putInt("zing.power", Integer.parseInt(props.getProperty("power")));
+          laserCut.prefs.putInt("zing.speed", Integer.parseInt(props.getProperty("speed")));
+          laserCut.prefs.putInt("zing.freq",  Integer.parseInt(props.getProperty("freq")));
+          laserCut.prefs.putInt("zing.epower", Integer.parseInt(props.getProperty("epower")));
+          laserCut.prefs.putInt("zing.espeed", Integer.parseInt(props.getProperty("espeed")));
+          laserCut.prefs.putInt("zing.efreq",  Integer.parseInt(props.getProperty("efreq")));
+          laserCut.prefs.putInt("zing.rpower", Integer.parseInt(props.getProperty("rpower")));
+          laserCut.prefs.putInt("zing.rspeed", Integer.parseInt(props.getProperty("rspeed")));
+        });
+      }
+      zingMenu.add(matMenu);
+    } catch (Exception ex) {
+      ex.printStackTrace(System.err);
+    }
     // Add "Resize for Zing" Full Size Submenu Items
     JMenuItem zingResize = new JMenuItem("Resize for Zing (" + (zingFullSize.width / LaserCut.SCREEN_PPI) + "x" +
           (zingFullSize.height / LaserCut.SCREEN_PPI) + ")");
