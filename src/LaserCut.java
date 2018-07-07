@@ -20,7 +20,7 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.text.DefaultCaret;
 import java.awt.*;
-// Uncomment for Java9 import java.awt.desktop.*;
+import java.awt.desktop.*;
 import java.awt.event.*;
 import java.awt.font.GlyphVector;
 import java.awt.font.TextAttribute;
@@ -122,7 +122,7 @@ public class LaserCut extends JFrame {
     }
     JOptionPane.showMessageDialog(this,
         "By: Wayne Holder\n" +
-            //Uncomment for Java 9 "  Java Runtime  " + Runtime.version() + "\n" +
+            "  Java Runtime  " + Runtime.version() + "\n" +
             "  LibLaserCut " + com.t_oster.liblasercut.LibInfo.getVersion() + "\n" +
             (enableMiniLazer ?
             "  Java Simple Serial Connector " + SerialNativeInterface.getLibraryVersion() + "\n" +
@@ -196,7 +196,6 @@ public class LaserCut extends JFrame {
     boolean hasAboutHandler = false;
     boolean hasPreferencesHandler = false;
     boolean hasQuitHandler = false;
-    /* Uncomment for Java 9
     if (Taskbar.isTaskbarSupported()) {
       Taskbar taskbar = Taskbar.getTaskbar();
       if (taskbar.isSupported(Taskbar.Feature.ICON_IMAGE)) {
@@ -237,7 +236,6 @@ public class LaserCut extends JFrame {
         });
       }
     }
-    */
     addWindowListener(new WindowAdapter() {
       @Override
       public void windowClosing (WindowEvent e) {

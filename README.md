@@ -5,10 +5,10 @@ LaserCut is an experimental, "Swiss Army Knife" type of program for creating 2D 
 
 If you just want to try out the program, you don't need to download and compile the source code, as I try to maintain a pre-built, executable JAR file in the [out/artifacts/LaserCut_jar](https://github.com/wholder/LaserCut/tree/master/out/artifacts/LaserCut_jar) folder from which you can download and run LaserCut as long as you have Java installed on your system.  On a Mac, simply double click the LaserCut.jar file to run it once you've downloaded it, although you'll probably have to right click and select "Open" the  first time you run LaserCut due to the Mac OS X security check and the fact that I'm currently unable to digitally sign the JAR file.  You should also be able to double click and run using Windows, but some versions of Windows may require you to [enable this ability](https://www.addictivetips.com/windows-tips/run-a-jar-file-on-windows/) first.  I have not investigated running the code under Linux.
 ## Requirements
-Note: I've commented out the code that required Java 9.  Current code and runnable Jar file will run on Java 8, or better.
-I wrote JavaCut on a Mac Pro using the _Community_ version of [IntelliJ IDEA from JetBrains](https://www.jetbrains.com/idea/) and OS X is the only environment where I have extensively tested and used LaserCut .  However, as the code is nearly 100% Java, it should also run on MS Windows and Linux systems.  One exception is JSSC (Java Simple Serial Connector), which contains low-level, native drivers, but JSSC is only needed to talk to GRBL-based laser cutters.  Feel free to report any issues you discover.  I'll do my best, when time permits, to investigate them, but I cannot guarantee fixes, timely or otherwise.
-<!--### Issue with JSSC and Java 9 on 64 bit Windows 10
-I've removed the modified version of the jssc.jar library file that attempted to fix an issue with Java 9 running on 64 bit Windows 10 and disabled the portion of the code that depended on JSSC, the GRBL-based "Mini Laser" driver, when running on Windows OS until I can find a proper fix for the JSSC 64 bit DLL.-->
+The current code and runnable Jar file now requires Java 9, or later.
+I wrote LaserCut on a Mac Pro using the _Community_ version of [IntelliJ IDEA from JetBrains](https://www.jetbrains.com/idea/) and OS X is the only environment where I have extensively tested and used LaserCut .  However, as the code is nearly 100% Java, it should also run on MS Windows and Linux systems.  One exception is JSSC (Java Simple Serial Connector), which contains low-level, native drivers, but JSSC is only needed to talk to GRBL-based laser cutters.  Feel free to report any issues you discover.  I'll do my best, when time permits, to investigate them, but I cannot guarantee fixes, timely or otherwise.
+### Issue with JSSC and Java 9, or later on 64 bit Windows 10
+There is a possible issue with Java 9, or later when running on 64 bit Windows 10 with the portion of the code that depended on JSSC, which is the GRBL-based "Mini Laser" driver.  The problem seems tb be with the JSSC 64 bit DLL, but it still under investigation.
 # Important Note
 LaserCut uses the Java Language's reflection and object serialization features to store and load design files.  This means that future versions of LaserCut may introduce changes that make LaserCut unable to read design files saved by older versions.  I'm trying to code in a way that avoid this, but I can make no guarantees about future compatability with older saved files.
 ## Basic Features
@@ -63,11 +63,12 @@ I'm working on more comprehensive documentation to be built into the code but, i
 ## New Additions
   - **7/6/2018** - Added a very basic Material Settings selection menu for Zing Laser.  Material settings are stored as text files in the resource fork of the Jar file.  Currently only two materials, _1/8" Baltic Birch Plywood_ and _1/8" Cast Acrylic Plastic_ are supported.  More work needed to add a decent library of materials settings.
   - **7/7/2018** - Added new "Units" menu to select either `inches`, or `millimeters` as the default units for offset and size measurements.  Note: can switch back and forth, as needed, and can override setting by adding "`in`" or "`mm`" as a suffix to an input value.  Caution: still not completely tested.
+  - **7/7/2018** - Enabled `java.awt.desktop`-related features, recompiled for Java 9 and updated to PDFBox 2.0.11.
 ## Credits
 LaserCut uses the following Java code to perform some of its functions:
 - [LibLaserCut](https://github.com/t-oster/LibLaserCut) (used to control the Zing Laser)
 - [Java Simple Serial Connector 2.8.0](https://github.com/scream3r/java-simple-serial-connector) "JSSC" (used to communicate with GRBL-based laser cutters)
-- [Apache PDFBox® 2.0.7](https://pdfbox.apache.org) (used by the "Export PDF" feature)
-- [Apache commons-logging 1.2](https://commons.apache.org/proper/commons-logging/) (needed by Apache PDFBox 2.0.7)
+- [Apache PDFBox® 2.0.11](https://pdfbox.apache.org) (used by the "Export PDF" feature)
+- [Apache commons-logging 1.2](https://commons.apache.org/proper/commons-logging/) (needed by Apache PDFBox)
 - [Gear Shapes based on "Java Gear Generator: Involute and Fillet"](http://printobjects.me/catalogue/ujava-gear-generator-involute-and-fillet_520801/) by brush701
 - [IntelliJ IDEA from JetBrains](https://www.jetbrains.com/idea/) (my favorite development environment for Java coding. Thanks JetBrains!)
