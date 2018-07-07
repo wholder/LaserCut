@@ -1085,19 +1085,19 @@ public class LaserCut extends JFrame {
   }
 
   /*
-  public String getResourceFile (String file) throws IOException {
+  public byte[] getResourceFile (String file) throws IOException {
     InputStream fis = getClass().getResourceAsStream(file);
     if (fis != null) {
       byte[] data = new byte[fis.available()];
       fis.read(data);
       fis.close();
-      return new String(data);
+      return data;
     }
     throw new IllegalStateException("getFile() " + file + " not found");
   }
   */
 
-  public Properties geProperties (String file) throws IOException {
+  public Properties getResourceProperties (String file) throws IOException {
     InputStream fis = getClass().getResourceAsStream(file);
     if (fis != null) {
       Properties props = new Properties();

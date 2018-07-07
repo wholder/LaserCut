@@ -185,7 +185,7 @@ class ZingLaser {
     try {
       String[] list = laserCut.getResourceList("/materials/zing/");
       for (String material : list) {
-        Properties props = laserCut.geProperties(material);
+        Properties props = laserCut.getResourceProperties(material);
         JMenuItem matItem = new JMenuItem(props.getProperty("name"));
         matMenu.add(matItem);
         matItem.addActionListener(ev -> {
