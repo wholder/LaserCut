@@ -91,6 +91,7 @@ public class LaserCut extends JFrame {
   private JMenuItem             gerberZip;
   private int                   pxDpi = prefs.getInt("svg.pxDpi", 96);
   private long                  savedCrc;
+  private boolean               useMillimeters = prefs.getBoolean("useMillimeters", false);
   private boolean               useMouseWheel = prefs.getBoolean("useMouseWheel", false);
   private boolean               miniDynamicLaser = prefs.getBoolean("mini.dynamicLaser", true);
   private boolean               snapToGrid = prefs.getBoolean("snapToGrid", true);
@@ -141,7 +142,7 @@ public class LaserCut extends JFrame {
     items.put("enableGerber", new ParameterDialog.ParmItem("Enable Gerber ZIP Import", prefs.getBoolean("gerber.import", false)));
     items.put("pxDpi", new ParameterDialog.ParmItem("px per Inch (SVG Import/Export)", prefs.getInt("svg.pxDpi", 96)));
     ParameterDialog.ParmItem[] parmSet = items.values().toArray(new ParameterDialog.ParmItem[items.size()]);
-    ParameterDialog dialog = (new ParameterDialog(parmSet, new String[] {"Save", "Cancel"}));
+    ParameterDialog dialog = (new ParameterDialog(parmSet, new String[] {"Save", "Cancel"}, useMillimeters));
     dialog.setLocationRelativeTo(this);
     dialog.setVisible(true);              // Note: this call invokes dialog
     if (dialog.doAction() ) {
@@ -449,7 +450,7 @@ public class LaserCut extends JFrame {
                 File iFile = fileChooser.getSelectedFile();
                 prefs.put("image.dir", iFile.getAbsolutePath());
                 ((CADRasterImage) shp).loadImage(iFile);
-                if (shp.placeParameterDialog(surface)) {
+                if (shp.placeParameterDialog(surface, useMillimeters)) {
                   surface.placeShape(shp);
                 }
               } catch (Exception ex) {
@@ -457,7 +458,7 @@ public class LaserCut extends JFrame {
                 ex.printStackTrace(System.out);
               }
             }
-          } else if (shp.placeParameterDialog(surface)) {
+          } else if (shp.placeParameterDialog(surface, useMillimeters)) {
             surface.placeShape(shp);
           }
         } catch (Exception ex) {
@@ -595,7 +596,7 @@ public class LaserCut extends JFrame {
     editSelected.addActionListener((ev) -> {
       CADShape sel = surface.getSelected();
       boolean centered = sel.centered;
-      if (sel != null && sel.editParameterDialog(surface)) {
+      if (sel != null && sel.editParameterDialog(surface, useMillimeters)) {
         // User clicked dialog's OK button
         surface.getSelected().updateShape();
         if (centered != sel.centered) {
@@ -638,10 +639,10 @@ public class LaserCut extends JFrame {
     JMenuItem roundCorners = new JMenuItem("Round Corners of Selected Shape");
     roundCorners.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_B, cmdMask));
     roundCorners.setEnabled(false);
-    ParameterDialog.ParmItem[] rParms = {new ParameterDialog.ParmItem("radius|in", 0d)};
-    ParameterDialog rDialog = (new ParameterDialog(rParms, new String[] {"Round", "Cancel"}));
-    rDialog.setLocationRelativeTo(surface.getParent());
     roundCorners.addActionListener((ev) -> {
+      ParameterDialog.ParmItem[] rParms = {new ParameterDialog.ParmItem("radius|in", 0d)};
+      ParameterDialog rDialog = (new ParameterDialog(rParms, new String[] {"Round", "Cancel"}, useMillimeters));
+      rDialog.setLocationRelativeTo(surface.getParent());
       rDialog.setVisible(true);              // Note: this call invokes dialog
       if (rDialog.doAction()) {
         surface.pushToUndoStack();
@@ -772,7 +773,7 @@ public class LaserCut extends JFrame {
           AffineTransform at = AffineTransform.getTranslateInstance(-offX, -offY);
           shape = at.createTransformedShape(shape);
           CADShape shp = new CADScaledShape(shape, offX, offY, 0, false, 100.0);
-          if (shp.placeParameterDialog(surface)) {
+          if (shp.placeParameterDialog(surface, useMillimeters)) {
             surface.placeShape(shp);
           }
         } catch (Exception ex) {
@@ -977,6 +978,22 @@ public class LaserCut extends JFrame {
     });
     exportMenu.add(svgOutput);
     menuBar.add(exportMenu);
+    /*
+     *  Add "Units" Menu
+     */
+    JMenu unitsMenu = new JMenu("Units");
+    ButtonGroup unitGroup = new ButtonGroup();
+    String[] unitSet = {"Inches", "Millimeters"};
+    for (String unit : unitSet) {
+      boolean select = ( useMillimeters && unit.equals("Millimeters")) | ( !useMillimeters && unit.equals("Inches"));
+      JMenuItem uItem = new JRadioButtonMenuItem(unit, select);
+      unitGroup.add(uItem);
+      unitsMenu.add(uItem);
+      uItem.addActionListener(ev -> {
+        prefs.putBoolean("useMillimeters", useMillimeters = unit.equals("Millimeters"));
+      });
+    }
+    menuBar.add(unitsMenu);
     // Track window move events and save in prefs
     addComponentListener(new ComponentAdapter() {
       public void componentMoved (ComponentEvent ev)  {
@@ -1504,8 +1521,8 @@ public class LaserCut extends JFrame {
      * parameter values before clicking the mouse to place the shape.
      * @return true if used clicked OK to save
      */
-    boolean placeParameterDialog (DrawSurface surface) {
-      return displayShapeParameterDialog(surface, new ArrayList<>(getPlaceFields()), "Place");
+    boolean placeParameterDialog (DrawSurface surface, boolean mmUnits) {
+      return displayShapeParameterDialog(surface, new ArrayList<>(getPlaceFields()), "Place", mmUnits);
     }
 
     /**
@@ -1513,8 +1530,8 @@ public class LaserCut extends JFrame {
      * parameter values.
      * @return true if used clicked OK to save
      */
-    boolean editParameterDialog (DrawSurface surface) {
-      return displayShapeParameterDialog(surface, new ArrayList<>(getEditFields()), "Save");
+    boolean editParameterDialog (DrawSurface surface, boolean mmUnits) {
+      return displayShapeParameterDialog(surface, new ArrayList<>(getEditFields()), "Save", mmUnits);
     }
 
     /**
@@ -1524,7 +1541,7 @@ public class LaserCut extends JFrame {
      * @param actionButton Text for action button, such as "Save" or "Place"
      * @return true if used clicked action button, else false if they clicked cancel.
      */
-    boolean displayShapeParameterDialog (DrawSurface surface, ArrayList<String> parmNames, String actionButton) {
+    boolean displayShapeParameterDialog (DrawSurface surface, ArrayList<String> parmNames, String actionButton, boolean mmUnits) {
       parmNames.addAll(Arrays.asList(getParameterNames()));
       ParameterDialog.ParmItem[] parmSet = new ParameterDialog.ParmItem[parmNames.size()];
       for (int ii = 0; ii < parmSet.length; ii++) {
@@ -1536,7 +1553,7 @@ public class LaserCut extends JFrame {
           ex.printStackTrace();
         }
       }
-      ParameterDialog dialog = (new ParameterDialog(parmSet, new String[] {actionButton, "Cancel"}));
+      ParameterDialog dialog = (new ParameterDialog(parmSet, new String[] {actionButton, "Cancel"}, mmUnits));
       dialog.setLocationRelativeTo(surface.getParent());
       dialog.setVisible(true);              // Note: this call invokes dialog
       if (dialog.doAction()) {
