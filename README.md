@@ -60,6 +60,8 @@ I'm working on more comprehensive documentation to be built into the code but, i
   - Click on first control point placed to complete and close curve.
   - Click and drag on an already placed control point to move it.
   - Click and drag on the origin to move the entire spline shape
+## New Additions
+  - 7/6/2018 - Added a very basic Material Settings selection menu for Zing Laser.  Material settings are stored as text files in the resource fork of the Jar file.  Currently only two materials, 1/8" Baltic Birch Plywood and 1/8" Cast Acrylic Plastic are supported.  More work needed to add a decent library of materials settings.
 ## Credits
 LaserCut uses the following Java code to perform some of its functions:
 - [LibLaserCut](https://github.com/t-oster/LibLaserCut) (used to control the Zing Laser)
