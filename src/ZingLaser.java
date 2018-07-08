@@ -180,29 +180,33 @@ class ZingLaser {
       }
     });
     zingMenu.add(zingSettings);
-    // Add "Materials" Submenu Item
-    JMenu matMenu = new JMenu("Zing Materials");
-    try {
-      String[] list = laserCut.getResourceList("/materials/zing/");
-      for (String material : list) {
-        Properties props = laserCut.getResourceProperties(material);
-        JMenuItem matItem = new JMenuItem(props.getProperty("name"));
-        matMenu.add(matItem);
-        matItem.addActionListener(ev -> {
-          //System.out.println(props.getProperty("name"));
-          laserCut.prefs.putInt("zing.power", Integer.parseInt(props.getProperty("power")));
-          laserCut.prefs.putInt("zing.speed", Integer.parseInt(props.getProperty("speed")));
-          laserCut.prefs.putInt("zing.freq",  Integer.parseInt(props.getProperty("freq")));
-          laserCut.prefs.putInt("zing.epower", Integer.parseInt(props.getProperty("epower")));
-          laserCut.prefs.putInt("zing.espeed", Integer.parseInt(props.getProperty("espeed")));
-          laserCut.prefs.putInt("zing.efreq",  Integer.parseInt(props.getProperty("efreq")));
-          laserCut.prefs.putInt("zing.rpower", Integer.parseInt(props.getProperty("rpower")));
-          laserCut.prefs.putInt("zing.rspeed", Integer.parseInt(props.getProperty("rspeed")));
-        });
-      }
-      zingMenu.add(matMenu);
-    } catch (Exception ex) {
-      ex.printStackTrace(System.err);
+    // Add "Materials" Submenu Item, if resource files exist
+    String[] materials = laserCut.getResourceFile("/materials/zing.materials").split("===");
+    if (materials.length > 0) {
+      JMenu matMenu = new JMenu("Zing Materials");
+        for (String material : materials) {
+          try {
+            Properties props = laserCut.getResourceProperties(material);
+            if (props.containsKey("name")) {
+              JMenuItem matItem = new JMenuItem(props.getProperty("name"));
+              matMenu.add(matItem);
+              matItem.addActionListener(ev -> {
+                //System.out.println(props.getProperty("name"));
+                laserCut.prefs.putInt("zing.power", Integer.parseInt(props.getProperty("power")));
+                laserCut.prefs.putInt("zing.speed", Integer.parseInt(props.getProperty("speed")));
+                laserCut.prefs.putInt("zing.freq", Integer.parseInt(props.getProperty("freq")));
+                laserCut.prefs.putInt("zing.epower", Integer.parseInt(props.getProperty("epower")));
+                laserCut.prefs.putInt("zing.espeed", Integer.parseInt(props.getProperty("espeed")));
+                laserCut.prefs.putInt("zing.efreq", Integer.parseInt(props.getProperty("efreq")));
+                laserCut.prefs.putInt("zing.rpower", Integer.parseInt(props.getProperty("rpower")));
+                laserCut.prefs.putInt("zing.rspeed", Integer.parseInt(props.getProperty("rspeed")));
+              });
+            }
+          } catch (Exception ex) {
+            ex.printStackTrace(System.err);
+          }
+        }
+        zingMenu.add(matMenu);
     }
     // Add "Resize for Zing" Full Size Submenu Items
     JMenuItem zingResize = new JMenuItem("Resize for Zing (" + (zingFullSize.width / LaserCut.SCREEN_PPI) + "x" +

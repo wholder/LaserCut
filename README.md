@@ -61,7 +61,7 @@ I'm working on more comprehensive documentation to be built into the code but, i
   - Click and drag on an already placed control point to move it.
   - Click and drag on the origin to move the entire spline shape
 ## New Additions
-  - **7/6/2018** - Added a very basic Material Settings selection menu for Zing Laser.  Material settings are stored as text files in the resource fork of the Jar file.  Currently only two materials, _1/8" Baltic Birch Plywood_ and _1/8" Cast Acrylic Plastic_ are supported.  More work needed to add a decent library of materials settings.
+  - **7/6/2018** - Added a Material Settings selection menu for Zing Laser.  Material settings are stored as text file in the resource fork of the Jar file.  Currently only two materials, _1/8" Baltic Birch Plywood_ and _1/8" Cast Acrylic Plastic_ are supported.  More work needed to add a decent library of materials settings.
   - **7/7/2018** - Added new "Units" menu to select either `inches`, or `millimeters` as the default units for offset and size measurements.  Note: can switch back and forth, as needed, and can override setting by adding "`in`" or "`mm`" as a suffix to an input value.  Caution: still not completely tested.
   - **7/7/2018** - Enabled `java.awt.desktop`-related features, recompiled for Java 9 and updated to PDFBox 2.0.11.
 ## Credits

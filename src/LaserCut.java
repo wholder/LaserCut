@@ -96,15 +96,15 @@ public class LaserCut extends JFrame {
   private boolean               miniDynamicLaser = prefs.getBoolean("mini.dynamicLaser", true);
   private boolean               snapToGrid = prefs.getBoolean("snapToGrid", true);
   private boolean               displayGrid = prefs.getBoolean("displayGrid", true);
-  private static final boolean  enableMiniLazer = true;// !System.getProperty("os.name").toLowerCase().contains("win");
+  private boolean               enableMiniLaser = prefs.getBoolean("enableMiniLaser", true);
   private MiniLaser             miniLaser;
 
   private boolean quitHandler () {
     if (savedCrc == surface.getDesignChecksum() || showWarningDialog("You have unsaved changes!\nDo you really want to quit?")) {
-      if (enableMiniLazer) {
+      if (enableMiniLaser) {
         try {
           miniLaser.close();
-        } catch (Exception ex) {
+        } catch (Throwable ex) {
           ex.printStackTrace();
         }
       }
@@ -120,13 +120,20 @@ public class LaserCut extends JFrame {
     } catch (Exception ex) {
       ex.printStackTrace();
     }
+    String jsscInfo = null;
+    if (enableMiniLaser) {
+      try {
+        jsscInfo = "  Java Simple Serial Connector " + SerialNativeInterface.getLibraryVersion() + "\n" +
+                   "  JSSC Native Code DLL Version " + SerialNativeInterface.getNativeLibraryVersion() + "\n";
+      } catch (Throwable ex) {
+        ex.printStackTrace();
+      }
+    }
     JOptionPane.showMessageDialog(this,
         "By: Wayne Holder\n" +
             "  Java Runtime  " + Runtime.version() + "\n" +
             "  LibLaserCut " + com.t_oster.liblasercut.LibInfo.getVersion() + "\n" +
-            (enableMiniLazer ?
-            "  Java Simple Serial Connector " + SerialNativeInterface.getLibraryVersion() + "\n" +
-            "  JSSC Native Code DLL Version " + SerialNativeInterface.getNativeLibraryVersion() + "\n" : "") +
+            (jsscInfo != null ? jsscInfo : "") +
             "  Apache PDFBox " + org.apache.pdfbox.util.Version.getVersion() + "\n" +
             "  Screen PPI " + SCREEN_PPI,
         "LaserCut " + VERSION,
@@ -136,6 +143,7 @@ public class LaserCut extends JFrame {
 
   private void showPreferencesBox () {
     Map<String,ParameterDialog.ParmItem> items = new LinkedHashMap<>();
+    items.put("enableMiniLaser", new ParameterDialog.ParmItem("Enable Mini Laser", prefs.getBoolean("enableMiniLaser", true)));
     items.put("useMouseWheel", new ParameterDialog.ParmItem("Enable Mouse Wheel Scrolling", prefs.getBoolean("useMouseWheel", false)));
     items.put("useDblClkZoom", new ParameterDialog.ParmItem("Enable Double-click Zoom{Dbl click to Zoom 2x, Shift + dbl click to unZoom}",
         prefs.getBoolean("useDblClkZoom", false)));
@@ -151,9 +159,13 @@ public class LaserCut extends JFrame {
         if ("useMouseWheel".equals(name)) {
           prefs.putBoolean("useMouseWheel", useMouseWheel = (Boolean) parm.value);
           configureMouseWheel();
+        } else if ("enableMiniLaser".equals(name)) {
+          boolean enabled = (Boolean) parm.value;
+          prefs.putBoolean("enableMiniLaser", enabled);
+          showInfoDialog("Must restart to use MiniLaser!");
         } else if ("useDblClkZoom".equals(name)) {
             surface.setDoubleClickZoomEnable((Boolean) parm.value);
-          } else if ("enableGerber".equals(name)) {
+        } else if ("enableGerber".equals(name)) {
           boolean enabled = (Boolean) parm.value;
           prefs.putBoolean("gerber.import", enabled);
           gerberZip.setVisible(enabled);
@@ -894,13 +906,13 @@ public class LaserCut extends JFrame {
     //
     exportMenu.add(ZingLaser.getZingMenu(this));
     boolean jPortError = false;
-    if (enableMiniLazer) {
+    if (enableMiniLaser) {
       try {
         //
          // Add "Mini Laser" Menu to Export Menu
         //
         exportMenu.add((miniLaser = new MiniLaser(this)).getMiniLaserMenu());
-      } catch (Exception ex) {
+      } catch (Throwable ex) {
         jPortError = true;
       }
     }
@@ -1004,7 +1016,10 @@ public class LaserCut extends JFrame {
     pack();
     setVisible(true);
     if (jPortError) {
-      showErrorDialog("Unable to initialize JSSCPort serial port");
+      prefs.putBoolean("enableMiniLaser", false);
+      showErrorDialog("Unable to initialize JSSCPort serial port.\n" +
+                      "MiniLaser Export Disabled.  Reenable using\n" +
+                      "Preferences dialog box.");
     }
     if (true) {
     /*
@@ -1085,41 +1100,25 @@ public class LaserCut extends JFrame {
     return inches * 25.4;
   }
 
-  public String[] getResourceList (String resourcePath) throws Exception {
-    URL url = getClass().getResource(resourcePath);
-    java.nio.file.Path path = Paths.get(url.toURI());
-    List<String> resources = new ArrayList<>();
-    java.nio.file.Files.walk(path, 1).forEach(p -> {
-      String tmp = p.toString();
-      int idx = tmp.indexOf(resourcePath);
-      if (idx >= 0 && tmp.endsWith(".prop")) {
-        resources.add(tmp.substring(idx));
+  public String getResourceFile (String file) {
+    try {
+      InputStream fis = getClass().getResourceAsStream(file);
+      if (fis != null) {
+        byte[] data = new byte[fis.available()];
+        fis.read(data);
+        fis.close();
+        return new String(data);
       }
-    });
-    return resources.toArray(new String[resources.size()]);
+    } catch (Exception ex) {}
+    return "";
   }
 
-  /*
-  public byte[] getResourceFile (String file) throws IOException {
-    InputStream fis = getClass().getResourceAsStream(file);
-    if (fis != null) {
-      byte[] data = new byte[fis.available()];
-      fis.read(data);
-      fis.close();
-      return data;
-    }
-    throw new IllegalStateException("getFile() " + file + " not found");
-  }
-  */
-
-  public Properties getResourceProperties (String file) throws IOException {
-    InputStream fis = getClass().getResourceAsStream(file);
-    if (fis != null) {
-      Properties props = new Properties();
-      props.load(fis);
-      return props;
-    }
-    throw new IllegalStateException("getFile() " + file + " not found");
+  public Properties getResourceProperties (String content) {
+    Properties props = new Properties();
+    try {
+      props.load(new StringReader(content));
+    } catch (Exception ex) {}
+    return props;
   }
 
   static class CADShape implements Serializable {
