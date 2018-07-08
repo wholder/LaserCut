@@ -98,6 +98,8 @@ public class LaserCut extends JFrame {
   private boolean               displayGrid = prefs.getBoolean("displayGrid", true);
   private boolean               enableMiniLaser = prefs.getBoolean("enableMiniLaser", true);
   private MiniLaser             miniLaser;
+  private String                errorMsg;
+
 
   private boolean quitHandler () {
     if (savedCrc == surface.getDesignChecksum() || showWarningDialog("You have unsaved changes!\nDo you really want to quit?")) {
@@ -143,7 +145,7 @@ public class LaserCut extends JFrame {
 
   private void showPreferencesBox () {
     Map<String,ParameterDialog.ParmItem> items = new LinkedHashMap<>();
-    items.put("enableMiniLaser", new ParameterDialog.ParmItem("Enable Mini Laser", prefs.getBoolean("enableMiniLaser", true)));
+    items.put("enableMiniLaser", new ParameterDialog.ParmItem("Enable Mini Laser (restart)", prefs.getBoolean("enableMiniLaser", true)));
     items.put("useMouseWheel", new ParameterDialog.ParmItem("Enable Mouse Wheel Scrolling", prefs.getBoolean("useMouseWheel", false)));
     items.put("useDblClkZoom", new ParameterDialog.ParmItem("Enable Double-click Zoom{Dbl click to Zoom 2x, Shift + dbl click to unZoom}",
         prefs.getBoolean("useDblClkZoom", false)));
@@ -162,7 +164,6 @@ public class LaserCut extends JFrame {
         } else if ("enableMiniLaser".equals(name)) {
           boolean enabled = (Boolean) parm.value;
           prefs.putBoolean("enableMiniLaser", enabled);
-          showInfoDialog("Must restart to use MiniLaser!");
         } else if ("useDblClkZoom".equals(name)) {
             surface.setDoubleClickZoomEnable((Boolean) parm.value);
         } else if ("enableGerber".equals(name)) {
@@ -913,6 +914,15 @@ public class LaserCut extends JFrame {
         //
         exportMenu.add((miniLaser = new MiniLaser(this)).getMiniLaserMenu());
       } catch (Throwable ex) {
+        ByteArrayOutputStream bout = new ByteArrayOutputStream();
+        PrintWriter pout = new PrintWriter(bout);
+        ex.printStackTrace(pout);
+        try {
+          pout.close();
+          bout.close();
+        } catch (Exception ex2) {}
+        errorMsg = bout.toString();
+        ex.printStackTrace();
         jPortError = true;
       }
     }
@@ -1004,6 +1014,16 @@ public class LaserCut extends JFrame {
       });
     }
     menuBar.add(unitsMenu);
+    if (errorMsg != null) {
+      // Add "Error" Menu if JSSC error thrown
+      JMenu errorMenu = new JMenu("Error Info");
+      JMenuItem eItem = new JMenuItem("Error Stacktrace");
+      errorMenu.add(eItem);
+      eItem.addActionListener(ev -> {
+        showInfoDialog(errorMsg);
+      });
+      menuBar.add(errorMenu);
+    }
     // Track window move events and save in prefs
     addComponentListener(new ComponentAdapter() {
       public void componentMoved (ComponentEvent ev)  {

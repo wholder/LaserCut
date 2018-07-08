@@ -7,8 +7,8 @@ If you just want to try out the program, you don't need to download and compile 
 ## Requirements
 The current code and runnable Jar file now requires Java 9, or later.
 I wrote LaserCut on a Mac Pro using the _Community_ version of [IntelliJ IDEA from JetBrains](https://www.jetbrains.com/idea/) and OS X is the only environment where I have extensively tested and used LaserCut .  However, as the code is nearly 100% Java, it should also run on MS Windows and Linux systems.  One exception is JSSC (Java Simple Serial Connector), which contains low-level, native drivers, but JSSC is only needed to talk to GRBL-based laser cutters.  Feel free to report any issues you discover.  I'll do my best, when time permits, to investigate them, but I cannot guarantee fixes, timely or otherwise.
-### Issue with JSSC and Java 9, or later on 64 bit Windows 10
-There is a possible issue with Java 9, or later when running on 64 bit Windows 10 with the portion of the code that depended on JSSC, which is the GRBL-based "Mini Laser" driver.  The problem seems tb be with the JSSC 64 bit DLL, but it still under investigation.
+### Issue with JSSC 2.8.0 and Java 9, or later on 64 bit Windows 10
+There is an issue with a JSSC's `jSSC-2.8_x86_64.dll` driver when using Java 9, or later on a 64 bit Windows 10.  If this problem is detected, the GRBL-based "Mini Laser" feature is now automatically disabled so the rest of LaserCut's features can still be used.  Note: once disable, you must reenable the Mini Laser using the Preferences dialog to retry initializing JSSC 2.8.0.
 # Important Note
 LaserCut uses the Java Language's reflection and object serialization features to store and load design files.  This means that future versions of LaserCut may introduce changes that make LaserCut unable to read design files saved by older versions.  I'm trying to code in a way that avoid this, but I can make no guarantees about future compatability with older saved files.
 ## Basic Features
@@ -38,6 +38,10 @@ LaserCut uses the Java Language's reflection and object serialization features t
 - Export vector designs to a PDF file (experimental)
 - Freeform drawing of shapes (Beta) using [Catmull-Rom Splines](https://en.wikipedia.org/wiki/Centripetal_Catmull–Rom_spline) and then automatically convert them into [Bézier Curve](https://en.wikipedia.org/wiki/Bézier_curve)-based shapes.
 - Raster images which can be engraved on Zing or used as tracing templates for spline shapes
+## New Additions
+  - **7/6/2018** - Added a Material Settings selection menu for Zing Laser.  Material settings are stored as text file in the resource fork of the Jar file.  Currently only two materials, _1/8" Baltic Birch Plywood_ and _1/8" Cast Acrylic Plastic_ are supported.  More work needed to add a decent library of materials settings.
+  - **7/7/2018** - Added new "Units" menu to select either `inches`, or `millimeters` as the default units for offset and size measurements.  Note: can switch back and forth, as needed, and can override setting by adding "`in`" or "`mm`" as a suffix to an input value.  Caution: still not completely tested.
+  - **7/7/2018** - Enabled `java.awt.desktop`-related features, recompiled for Java 9 and updated to PDFBox 2.0.11.
 ## Under Development
 - Support for a user-extendable library of specialized cutout shapes, such as for mounting RC Servos (to replace and extend the current Nema Stepper code)
 - Import vector shapes from EPS (Encapsulated PostScript®) files
@@ -60,10 +64,6 @@ I'm working on more comprehensive documentation to be built into the code but, i
   - Click on first control point placed to complete and close curve.
   - Click and drag on an already placed control point to move it.
   - Click and drag on the origin to move the entire spline shape
-## New Additions
-  - **7/6/2018** - Added a Material Settings selection menu for Zing Laser.  Material settings are stored as text file in the resource fork of the Jar file.  Currently only two materials, _1/8" Baltic Birch Plywood_ and _1/8" Cast Acrylic Plastic_ are supported.  More work needed to add a decent library of materials settings.
-  - **7/7/2018** - Added new "Units" menu to select either `inches`, or `millimeters` as the default units for offset and size measurements.  Note: can switch back and forth, as needed, and can override setting by adding "`in`" or "`mm`" as a suffix to an input value.  Caution: still not completely tested.
-  - **7/7/2018** - Enabled `java.awt.desktop`-related features, recompiled for Java 9 and updated to PDFBox 2.0.11.
 ## Credits
 LaserCut uses the following Java code to perform some of its functions:
 - [LibLaserCut](https://github.com/t-oster/LibLaserCut) (used to control the Zing Laser)
