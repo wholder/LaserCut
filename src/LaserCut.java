@@ -145,7 +145,7 @@ public class LaserCut extends JFrame {
 
   private void showPreferencesBox () {
     Map<String,ParameterDialog.ParmItem> items = new LinkedHashMap<>();
-    items.put("enableMiniLaser", new ParameterDialog.ParmItem("Enable Mini Laser (restart)", prefs.getBoolean("enableMiniLaser", true)));
+    items.put("enableMiniLaser", new ParameterDialog.ParmItem("Enable Mini Laser (restart to enable)", prefs.getBoolean("enableMiniLaser", true)));
     items.put("useMouseWheel", new ParameterDialog.ParmItem("Enable Mouse Wheel Scrolling", prefs.getBoolean("useMouseWheel", false)));
     items.put("useDblClkZoom", new ParameterDialog.ParmItem("Enable Double-click Zoom{Dbl click to Zoom 2x, Shift + dbl click to unZoom}",
         prefs.getBoolean("useDblClkZoom", false)));
@@ -914,6 +914,9 @@ public class LaserCut extends JFrame {
         //
         exportMenu.add((miniLaser = new MiniLaser(this)).getMiniLaserMenu());
       } catch (Throwable ex) {
+        prefs.putBoolean("enableMiniLaser", enableMiniLaser = false);
+        jPortError = true;
+        // Save stack trace for "Error" menu
         ByteArrayOutputStream bout = new ByteArrayOutputStream();
         PrintWriter pout = new PrintWriter(bout);
         ex.printStackTrace(pout);
@@ -923,7 +926,6 @@ public class LaserCut extends JFrame {
         } catch (Exception ex2) {}
         errorMsg = bout.toString();
         ex.printStackTrace();
-        jPortError = true;
       }
     }
     //
@@ -1016,11 +1018,11 @@ public class LaserCut extends JFrame {
     menuBar.add(unitsMenu);
     if (errorMsg != null) {
       // Add "Error" Menu if JSSC error thrown
-      JMenu errorMenu = new JMenu("Error Info");
+      JMenu errorMenu = new JMenu("Errors");
       JMenuItem eItem = new JMenuItem("Error Stacktrace");
       errorMenu.add(eItem);
       eItem.addActionListener(ev -> {
-        showInfoDialog(errorMsg);
+        showScrollingDialog(errorMsg);
       });
       menuBar.add(errorMenu);
     }
@@ -1035,12 +1037,6 @@ public class LaserCut extends JFrame {
     setLocation(prefs.getInt("window.x", 10), prefs.getInt("window.y", 10));
     pack();
     setVisible(true);
-    if (jPortError) {
-      prefs.putBoolean("enableMiniLaser", false);
-      showErrorDialog("Unable to initialize JSSCPort serial port.\n" +
-                      "MiniLaser Export Disabled.  Reenable using\n" +
-                      "Preferences dialog box.");
-    }
     if (true) {
     /*
      * * * * * * * * * * * * * * * * * * *
@@ -1080,6 +1076,12 @@ public class LaserCut extends JFrame {
       surface.addShape(new CADGear(2.25, 2.25, .1, 30, 10, 20, .25, 0, mmToInches(3)));
       savedCrc = surface.getDesignChecksum();   // Allow quit if unchanged
     }
+    // Display error dialog if JSSC failed to initialize
+    if (jPortError) {
+      showErrorDialog("Unable to initialize JSSCPort serial port, so Mini Laser is\n" +
+                      "disabled.  Reenable with Preferences dialog box to retry.\n" +
+                      "See \"Errors\" menu for more details on error.");
+    }
   }
 
   private List<CADShape> loadDesign (File fName) throws IOException, ClassNotFoundException {
@@ -1110,6 +1112,16 @@ public class LaserCut extends JFrame {
 
   public void showInfoDialog (String msg) {
     JOptionPane.showMessageDialog(this, msg);
+  }
+
+  private void showScrollingDialog (String msg) {
+    JTextArea textArea = new JTextArea(30, 122);
+    textArea.setFont(new Font("Courier", Font.PLAIN, 12));
+    textArea.setTabSize(4);
+    JScrollPane scrollPane = new JScrollPane(textArea);
+    textArea.setText(msg);
+    textArea.setEditable(false);
+    JOptionPane.showMessageDialog(this, scrollPane);
   }
 
   static double mmToInches (double mm) {
