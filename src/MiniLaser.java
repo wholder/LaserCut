@@ -1,17 +1,10 @@
 import javax.swing.*;
-import javax.swing.text.DefaultCaret;
 import java.awt.*;
 import java.awt.event.ActionEvent;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
-import java.awt.geom.AffineTransform;
 import java.awt.geom.Line2D;
-import java.awt.image.BufferedImage;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.concurrent.CountDownLatch;
+
+import static javax.swing.JOptionPane.*;
 
 class MiniLaser extends GRBLBase {
   private static final int      MINI_POWER_DEFAULT = 255;
@@ -35,9 +28,8 @@ class MiniLaser extends GRBLBase {
     JMenuItem sendToMiniLazer = new JMenuItem("Send GRBL to Mini Laser");
     sendToMiniLazer.addActionListener((ActionEvent ex) -> {
       if (jPort.hasSerial()) {
-        int result = JOptionPane.showConfirmDialog(laserCut, panel, "Send GRBL to Mini Laser", JOptionPane.YES_NO_OPTION,
-          JOptionPane.PLAIN_MESSAGE, null);
-        if (result == JOptionPane.OK_OPTION) {
+        int result = showConfirmDialog(laserCut, panel, "Send GRBL to Mini Laser", YES_NO_OPTION, PLAIN_MESSAGE, null);
+        if (result == OK_OPTION) {
           try {
             boolean miniDynamicLaser = laserCut.prefs.getBoolean("dynamicLaser", true);
             int iterations = Integer.parseInt(tf.getText());
@@ -98,7 +90,7 @@ class MiniLaser extends GRBLBase {
           }
         }
       } else {
-        JOptionPane.showMessageDialog(laserCut, "No Serial Port Selected", "Error", JOptionPane.PLAIN_MESSAGE);
+        showMessageDialog(laserCut, "No Serial Port Selected", "Error", PLAIN_MESSAGE);
       }
     });
     miniLaserMenu.add(sendToMiniLazer);

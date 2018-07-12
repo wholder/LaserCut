@@ -24,6 +24,8 @@ import java.util.*;
 import java.util.List;
 import java.util.prefs.Preferences;
 
+import static javax.swing.JOptionPane.*;
+
   /*
   Links to potentially useful stuff
 
@@ -118,7 +120,7 @@ public class LaserCut extends JFrame {
         ex.printStackTrace();
       }
     }
-    JOptionPane.showMessageDialog(this,
+    showMessageDialog(this,
         "By: Wayne Holder\n" +
             "  Java Runtime  " + Runtime.version() + "\n" +
             "  LibLaserCut " + com.t_oster.liblasercut.LibInfo.getVersion() + "\n" +
@@ -126,7 +128,7 @@ public class LaserCut extends JFrame {
             "  Apache PDFBox " + org.apache.pdfbox.util.Version.getVersion() + "\n" +
             "  Screen PPI " + SCREEN_PPI,
         "LaserCut " + VERSION,
-        JOptionPane.INFORMATION_MESSAGE,
+        INFORMATION_MESSAGE,
         icon);
   }
 
@@ -1118,16 +1120,15 @@ public class LaserCut extends JFrame {
   }
 
   public boolean showWarningDialog (String msg) {
-    return JOptionPane.showConfirmDialog(this, msg,
-        "Warning", JOptionPane.YES_NO_OPTION, JOptionPane.PLAIN_MESSAGE) == JOptionPane.OK_OPTION;
+    return showConfirmDialog(this, msg, "Warning", YES_NO_OPTION, PLAIN_MESSAGE) == OK_OPTION;
   }
 
   public void showErrorDialog (String msg) {
-    JOptionPane.showMessageDialog(this, msg, "Error", JOptionPane.PLAIN_MESSAGE);
+    showMessageDialog(this, msg, "Error", PLAIN_MESSAGE);
   }
 
   public void showInfoDialog (String msg) {
-    JOptionPane.showMessageDialog(this, msg);
+    showMessageDialog(this, msg);
   }
 
   private void showScrollingDialog (String msg) {
@@ -1137,7 +1138,7 @@ public class LaserCut extends JFrame {
     JScrollPane scrollPane = new JScrollPane(textArea);
     textArea.setText(msg);
     textArea.setEditable(false);
-    JOptionPane.showMessageDialog(this, scrollPane);
+    showMessageDialog(this, scrollPane);
   }
 
   static double mmToInches (double mm) {

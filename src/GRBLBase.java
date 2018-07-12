@@ -10,7 +10,10 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
-public class GRBLBase {
+import static javax.swing.JOptionPane.*;
+import static javax.swing.JOptionPane.showMessageDialog;
+
+class GRBLBase {
   private static Map<String,String> grblSettings = new LinkedHashMap<>();
 
   static {
@@ -104,11 +107,9 @@ public class GRBLBase {
         }
       }
       Object[] options = {"OK"};
-      JOptionPane.showOptionDialog(parent, sPanel, "GRBL Settings",
-        JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE,
-        null, options, options[0]);
+      showOptionDialog(parent, sPanel, "GRBL Settings", OK_CANCEL_OPTION, PLAIN_MESSAGE, null, options, options[0]);
       } else {
-        JOptionPane.showMessageDialog(parent, "No Serial Port Selected", "Error", JOptionPane.PLAIN_MESSAGE);
+        showMessageDialog(parent, "No Serial Port Selected", "Error", PLAIN_MESSAGE);
       }
     });
     return settings;
@@ -148,10 +149,8 @@ public class GRBLBase {
         frame.add(buttons, BorderLayout.CENTER);
         // Bring up Jog Controls
         Object[] options = {"Set Origin", "Cancel"};
-        int res = JOptionPane.showOptionDialog(parent, frame, "Jog Controls",
-          JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE,
-          null, options, options[0]);
-        if (res == JOptionPane.OK_OPTION) {
+        int res = showOptionDialog(parent, frame, "Jog Controls", OK_CANCEL_OPTION, PLAIN_MESSAGE, null, options, options[0]);
+        if (res == OK_OPTION) {
           // Reset coords to new position after jog
           try {
             jPort.sendString("G92 X0 Y0 Z0\n");
@@ -167,7 +166,7 @@ public class GRBLBase {
           }
         }
       } else {
-        JOptionPane.showMessageDialog(parent, "No Serial Port Selected", "Error", JOptionPane.PLAIN_MESSAGE);
+        showMessageDialog(parent, "No Serial Port Selected", "Error", PLAIN_MESSAGE);
       }
     });
     return jogMenu;
