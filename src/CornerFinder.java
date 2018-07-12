@@ -135,7 +135,7 @@ public class CornerFinder {
     double s23 = dy23 < dx23 ? dy23 / dx23 : dx23 / dy23;
     double dif = Math.abs(s12 - s23);
     if (dif < .0001) {
-      System.out.println("corner at: " + df.format(p2.x) + ", " + df.format(p2.y));
+      //System.out.println("corner at: " + df.format(p2.x) + ", " + df.format(p2.y));
       return true;
     }
     return false;

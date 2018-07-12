@@ -82,12 +82,12 @@ class MiniLaser {
           // Generate G_Code for GRBL 1.1
           ArrayList<String> cmds = new ArrayList<>();
           // Add starting G-codes
-          cmds.add("G20");                                          // Set Inches as Units
+          cmds.add("G20");                                              // Set Inches as Units
           int speed = Math.max(1, laserCut.prefs.getInt("mini.power", MINI_POWER_DEFAULT));
-          cmds.add("M05");                                          // Set Laser Off
+          cmds.add("M05");                                              // Set Laser Off
           int power = Math.min(1000, laserCut.prefs.getInt("mini.power", MINI_POWER_DEFAULT));
-          cmds.add("S" + power);                                    // Set Laser Power (0 - 255)
-          cmds.add("F" + speed);                                    // Set cut speed
+          cmds.add("S" + power);                                        // Set Laser Power (0 - 255)
+          cmds.add("F" + speed);                                        // Set cut speed
           double lastX = 0, lastY = 0;
           for (int ii = 0; ii < iterations; ii++) {
             boolean laserOn = false;
@@ -103,7 +103,7 @@ class MiniLaser {
                   cmds.add("M05");                                      // Set Laser Off
                   cmds.add("G00 X" + x1 + " Y" + y1);                   // Move to x1 y1
                   if (power > 0) {
-                    cmds.add(miniDynamicLaser ? "M04" : "M03");        // Set Laser On
+                    cmds.add(miniDynamicLaser ? "M04" : "M03");         // Set Laser On
                     laserOn = true;                                     // Leave Laser On
                   }
                   cmds.add("G01 X" + x2 + " Y" + y2);                   // Line to x2 y2
@@ -116,7 +116,7 @@ class MiniLaser {
                     laserOn = false;                                    // Leave Laser Off
                   }
                   if (!laserOn && power > 0) {
-                    cmds.add(miniDynamicLaser ? "M04" : "M03");        // Set Laser On
+                    cmds.add(miniDynamicLaser ? "M04" : "M03");         // Set Laser On
                     laserOn = true;                                     // Leave Laser On
                   }
                   cmds.add("G01 X" + x2 + " Y" + y2);                   // Line to x2 y2
@@ -128,8 +128,8 @@ class MiniLaser {
             }
           }
           // Add ending G-codes
-          cmds.add("M5");                                           // Set Laser Off
-          cmds.add("G00 X0 Y0");                                    // Move back to Origin
+          cmds.add("M5");                                               // Set Laser Off
+          cmds.add("G00 X0 Y0");                                        // Move back to Origin
           new GRBLSender(cmds.toArray(new String[cmds.size()]));
         } catch (Exception ex2) {
           laserCut.showErrorDialog("Invalid parameter " + tf.getText());

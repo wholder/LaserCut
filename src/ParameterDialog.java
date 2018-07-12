@@ -221,23 +221,23 @@ class ParameterDialog extends JDialog {
     }
     // Define a custion action button so we can catch and save the screen coordinates where the "Place" button was clicked...
     // Yeah, it's a lot of weird code but it avoids having the placed object not show up until the mouse is moved.
-    JButton b0 = new JButton( options[0]);
-    b0.addActionListener(actionEvent -> {
+    JButton button = new JButton( options[0]);
+    button.addActionListener(actionEvent -> {
       JButton but = ((JButton) actionEvent.getSource());
       JOptionPane pane = (JOptionPane) but.getParent().getParent();
       pane.setValue(options[0]);
       JOptionPane.getRootFrame().dispose();
     });
-    b0.addMouseListener(new MouseAdapter() {
+    button.addMouseListener(new MouseAdapter() {
       @Override
       public void mousePressed (MouseEvent ev) {
         super.mousePressed(ev);
-        Point bl = b0.getLocationOnScreen();
+        Point bl = button.getLocationOnScreen();
         mouseLoc = new Point(bl.x + ev.getX(), bl.y + ev.getY());
       }
     });
-    Object[] buts = new Object[] {b0, options[1]};
-    JOptionPane optionPane = new JOptionPane(fields, JOptionPane.PLAIN_MESSAGE, JOptionPane.YES_NO_OPTION, null, buts, b0);
+    Object[] buts = new Object[] {button, options[1]};
+    JOptionPane optionPane = new JOptionPane(fields, JOptionPane.PLAIN_MESSAGE, JOptionPane.YES_NO_OPTION, null, buts, button);
     setContentPane(optionPane);
     setDefaultCloseOperation(DISPOSE_ON_CLOSE);
     optionPane.addPropertyChangeListener(ev -> {
