@@ -1344,16 +1344,17 @@ public class LaserCut extends JFrame {
     }
 
     /**
-     * Uses Shape.pathIterator() to convert the Shape into a series of lines.  The size input Shape is
+     * Uses Shape.pathIterator() to convert the Shape into List of arrays of lines.  The size input Shape is
      * assumed to be defined in inches, but the AffineTransform parameter can be used to scale up to the
      * final render resolution.  Note: cubic and quadratic bezier curves calculate an approximaiton of the
      * arc length of the curve to determine the number of line segments used to approximate the curve.
      * @param shape Shape path to render
      * @param scale used to scale from inches to the render resolution, such as Screen or Laser DPI.
-     * @return array of lines
+     * @return List of array of lines
      */
-    static Line2D.Double[] transformShapeToLines (Shape shape, double scale) {
+    static List<Line2D.Double[]> transformShapeToLines (Shape shape, double scale) {
       // Use PathIterator to convert Shape into a series of lines defining a path
+      List<Line2D.Double[]> paths = new ArrayList<>();
       AffineTransform at = scale != 0 ? AffineTransform.getScaleInstance(scale, scale) : null;
       double maxSegSize = .01;                                                  // Max size of a bezier segment, in inches
       ArrayList<Line2D.Double> lines = new ArrayList<>();
@@ -1368,6 +1369,10 @@ public class LaserCut extends JFrame {
             lines.add(new Line2D.Double(xx, yy, mX, mY));
             break;
           case PathIterator.SEG_MOVETO:
+            if (lines.size() > 0) {
+              paths.add(lines.toArray(new Line2D.Double[lines.size()]));
+              lines = new ArrayList<>();
+            }
             mX = xx = coords[0];
             mY = yy = coords[1];
             break;
@@ -1426,7 +1431,11 @@ public class LaserCut extends JFrame {
         }
         pi.next();
       }
-      return lines.toArray(new Line2D.Double[lines.size()]);
+      if (lines.size() > 0) {
+        paths.add(lines.toArray(new Line2D.Double[lines.size()]));
+        lines = new ArrayList<>();
+      }
+      return paths;
     }
 
     void draw (Graphics g, double zoom) {
@@ -1477,11 +1486,13 @@ public class LaserCut extends JFrame {
       return new BasicStroke(highlight ? isSelected ? 1.8f : 1.4f : 1.0f);
     }
 
-    ArrayList<Line2D.Double> getScaledLines (double scale) {
+    List<Line2D.Double> getScaledLines (double scale) {
       Shape dShape = getWorkspaceTranslatedShape();
       // Use PathIterator to get lines from Shape
-      ArrayList<Line2D.Double> lines = new ArrayList<>();
-      Collections.addAll(lines, transformShapeToLines(dShape, scale));
+      List<Line2D.Double> lines = new ArrayList<>();
+      for (Line2D.Double[] list : transformShapeToLines(dShape, scale)) {
+        Collections.addAll(lines, list);
+      }
       return lines;
     }
 
@@ -1570,10 +1581,12 @@ public class LaserCut extends JFrame {
       Shape lShape = getWorkspaceTranslatedShape();
       // Scale Shape to Screen scale and scan all line segments in the shape
       // return true if any is closer than 4 pixels to point
-      for (Line2D.Double line : transformShapeToLines(lShape, 1)) {
-        double dist = line.ptSegDist(point) * SCREEN_PPI;
-        if (dist < 5 / zoom) {
-          return true;
+      for (Line2D.Double[] lines : transformShapeToLines(lShape, 1)) {
+        for (Line2D.Double line : lines) {
+          double dist = line.ptSegDist(point) * SCREEN_PPI;
+          if (dist < 5 / zoom) {
+            return true;
+          }
         }
       }
       return false;
@@ -2543,13 +2556,15 @@ public class LaserCut extends JFrame {
       Point2D.Double mse = rotatePoint(new Point2D.Double(point.x - xLoc, point.y - yLoc), -rotation);
       int idx = 1;
       Point2D.Double chk = points.get(idx);
-      for (Line2D.Double line : transformShapeToLines(getShape(), 1)) {
-        double dist = line.ptSegDist(mse);
-        if (dist < 5 / SCREEN_PPI) {
-          return idx - 1;
-        }
-        if (idx < points.size() && chk.distance(line.getP2()) < .000001) {
-          chk = points.get(Math.min(points.size() - 1, ++idx));
+      for (Line2D.Double[] lines : transformShapeToLines(getShape(), 1)) {
+        for (Line2D.Double line : lines) {
+          double dist = line.ptSegDist(mse);
+          if (dist < 5 / SCREEN_PPI) {
+            return idx - 1;
+          }
+          if (idx < points.size() && chk.distance(line.getP2()) < .000001) {
+            chk = points.get(Math.min(points.size() - 1, ++idx));
+          }
         }
       }
       return -1;
@@ -2775,20 +2790,22 @@ public class LaserCut extends JFrame {
       yLoc = baseShape.yLoc;
       centered = baseShape.centered;
       rotation = baseShape.rotation;
-      Line2D.Double[] lines = transformShapeToLines(baseShape.getShape(), 1.0);
-      Point2D.Double[] points = CNCTools.getParallelPath(lines, radius, !inset);
       Path2D.Double path = new Path2D.Double();
       boolean first = true;
-      for (Point2D.Double point : points) {
-        if (first) {
-          path.moveTo(point.x, point.y);
-          first = false;
-        } else {
-          path.lineTo(point.x, point.y);
+      for (Line2D.Double[] lines : transformShapeToLines(baseShape.getShape(), 1.0)) {
+        Point2D.Double[] points = CNCTools.getParallelPath(lines, radius, !inset);
+        for (Point2D.Double point : points) {
+          if (first) {
+            path.moveTo(point.x, point.y);
+            first = false;
+          } else {
+            path.lineTo(point.x, point.y);
+          }
         }
+        // Connect back to beginning
+        path.lineTo(points[0].x, points[0].y);
+        first = true;
       }
-      // Connect back to beginning
-      path.lineTo(points[0].x, points[0].y);
       return path;
     }
   }

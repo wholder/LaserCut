@@ -86,7 +86,7 @@ class ZingLaser {
           // Loop detects pen up/pen down based on start and end points of line segments
           boolean hasVector = false;
           for (LaserCut.CADShape shape : laserCut.surface.selectLaserItems(doCut)) {
-            ArrayList<Line2D.Double> lines = shape.getScaledLines(ZING_PPI);
+            List<Line2D.Double> lines = shape.getScaledLines(ZING_PPI);
             if (lines.size() > 0) {
               hasVector = true;
               boolean first = true;

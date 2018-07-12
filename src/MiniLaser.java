@@ -3,6 +3,7 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.geom.Line2D;
 import java.util.ArrayList;
+import java.util.List;
 
 import static javax.swing.JOptionPane.*;
 
@@ -28,13 +29,12 @@ class MiniLaser extends GRBLBase {
     JMenuItem sendToMiniLazer = new JMenuItem("Send GRBL to Mini Laser");
     sendToMiniLazer.addActionListener((ActionEvent ex) -> {
       if (jPort.hasSerial()) {
-        int result = showConfirmDialog(laserCut, panel, "Send GRBL to Mini Laser", YES_NO_OPTION, PLAIN_MESSAGE, null);
-        if (result == OK_OPTION) {
+        if (showConfirmDialog(laserCut, panel, "Send GRBL to Mini Laser", YES_NO_OPTION, PLAIN_MESSAGE, null) == OK_OPTION) {
           try {
             boolean miniDynamicLaser = laserCut.prefs.getBoolean("dynamicLaser", true);
             int iterations = Integer.parseInt(tf.getText());
             // Generate G_Code for GRBL 1.1
-            ArrayList<String> cmds = new ArrayList<>();
+            List<String> cmds = new ArrayList<>();
             // Add starting G-codes
             cmds.add("G20");                                              // Set Inches as Units
             int speed = Math.max(1, laserCut.prefs.getInt("mini.power", MINI_POWER_DEFAULT));
@@ -46,7 +46,7 @@ class MiniLaser extends GRBLBase {
             for (int ii = 0; ii < iterations; ii++) {
               boolean laserOn = false;
               for (LaserCut.CADShape shape : laserCut.surface.selectLaserItems(true)) {
-                ArrayList<Line2D.Double> lines = shape.getScaledLines(1);
+                List<Line2D.Double> lines = shape.getScaledLines(1);
                 boolean first = true;
                 for (Line2D.Double line : lines) {
                   String x1 = LaserCut.df.format(line.x1);

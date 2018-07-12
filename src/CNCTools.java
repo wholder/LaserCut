@@ -57,8 +57,7 @@ public class CNCTools {
     }
     Point2D.Double[] path = new Point2D.Double[pLines.size()];
     for (int ii = 0; ii < path.length; ii++) {
-      int jj = (ii + 1) % path.length;
-      path[ii] = pLines.get(ii).intersects(pLines.get(jj));
+      path[ii] = pLines.get(ii).intersects(pLines.get((ii + 1) % path.length));
     }
     return path;
   }
