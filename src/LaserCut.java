@@ -88,7 +88,6 @@ public class LaserCut extends JFrame {
   private MiniLaser             miniLaser;
   private String                errorMsg;
 
-
   private boolean quitHandler () {
     if (savedCrc == surface.getDesignChecksum() || showWarningDialog("You have unsaved changes!\nDo you really want to quit?")) {
       if (enableMiniLaser) {

@@ -82,6 +82,10 @@ public class JSSCPort implements SerialPortEventListener {
     }
   }
 
+  public boolean hasSerial () {
+    return serialPort != null;
+  }
+
   public void close () {
     if (serialPort != null) {
       try {
