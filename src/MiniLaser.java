@@ -9,7 +9,7 @@ import static javax.swing.JOptionPane.*;
 
 class MiniLaser extends GRBLBase {
   private static final int      MINI_POWER_DEFAULT = 255;
-  private static final int      MINI_SPEED_DEFAULT = 10;
+  private static final int      MINI_SPEED_DEFAULT = 100;
   private static Dimension      miniSize = new Dimension((int) (7 * LaserCut.SCREEN_PPI), (int) (8 * LaserCut.SCREEN_PPI));
   private JSSCPort              jPort;
   private LaserCut              laserCut;
@@ -37,7 +37,7 @@ class MiniLaser extends GRBLBase {
             List<String> cmds = new ArrayList<>();
             // Add starting G-codes
             cmds.add("G20");                                              // Set Inches as Units
-            int speed = Math.max(1, laserCut.prefs.getInt("mini.power", MINI_POWER_DEFAULT));
+            int speed = Math.max(1, laserCut.prefs.getInt("mini.speed", MINI_SPEED_DEFAULT));
             cmds.add("M05");                                              // Set Laser Off
             int power = Math.min(1000, laserCut.prefs.getInt("mini.power", MINI_POWER_DEFAULT));
             cmds.add("S" + power);                                        // Set Laser Power (0 - 255)
@@ -46,39 +46,41 @@ class MiniLaser extends GRBLBase {
             for (int ii = 0; ii < iterations; ii++) {
               boolean laserOn = false;
               for (LaserCut.CADShape shape : laserCut.surface.selectLaserItems(true)) {
-                List<Line2D.Double> lines = shape.getScaledLines(1);
-                boolean first = true;
-                for (Line2D.Double line : lines) {
-                  String x1 = LaserCut.df.format(line.x1);
-                  String y1 = LaserCut.df.format(line.y1);
-                  String x2 = LaserCut.df.format(line.x2);
-                  String y2 = LaserCut.df.format(line.y2);
-                  if (first) {
-                    cmds.add("M05");                                      // Set Laser Off
-                    cmds.add("G00 X" + x1 + " Y" + y1);                   // Move to x1 y1
-                    if (power > 0) {
-                      cmds.add(miniDynamicLaser ? "M04" : "M03");         // Set Laser On
-                      laserOn = true;                                     // Leave Laser On
+                for (Line2D.Double[] lines : shape.getListOfScaledLines(1)) {
+                  boolean first = true;
+                  for (Line2D.Double line : lines) {
+                    String x1 = LaserCut.df.format(line.x1);
+                    String y1 = LaserCut.df.format(line.y1);
+                    String x2 = LaserCut.df.format(line.x2);
+                    String y2 = LaserCut.df.format(line.y2);
+                    if (first) {
+                      cmds.add("M05");                                      // Set Laser Off
+                      cmds.add("G00 X" + x1 + " Y" + y1);                   // Move to x1 y1
+                      if (power > 0) {
+                        cmds.add(miniDynamicLaser ? "M04" : "M03");         // Set Laser On
+                        laserOn = true;                                     // Leave Laser On
+                      }
+                      cmds.add("G01 X" + x2 + " Y" + y2);                   // Line to x2 y2
+                      lastX = line.x2;
+                      lastY = line.y2;
+                    } else {
+                      if (lastX != line.x1 || lastY != line.y1) {
+                        cmds.add("M05");                                    // Set Laser Off
+                        cmds.add("G00 X" + x1 + " Y" + y1);                 // Move to x1 y1
+                        laserOn = false;                                    // Leave Laser Off
+                      }
+                      if (!laserOn && power > 0) {
+                        cmds.add(miniDynamicLaser ? "M04" : "M03");         // Set Laser On
+                        laserOn = true;                                     // Leave Laser On
+                      }
+                      cmds.add("G01 X" + x2 + " Y" + y2);                   // Line to x2 y2
+                      lastX = line.x2;
+                      lastY = line.y2;
                     }
-                    cmds.add("G01 X" + x2 + " Y" + y2);                   // Line to x2 y2
-                    lastX = line.x2;
-                    lastY = line.y2;
-                  } else {
-                    if (lastX != line.x1 || lastY != line.y1) {
-                      cmds.add("M05");                                    // Set Laser Off
-                      cmds.add("G00 X" + x1 + " Y" + y1);                 // Move to x1 y1
-                      laserOn = false;                                    // Leave Laser Off
-                    }
-                    if (!laserOn && power > 0) {
-                      cmds.add(miniDynamicLaser ? "M04" : "M03");         // Set Laser On
-                      laserOn = true;                                     // Leave Laser On
-                    }
-                    cmds.add("G01 X" + x2 + " Y" + y2);                   // Line to x2 y2
-                    lastX = line.x2;
-                    lastY = line.y2;
+                    first = false;
                   }
-                  first = false;
                 }
+                laserOn = false;
               }
             }
             // Add ending G-codes

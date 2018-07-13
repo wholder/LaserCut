@@ -86,28 +86,29 @@ class ZingLaser {
           // Loop detects pen up/pen down based on start and end points of line segments
           boolean hasVector = false;
           for (LaserCut.CADShape shape : laserCut.surface.selectLaserItems(doCut)) {
-            List<Line2D.Double> lines = shape.getScaledLines(ZING_PPI);
-            if (lines.size() > 0) {
-              hasVector = true;
-              boolean first = true;
-              for (Line2D.Double line : lines) {
-                Point p1 = new Point((int) Math.round(line.x1), (int) Math.round(line.y1));
-                Point p2 = new Point((int) Math.round(line.x2), (int) Math.round(line.y2));
-                if (first) {
-                  vp.moveto(p1.x, p1.y);
-                  vp.lineto(lastX = p2.x, lastY = p2.y);
-                } else {
-                  if (lastX != p1.x || lastY != p1.y) {
+            for (Line2D.Double[] lines : shape.getListOfScaledLines(ZING_PPI)) {
+              if (lines.length > 0) {
+                hasVector = true;
+                boolean first = true;
+                for (Line2D.Double line : lines) {
+                  Point p1 = new Point((int) Math.round(line.x1), (int) Math.round(line.y1));
+                  Point p2 = new Point((int) Math.round(line.x2), (int) Math.round(line.y2));
+                  if (first) {
                     vp.moveto(p1.x, p1.y);
+                    vp.lineto(lastX = p2.x, lastY = p2.y);
+                  } else {
+                    if (lastX != p1.x || lastY != p1.y) {
+                      vp.moveto(p1.x, p1.y);
+                    }
+                    vp.lineto(lastX = p2.x, lastY = p2.y);
                   }
-                  vp.lineto(lastX = p2.x, lastY = p2.y);
+                  first = false;
                 }
-                first = false;
               }
             }
-          }
-          if (hasVector) {
-            job.addPart(vp);
+            if (hasVector) {
+              job.addPart(vp);
+            }
           }
         }
         ZingMonitor zMon = new ZingMonitor(laserCut);

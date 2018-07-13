@@ -1486,14 +1486,14 @@ public class LaserCut extends JFrame {
       return new BasicStroke(highlight ? isSelected ? 1.8f : 1.4f : 1.0f);
     }
 
-    List<Line2D.Double> getScaledLines (double scale) {
-      Shape dShape = getWorkspaceTranslatedShape();
-      // Use PathIterator to get lines from Shape
-      List<Line2D.Double> lines = new ArrayList<>();
-      for (Line2D.Double[] list : transformShapeToLines(dShape, scale)) {
-        Collections.addAll(lines, list);
-      }
-      return lines;
+    /**
+     * Transform shape to workspace and return as list of arrays of line segments where each array
+     * in the list is the set of lines for a closed shape.
+     * @param scale scale factor
+     * @return list of arrays of line segments
+     */
+    List<Line2D.Double[]> getListOfScaledLines (double scale) {
+      return transformShapeToLines(getWorkspaceTranslatedShape(), scale);
     }
 
     /**
@@ -1518,10 +1518,9 @@ public class LaserCut extends JFrame {
     }
 
     /**
-     * Override in sunclass to cancel selection of a moveable internal point
+     * Override in subclass to cancel selection of a moveable internal point
      */
-    void cancelMove () {
-    }
+    void cancelMove () { }
 
 
     void setPosition (double newX, double newY) {
