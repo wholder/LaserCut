@@ -41,7 +41,7 @@ class MiniLaser extends GRBLBase {
             speed = Math.max(10, speed);                                    // Min speed = 10 inches/min
             cmds.add("M05");                                                // Set Laser Off
             int power = laserCut.prefs.getInt("mini.power", MINI_POWER_DEFAULT);
-            power = Math.max(1000, power);                                  // Max power == 1000
+            power = Math.min(1000, power);                                  // Max power == 1000
             cmds.add("S" + power);                                          // Set Laser Power (0 - 1000)
             cmds.add("F" + speed);                                          // Set feed rate (inches/minute)
             double lastX = 0, lastY = 0;
