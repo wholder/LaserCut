@@ -1131,7 +1131,7 @@ public class LaserCut extends JFrame {
     showMessageDialog(this, msg);
   }
 
-  private void showScrollingDialog (String msg) {
+  public void showScrollingDialog (String msg) {
     JTextArea textArea = new JTextArea(30, 122);
     textArea.setFont(new Font("Courier", Font.PLAIN, 12));
     textArea.setTabSize(4);
@@ -1162,7 +1162,7 @@ public class LaserCut extends JFrame {
     return "";
   }
 
-  public Properties getResourceProperties (String content) {
+  public Properties getProperties (String content) {
     Properties props = new Properties();
     try {
       props.load(new StringReader(content));

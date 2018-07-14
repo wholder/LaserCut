@@ -10,7 +10,6 @@ import java.awt.geom.Line2D;
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
-import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Properties;
@@ -187,7 +186,7 @@ class ZingLaser {
       JMenu matMenu = new JMenu("Zing Materials");
         for (String material : materials) {
           try {
-            Properties props = laserCut.getResourceProperties(material);
+            Properties props = laserCut.getProperties(material);
             if (props.containsKey("name")) {
               JMenuItem matItem = new JMenuItem(props.getProperty("name"));
               matMenu.add(matItem);

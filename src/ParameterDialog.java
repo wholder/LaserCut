@@ -2,7 +2,11 @@ import java.awt.*;
 import java.awt.event.*;
 import java.text.DecimalFormat;
 import java.util.Arrays;
+import java.util.Map;
+import java.util.Properties;
 import javax.swing.*;
+
+import static javax.swing.JOptionPane.showMessageDialog;
 
 class ParameterDialog extends JDialog {
   private static final DecimalFormat mmf = new DecimalFormat("#0.0##");    // 0.001 mm resolution
@@ -11,10 +15,15 @@ class ParameterDialog extends JDialog {
   private Point     mouseLoc;
 
   static class ParmItem {
-    String      name, units = "", hint;
+    String      name, units = "", hint, key;
     Object      value, valueType;
     JComponent  field;
-    boolean     readOnly, sepBefore;
+    boolean     readOnly, lblValue, sepBefore;
+
+    ParmItem (String name, Map<String,String> map, String key) {
+      this(name, map.get(key));
+      this.key = key;
+    }
 
     ParmItem (String name, Object value) {
       this(name, value, false);
@@ -30,6 +39,9 @@ class ParameterDialog extends JDialog {
       if (name.startsWith("*")) {
         name = name.substring(1);
         readOnly = true;
+      } else if (name.startsWith("@")) {
+        name = name.substring(1);
+        lblValue = true;
       }
       if (name.contains(":")) {
         String[] parts = name.split(":");
@@ -45,7 +57,12 @@ class ParameterDialog extends JDialog {
         this.name = tmp[0];
         this.units = tmp[1].toLowerCase();
       }
-      this.value  = value;
+      if ("boolean".equals(units)) {
+        valueType = this.value = (boolean) "1".equals(value);
+        units = "";
+      } else {
+        this.value = value;
+      }
       this.sepBefore = sepBefore;
     }
 
@@ -146,6 +163,10 @@ class ParameterDialog extends JDialog {
    * @param parms array of ParmItem objects that describe each parameter
    */
   ParameterDialog (ParmItem[] parms, String[] options, boolean mmUnits) {
+    this(parms, options, mmUnits, null);
+  }
+
+  ParameterDialog (ParmItem[] parms, String[] options, boolean mmUnits, Properties info) {
     super((Frame) null, true);
     setTitle("Edit Parameters");
     JPanel fields = new JPanel();
@@ -188,25 +209,64 @@ class ParameterDialog extends JDialog {
         } else {
           val = parm.value.toString();
         }
-        JTextField jtf = new JTextField(val, 6);
-        jtf.setEditable(!parm.readOnly);
-        if (parm.readOnly) {
-          jtf.setForeground(Color.gray);
-        }
-        jtf.setHorizontalAlignment(JTextField.RIGHT);
-        fields.add(parm.field = jtf, getGbc(1, jj));
-        parm.field.addFocusListener(new FocusAdapter() {
-          @Override
-          public void focusGained (FocusEvent ev) {
-            super.focusGained(ev);
-            // Clear pink background indicating error
-            JTextField tf = (JTextField) ev.getComponent();
-            tf.setBackground(Color.white);
+        if (parm.lblValue) {
+          // If label name starts with "@" display value as JLabel
+          JLabel lbl = new JLabel(val, SwingConstants.RIGHT);
+          fields.add(parm.field = lbl, getGbc(1, jj));
+        } else {
+          JTextField jtf = new JTextField(val, 8);
+          Dimension dim = jtf.getPreferredSize();
+          jtf.setPreferredSize(new Dimension(dim.width, dim.height - 4));
+          jtf.setEditable(!parm.readOnly);
+          if (parm.readOnly) {
+            jtf.setForeground(Color.gray);
           }
-        });
+          jtf.setHorizontalAlignment(JTextField.RIGHT);
+          fields.add(parm.field = jtf, getGbc(1, jj));
+          parm.field.addFocusListener(new FocusAdapter() {
+            @Override
+            public void focusGained (FocusEvent ev) {
+              super.focusGained(ev);
+              // Clear pink background indicating error
+              JTextField tf = (JTextField) ev.getComponent();
+              tf.setBackground(Color.white);
+            }
+          });
+        }
+      }
+      int col = 2;
+      if (info != null) {
+        if (parm.key != null  &&  info.containsKey(parm.key)) {
+          try {
+            String msg = info.getProperty(parm.key);
+            final String[] tmp = msg.split("--");
+            ImageIcon icon = new ImageIcon(getClass().getResource("/images/info.png"));
+            JButton iBut = new JButton(icon);
+            Dimension dim = iBut.getPreferredSize();
+            iBut.setPreferredSize(new Dimension(dim.width - 4 , dim.height - 4));
+            fields.add(iBut, getGbc(col++, jj));
+            iBut.addActionListener(ev -> {
+            JTextArea textArea = new JTextArea(15, 40);
+            //textArea.setFont(new Font("Courier", Font.PLAIN, 12));
+            //textArea.setTabSize(4);
+            JScrollPane scrollPane = new JScrollPane(textArea);
+            scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+            textArea.setText(tmp.length > 1 ? tmp[1] : tmp[0]);
+            textArea.setLineWrap(true);
+            textArea.setWrapStyleWord(true);
+            textArea.setEditable(false);
+            textArea.setCaretPosition(0);
+            showMessageDialog(this, scrollPane, tmp.length > 1 ? tmp[0] : "Info", JOptionPane.INFORMATION_MESSAGE, icon);
+            });
+          } catch (Exception ex) {
+            ex.printStackTrace();
+          }
+        } else {
+          fields.add(new JLabel(""), getGbc(col++, jj));
+        }
       }
       if (parm.units != null) {
-        fields.add(new JLabel(" " + (inches ? (mmUnits ? "mm" : "in") : parm.units)), getGbc(2, jj));
+        fields.add(new JLabel(" " + (inches ? (mmUnits ? "mm" : "in") : parm.units)), getGbc(col, jj));
       }
       if (parm.hint != null) {
         parm.field.setToolTipText(parm.hint);
@@ -301,12 +361,13 @@ class ParameterDialog extends JDialog {
 
   public static void main (String... args) {
     ParmItem[] parmSet = {
+        new ParmItem("Ready|boolean", "1"),
         new ParmItem("Enabled", true),
         new ParmItem("*Power|%{tool tip}", 80),
         new ParmItem("Motor:Nema 8|0:Nema 11|1:Nema 14|2:Nema 17|3:Nema 23|4", "2"),
         new ParmItem("Font:plain:bold:italic", "bold", true),
         new ParmItem("Speed", 60),
-        new ParmItem("Freq|Hz", 500.123456)};
+        new ParmItem("@Freq|Hz", 500.123456)};
     if (showSaveCancelParameterDialog(parmSet, null)) {
       for (ParmItem parm : parmSet) {
         System.out.println(parm.name + ": " + parm.value);
