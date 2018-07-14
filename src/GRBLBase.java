@@ -89,93 +89,63 @@ class GRBLBase {
       }
       JPanel sPanel;
       if (grblVersion != null) {
-        if (true) {
-          ParameterDialog.ParmItem[] parmSet = {
-            new ParameterDialog.ParmItem("@GRBL Version", grblVersion),
-            new ParameterDialog.ParmItem("@GRBL Options", grblOptions),
-            new ParameterDialog.ParmItem("Step pulse|usec",               map, "$0"),
-            new ParameterDialog.ParmItem("Step idle delay|msec",          map, "$1"),
-            new ParameterDialog.ParmItem("Step port invert|mask",         map, "$2"),
-            new ParameterDialog.ParmItem("Direction port invert|mask",    map, "$3"),
-            new ParameterDialog.ParmItem("Step enable invert|boolean",    map, "$4"),
-            new ParameterDialog.ParmItem("Limit pins invert|boolean",     map, "$5"),
-            new ParameterDialog.ParmItem("Probe pin invert|boolean",      map, "$6"),
-            new ParameterDialog.ParmItem("Status report|mask",            map, "$10"),
-            new ParameterDialog.ParmItem("Junction deviation|mm",         map, "$11"),
-            new ParameterDialog.ParmItem("Arc tolerance|mm",              map, "$12"),
-            new ParameterDialog.ParmItem("Report inches|boolean",         map, "$13"),
-            new ParameterDialog.ParmItem("Soft limits|boolean",           map, "$20"),
-            new ParameterDialog.ParmItem("Hard limits|boolean",           map, "$21"),
-            new ParameterDialog.ParmItem("Homing cycle|boolean",          map, "$22"),
-            new ParameterDialog.ParmItem("Homing dir invert|mask",        map, "$23"),
-            new ParameterDialog.ParmItem("Homing feed|mm/min",            map, "$24"),
-            new ParameterDialog.ParmItem("Homing seek|mm/min",            map, "$25"),
-            new ParameterDialog.ParmItem("Homing debounce|msec",          map, "$26"),
-            new ParameterDialog.ParmItem("Homing pull-off|mm",            map, "$27"),
-            new ParameterDialog.ParmItem("Max spindle speed|RPM",         map, "$30"),
-            new ParameterDialog.ParmItem("Min spindle speed|RPM",         map, "$31"),
-            new ParameterDialog.ParmItem("Laser mode|boolean",            map, "$32"),
-            new ParameterDialog.ParmItem("X Axis|steps/mm",               map, "$100"),
-            new ParameterDialog.ParmItem("Y Axis|steps/mm",               map, "$101"),
-            new ParameterDialog.ParmItem("Z Axis|steps/mm",               map, "$102"),
-            new ParameterDialog.ParmItem("X Max rate|mm/min",             map, "$110"),
-            new ParameterDialog.ParmItem("Y Max rate|mm/min",             map, "$111"),
-            new ParameterDialog.ParmItem("Z Max rate|mm/min",             map, "$112"),
-            new ParameterDialog.ParmItem("X Acceleration|mm/sec\u00B2",   map, "$120"),
-            new ParameterDialog.ParmItem("Y Acceleration|mm/sec\u00B2",   map, "$121"),
-            new ParameterDialog.ParmItem("Z Acceleration|mm/sec\u00B2",   map, "$122"),
-            new ParameterDialog.ParmItem("X Max travel|mm",               map, "$130"),
-            new ParameterDialog.ParmItem("Y Max travel|mm",               map, "$131"),
-            new ParameterDialog.ParmItem("Z Max travel|mm",               map, "$132"),
-          };
-          parmSet[2].sepBefore = true;
-          Properties info = parent.getProperties(parent.getResourceFile("grbl/grblparms.props"));
-          ParameterDialog dialog = (new ParameterDialog(parmSet, new String[] {"Save", "Cancel"}, false, info));
-          dialog.setLocationRelativeTo(parent);
-          dialog.setVisible(true);              // Note: this call invokes dialog
-          if (dialog.doAction()) {
-            java.util.List<String> cmds = new ArrayList<>();
-            for (ParameterDialog.ParmItem parm : parmSet) {
-              Object value = parm.value instanceof Boolean ? ((boolean) parm.value ? "1" : "0") : parm.value;
-              if (!parm.readOnly & !parm.lblValue && !value.equals(map.get(parm.key))) {
-                System.out.println(parm.name + ": changed from " + map.get(parm.key) + " to " + value);
-                cmds.add(parm.key + "=" + value);
-              }
+        ParameterDialog.ParmItem[] parmSet = {
+          new ParameterDialog.ParmItem("@GRBL Version", grblVersion),
+          new ParameterDialog.ParmItem("@GRBL Options", grblOptions),
+          new ParameterDialog.ParmItem("Step pulse|usec",               map, "$0"),
+          new ParameterDialog.ParmItem("Step idle delay|msec",          map, "$1"),
+          new ParameterDialog.ParmItem("Step port invert|mask",         map, "$2"),
+          new ParameterDialog.ParmItem("Direction port invert|mask",    map, "$3"),
+          new ParameterDialog.ParmItem("Step enable invert|boolean",    map, "$4"),
+          new ParameterDialog.ParmItem("Limit pins invert|boolean",     map, "$5"),
+          new ParameterDialog.ParmItem("Probe pin invert|boolean",      map, "$6"),
+          new ParameterDialog.ParmItem("Status report|mask",            map, "$10"),
+          new ParameterDialog.ParmItem("Junction deviation|mm",         map, "$11"),
+          new ParameterDialog.ParmItem("Arc tolerance|mm",              map, "$12"),
+          new ParameterDialog.ParmItem("Report inches|boolean",         map, "$13"),
+          new ParameterDialog.ParmItem("Soft limits|boolean",           map, "$20"),
+          new ParameterDialog.ParmItem("Hard limits|boolean",           map, "$21"),
+          new ParameterDialog.ParmItem("Homing cycle|boolean",          map, "$22"),
+          new ParameterDialog.ParmItem("Homing dir invert|mask",        map, "$23"),
+          new ParameterDialog.ParmItem("Homing feed|mm/min",            map, "$24"),
+          new ParameterDialog.ParmItem("Homing seek|mm/min",            map, "$25"),
+          new ParameterDialog.ParmItem("Homing debounce|msec",          map, "$26"),
+          new ParameterDialog.ParmItem("Homing pull-off|mm",            map, "$27"),
+          new ParameterDialog.ParmItem("Max spindle speed|RPM",         map, "$30"),
+          new ParameterDialog.ParmItem("Min spindle speed|RPM",         map, "$31"),
+          new ParameterDialog.ParmItem("Laser mode|boolean",            map, "$32"),
+          new ParameterDialog.ParmItem("X Axis|steps/mm",               map, "$100"),
+          new ParameterDialog.ParmItem("Y Axis|steps/mm",               map, "$101"),
+          new ParameterDialog.ParmItem("Z Axis|steps/mm",               map, "$102"),
+          new ParameterDialog.ParmItem("X Max rate|mm/min",             map, "$110"),
+          new ParameterDialog.ParmItem("Y Max rate|mm/min",             map, "$111"),
+          new ParameterDialog.ParmItem("Z Max rate|mm/min",             map, "$112"),
+          new ParameterDialog.ParmItem("X Acceleration|mm/sec\u00B2",   map, "$120"),
+          new ParameterDialog.ParmItem("Y Acceleration|mm/sec\u00B2",   map, "$121"),
+          new ParameterDialog.ParmItem("Z Acceleration|mm/sec\u00B2",   map, "$122"),
+          new ParameterDialog.ParmItem("X Max travel|mm",               map, "$130"),
+          new ParameterDialog.ParmItem("Y Max travel|mm",               map, "$131"),
+          new ParameterDialog.ParmItem("Z Max travel|mm",               map, "$132"),
+        };
+        parmSet[2].sepBefore = true;
+        Properties info = parent.getProperties(parent.getResourceFile("grbl/grblparms.props"));
+        ParameterDialog dialog = (new ParameterDialog(parmSet, new String[] {"Save", "Cancel"}, false, info));
+        dialog.setLocationRelativeTo(parent);
+        dialog.setVisible(true);              // Note: this call invokes dialog
+        if (dialog.doAction()) {
+          java.util.List<String> cmds = new ArrayList<>();
+          for (ParameterDialog.ParmItem parm : parmSet) {
+            Object value = parm.value instanceof Boolean ? ((boolean) parm.value ? "1" : "0") : parm.value;
+            if (!parm.readOnly & !parm.lblValue && !value.equals(map.get(parm.key))) {
+              //System.out.println(parm.name + ": changed from " + map.get(parm.key) + " to " + value);
+              cmds.add(parm.key + "=" + value);
             }
-            if (cmds.size() > 0) {
-              //new GRBLSender(parent, jPort, cmds.toArray(new String[0]));
-            }
-          } else {
-            System.out.println("Cancel");
+          }
+          if (cmds.size() > 0) {
+            new GRBLSender(parent, jPort, cmds.toArray(new String[0]));
           }
         } else {
-          sPanel = new JPanel(new GridLayout(grblSettings.size() + 2, 2, 4, 0));
-          sPanel.add(new JLabel("GRBL Version: "));
-          sPanel.add(new JLabel(grblVersion));
-          sPanel.add(new JLabel("GRBL Options: "));
-          sPanel.add(new JLabel(grblOptions));
-          DecimalFormat df = new DecimalFormat("#0.0#");
-          for (String key : grblSettings.keySet()) {
-            String label = grblSettings.get(key);
-            String value = map.get(key);
-            if (label.contains("mm/min")) {
-              double inches = LaserCut.mmToInches(Double.parseDouble(value));
-              value = value + "  (" + df.format(inches) + " in/min)";
-            } else if (label.contains("mm/sec^2")) {
-              double inches = LaserCut.mmToInches(Double.parseDouble(value));
-              value = value + "  (" + df.format(inches) + " in/sec^2)";
-            } else if (label.contains("steps/mm")) {
-              double inches = Double.parseDouble(value) * 2.54;
-              value = value + "  (" + df.format(inches) + " steps/in)";
-            } else if (label.contains("mm")) {
-              double inches = LaserCut.mmToInches(Double.parseDouble(value));
-              value = value + "  (" + df.format(inches) + " in)";
-            }
-            sPanel.add(new JLabel(key + " - " + label + ": "));
-            sPanel.add(new JLabel(value));
-          }
-          Object[] options = {"OK"};
-          showOptionDialog(parent, sPanel, "GRBL Settings", OK_CANCEL_OPTION, PLAIN_MESSAGE, null, options, options[0]);
+          System.out.println("Cancel");
         }
       } else {
         sPanel = new JPanel(new GridLayout(map.size() + 1, 2, 4, 0));

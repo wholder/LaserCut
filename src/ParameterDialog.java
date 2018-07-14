@@ -247,8 +247,6 @@ class ParameterDialog extends JDialog {
             fields.add(iBut, getGbc(col++, jj));
             iBut.addActionListener(ev -> {
             JTextArea textArea = new JTextArea(15, 40);
-            //textArea.setFont(new Font("Courier", Font.PLAIN, 12));
-            //textArea.setTabSize(4);
             JScrollPane scrollPane = new JScrollPane(textArea);
             scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
             textArea.setText(tmp.length > 1 ? tmp[1] : tmp[0]);
