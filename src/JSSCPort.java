@@ -22,7 +22,7 @@ public class JSSCPort implements SerialPortEventListener {
   private ArrayBlockingQueue<Integer>  queue = new ArrayBlockingQueue<>(1000);
   private Pattern             macPat = Pattern.compile("cu.");
   private Preferences         prefs;
-  private String              portName;
+  private String              portName, prefix;
   private int                 baudRate, dataBits = 8, stopBits = 1, parity = 0;
   private int                 eventMasks = SerialPort.MASK_RXCHAR;                // Also, SerialPort.MASK_CTS, SerialPort.MASK_DSR
   private int                 flowCtrl = SerialPort.FLOWCONTROL_NONE;
@@ -52,7 +52,8 @@ public class JSSCPort implements SerialPortEventListener {
     //baudRates.put("921600", 921600);
   }
 
-  public JSSCPort (Preferences prefs) throws SerialPortException {
+  public JSSCPort (String prefix, Preferences prefs) throws SerialPortException {
+    this.prefix = prefix;
     this.prefs = prefs;
     // Determine OS Type
     switch (SerialNativeInterface.getOsType()) {
@@ -68,8 +69,8 @@ public class JSSCPort implements SerialPortEventListener {
         macPat = Pattern.compile("tty.*");
         break;
     }
-    portName = prefs.get("serial.port", null);
-    baudRate = prefs.getInt("serial.baud", 9600);
+    portName = prefs.get(prefix + "serial.port", null);
+    baudRate = prefs.getInt(prefix + "serial.baud", 9600);
     for (String name : SerialPortList.getPortNames(macPat)) {
       if (name.equals(portName)) {
         serialPort = new SerialPort(portName);
@@ -179,7 +180,7 @@ public class JSSCPort implements SerialPortEventListener {
           serialPort.setEventsMask(eventMasks);
           serialPort.setFlowControlMode(flowCtrl);
           serialPort.addEventListener(JSSCPort.this);
-          prefs.put("serial.port", portName);
+          prefs.put(prefix + "serial.port", portName);
         } catch (Exception ex) {
           ex.printStackTrace(System.out);
         }
@@ -199,7 +200,7 @@ public class JSSCPort implements SerialPortEventListener {
       group.add(item);
       item.addActionListener((ev) -> {
         String cmd = ev.getActionCommand();
-        prefs.putInt("serial.baud", baudRate = Integer.parseInt(cmd));
+        prefs.putInt(prefix + "serial.baud", baudRate = Integer.parseInt(cmd));
         if (serialPort != null && serialPort.isOpened()) {
           try {
             serialPort.setParams(baudRate, dataBits, stopBits, parity, false, false);  // baud, 8 bits, 1 stop bit, no parity

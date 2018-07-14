@@ -20,7 +20,7 @@ class MiniLaser extends GRBLBase {
 
   JMenu getMiniLaserMenu () throws Exception {
     JMenu miniLaserMenu = new JMenu("Mini Laser");
-    jPort = new JSSCPort(laserCut.prefs);
+    jPort = new JSSCPort("mini.", laserCut.prefs);
     // Add "Send to Mini Laser" Submenu Item
     JPanel panel = new JPanel(new GridLayout(1, 2));
     panel.add(new JLabel("Iterations: ", JLabel.RIGHT));
