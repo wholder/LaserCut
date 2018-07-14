@@ -43,6 +43,7 @@ LaserCut uses the Java Language's reflection and object serialization features t
   - **7/7/2018** - Added new "Units" menu to select either `inches`, or `millimeters` as the default units for offset and size measurements.  Note: can switch back and forth, as needed, and can override setting by adding "`in`" or "`mm`" as a suffix to an input value.  Caution: still not completely tested.
   - **7/7/2018** - Enabled `java.awt.desktop`-related features, recompiled for Java 9 and updated to PDFBox 2.0.11.
   - **7/11/2018** - Added simple parallel path finder for eventual support for some 2D CNC operations.
+  - **7/13/2018** - Reworked GRBL Settings dialog to support editing and saving settings and added "Info" button for each item.
 ## Under Development
 - Support for a user-extendable library of specialized cutout shapes, such as for mounting RC Servos (to replace and extend the current Nema Stepper code)
 - Import vector shapes from EPS (Encapsulated PostScript®) files
