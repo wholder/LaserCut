@@ -82,7 +82,10 @@ class MiniLaser extends GRBLBase {
                     first = false;
                   }
                 }
-                laserOn = false;
+                if (laserOn) {
+                  cmds.add("M05");                                          // Set Laser Off
+                  laserOn = false;
+                }
               }
             }
             // Add ending G-codes
