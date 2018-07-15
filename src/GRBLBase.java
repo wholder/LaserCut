@@ -5,7 +5,6 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
-import java.text.DecimalFormat;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
 
@@ -13,45 +12,6 @@ import static javax.swing.JOptionPane.*;
 import static javax.swing.JOptionPane.showMessageDialog;
 
 class GRBLBase {
-  private static Map<String,String> grblSettings = new LinkedHashMap<>();
-
-  static {
-    // Settings map for GRBL .9, or later
-    grblSettings.put("$0",   "Step pulse, usec");
-    grblSettings.put("$1",   "Step idle delay, msec");
-    grblSettings.put("$2",   "Step port invert, mask");
-    grblSettings.put("$3",   "Direction port invert, mask");
-    grblSettings.put("$4",   "Step enable invert, boolean");
-    grblSettings.put("$5",   "Limit pins invert, boolean");
-    grblSettings.put("$6",   "Probe pin invert, boolean");
-    grblSettings.put("$10",  "Status report, mask");
-    grblSettings.put("$11",  "Junction deviation, mm");
-    grblSettings.put("$12",  "Arc tolerance, mm");
-    grblSettings.put("$13",  "Report inches, boolean");
-    grblSettings.put("$20",  "Soft limits, boolean");
-    grblSettings.put("$21",  "Hard limits, boolean");
-    grblSettings.put("$22",  "Homing cycle, boolean");
-    grblSettings.put("$23",  "Homing dir invert, mask");
-    grblSettings.put("$24",  "Homing feed, mm/min");
-    grblSettings.put("$25",  "Homing seek, mm/min");
-    grblSettings.put("$26",  "Homing debounce, msec");
-    grblSettings.put("$27",  "Homing pull-off, mm");
-    grblSettings.put("$30",  "Max spindle speed, RPM");
-    grblSettings.put("$31",  "Min spindle speed, RPM");
-    grblSettings.put("$32",  "Laser mode, boolean");
-    grblSettings.put("$100", "X steps/mm");
-    grblSettings.put("$101", "Y steps/mm");
-    grblSettings.put("$102", "Z steps/mm");
-    grblSettings.put("$110", "X Max rate, mm/min");
-    grblSettings.put("$111", "Y Max rate, mm/min");
-    grblSettings.put("$112", "Z Max rate, mm/min");
-    grblSettings.put("$120", "X Acceleration, mm/sec^2");
-    grblSettings.put("$121", "Y Acceleration, mm/sec^2");
-    grblSettings.put("$122", "Z Acceleration, mm/sec^2");
-    grblSettings.put("$130", "X Max travel, mm");
-    grblSettings.put("$131", "Y Max travel, mm");
-    grblSettings.put("$132", "Z Max travel, mm");
-  }
 
   JMenuItem getGRBLSettingsMenu (LaserCut parent, JSSCPort jPort) {
     JMenuItem settings = new JMenuItem("Get GRBL Settings");
@@ -60,6 +20,7 @@ class GRBLBase {
       StringBuilder buf = new StringBuilder();
       new GRBLRunner(jPort, "$I", buf);
       String[] rsps = buf.toString().split("\n");
+      String grblBuild = null;
       String grblVersion = null;
       String grblOptions = null;
       for (String rsp : rsps ) {
@@ -68,7 +29,9 @@ class GRBLBase {
         if (idx1 >= 0 && idx2 > 0) {
           grblVersion = rsp.substring(5, rsp.length() - 2);
           if (grblVersion.contains(":")) {
-            grblVersion = grblVersion.split(":")[0];
+            String[] tmp = grblVersion.split(":");
+            grblVersion = tmp[1];
+            grblBuild = tmp[0];
           }
         }
         idx1 = rsp.indexOf("[OPT:");
@@ -80,54 +43,55 @@ class GRBLBase {
       buf.setLength(0);
       new GRBLRunner(jPort, "$$", buf);
       String[] opts = buf.toString().split("\n");
-      HashMap<String,String> map = new LinkedHashMap<>();
+      HashMap<String,String> sVals = new LinkedHashMap<>();
       for (String opt : opts) {
         String[] vals = opt.split("=");
         if (vals.length == 2) {
-          map.put(vals[0], vals[1]);
+          sVals.put(vals[0], vals[1]);
         }
       }
       JPanel sPanel;
       if (grblVersion != null) {
         ParameterDialog.ParmItem[] parmSet = {
-          new ParameterDialog.ParmItem("@GRBL Version", grblVersion),
-          new ParameterDialog.ParmItem("@GRBL Options", grblOptions),
-          new ParameterDialog.ParmItem("Step pulse|usec",               map, "$0"),
-          new ParameterDialog.ParmItem("Step idle delay|msec",          map, "$1"),
-          new ParameterDialog.ParmItem("Step port invert|mask",         map, "$2"),
-          new ParameterDialog.ParmItem("Direction port invert|mask",    map, "$3"),
-          new ParameterDialog.ParmItem("Step enable invert|boolean",    map, "$4"),
-          new ParameterDialog.ParmItem("Limit pins invert|boolean",     map, "$5"),
-          new ParameterDialog.ParmItem("Probe pin invert|boolean",      map, "$6"),
-          new ParameterDialog.ParmItem("Status report|mask",            map, "$10"),
-          new ParameterDialog.ParmItem("Junction deviation|mm",         map, "$11"),
-          new ParameterDialog.ParmItem("Arc tolerance|mm",              map, "$12"),
-          new ParameterDialog.ParmItem("Report inches|boolean",         map, "$13"),
-          new ParameterDialog.ParmItem("Soft limits|boolean",           map, "$20"),
-          new ParameterDialog.ParmItem("Hard limits|boolean",           map, "$21"),
-          new ParameterDialog.ParmItem("Homing cycle|boolean",          map, "$22"),
-          new ParameterDialog.ParmItem("Homing dir invert|mask",        map, "$23"),
-          new ParameterDialog.ParmItem("Homing feed|mm/min",            map, "$24"),
-          new ParameterDialog.ParmItem("Homing seek|mm/min",            map, "$25"),
-          new ParameterDialog.ParmItem("Homing debounce|msec",          map, "$26"),
-          new ParameterDialog.ParmItem("Homing pull-off|mm",            map, "$27"),
-          new ParameterDialog.ParmItem("Max spindle speed|RPM",         map, "$30"),
-          new ParameterDialog.ParmItem("Min spindle speed|RPM",         map, "$31"),
-          new ParameterDialog.ParmItem("Laser mode|boolean",            map, "$32"),
-          new ParameterDialog.ParmItem("X Axis|steps/mm",               map, "$100"),
-          new ParameterDialog.ParmItem("Y Axis|steps/mm",               map, "$101"),
-          new ParameterDialog.ParmItem("Z Axis|steps/mm",               map, "$102"),
-          new ParameterDialog.ParmItem("X Max rate|mm/min",             map, "$110"),
-          new ParameterDialog.ParmItem("Y Max rate|mm/min",             map, "$111"),
-          new ParameterDialog.ParmItem("Z Max rate|mm/min",             map, "$112"),
-          new ParameterDialog.ParmItem("X Acceleration|mm/sec\u00B2",   map, "$120"),
-          new ParameterDialog.ParmItem("Y Acceleration|mm/sec\u00B2",   map, "$121"),
-          new ParameterDialog.ParmItem("Z Acceleration|mm/sec\u00B2",   map, "$122"),
-          new ParameterDialog.ParmItem("X Max travel|mm",               map, "$130"),
-          new ParameterDialog.ParmItem("Y Max travel|mm",               map, "$131"),
-          new ParameterDialog.ParmItem("Z Max travel|mm",               map, "$132"),
+          new ParameterDialog.ParmItem("@Grbl Version",  grblVersion),
+          new ParameterDialog.ParmItem("@Grbl Build", grblBuild != null ? grblBuild : "unknown"),
+          new ParameterDialog.ParmItem("@Grbl Options", grblOptions != null ? grblOptions : "unknown"),
+          new ParameterDialog.ParmItem("Step pulse|usec",               sVals, "$0"),
+          new ParameterDialog.ParmItem("Step idle delay|msec",          sVals, "$1"),
+          new ParameterDialog.ParmItem("Step port invert",              sVals, "$2", new String[] {"X", "Y", "Z"}),   // Bitfield
+          new ParameterDialog.ParmItem("Direction port invert",         sVals, "$3", new String[] {"X", "Y", "Z"}),   // Bitfield
+          new ParameterDialog.ParmItem("Step enable invert|boolean",    sVals, "$4"),
+          new ParameterDialog.ParmItem("Limit pins invert|boolean",     sVals, "$5"),
+          new ParameterDialog.ParmItem("Probe pin invert|boolean",      sVals, "$6"),
+          new ParameterDialog.ParmItem("Status report|mask",            sVals, "$10"),
+          new ParameterDialog.ParmItem("Junction deviation|mm",         sVals, "$11"),
+          new ParameterDialog.ParmItem("Arc tolerance|mm",              sVals, "$12"),
+          new ParameterDialog.ParmItem("Report inches|boolean",         sVals, "$13"),
+          new ParameterDialog.ParmItem("Soft limits|boolean",           sVals, "$20"),
+          new ParameterDialog.ParmItem("Hard limits|boolean",           sVals, "$21"),
+          new ParameterDialog.ParmItem("Homing cycle|boolean",          sVals, "$22"),
+          new ParameterDialog.ParmItem("Homing dir invert",             sVals, "$23", new String[] {"X", "Y", "Z"}),   // Bitfield
+          new ParameterDialog.ParmItem("Homing feed|mm/min",            sVals, "$24"),
+          new ParameterDialog.ParmItem("Homing seek|mm/min",            sVals, "$25"),
+          new ParameterDialog.ParmItem("Homing debounce|msec",          sVals, "$26"),
+          new ParameterDialog.ParmItem("Homing pull-off|mm",            sVals, "$27"),
+          new ParameterDialog.ParmItem("Max spindle speed|RPM",         sVals, "$30"),
+          new ParameterDialog.ParmItem("Min spindle speed|RPM",         sVals, "$31"),
+          new ParameterDialog.ParmItem("Laser mode|boolean",            sVals, "$32"),
+          new ParameterDialog.ParmItem("X Axis|steps/mm",               sVals, "$100"),
+          new ParameterDialog.ParmItem("Y Axis|steps/mm",               sVals, "$101"),
+          new ParameterDialog.ParmItem("Z Axis|steps/mm",               sVals, "$102"),
+          new ParameterDialog.ParmItem("X Max rate|mm/min",             sVals, "$110"),
+          new ParameterDialog.ParmItem("Y Max rate|mm/min",             sVals, "$111"),
+          new ParameterDialog.ParmItem("Z Max rate|mm/min",             sVals, "$112"),
+          new ParameterDialog.ParmItem("X Acceleration|mm/sec\u00B2",   sVals, "$120"),
+          new ParameterDialog.ParmItem("Y Acceleration|mm/sec\u00B2",   sVals, "$121"),
+          new ParameterDialog.ParmItem("Z Acceleration|mm/sec\u00B2",   sVals, "$122"),
+          new ParameterDialog.ParmItem("X Max travel|mm",               sVals, "$130"),
+          new ParameterDialog.ParmItem("Y Max travel|mm",               sVals, "$131"),
+          new ParameterDialog.ParmItem("Z Max travel|mm",               sVals, "$132"),
         };
-        parmSet[2].sepBefore = true;
+        parmSet[3].sepBefore = true;
         Properties info = parent.getProperties(parent.getResourceFile("grbl/grblparms.props"));
         ParameterDialog dialog = (new ParameterDialog(parmSet, new String[] {"Save", "Cancel"}, false, info));
         dialog.setLocationRelativeTo(parent);
@@ -135,9 +99,10 @@ class GRBLBase {
         if (dialog.doAction()) {
           java.util.List<String> cmds = new ArrayList<>();
           for (ParameterDialog.ParmItem parm : parmSet) {
-            Object value = parm.value instanceof Boolean ? ((boolean) parm.value ? "1" : "0") : parm.value;
-            if (!parm.readOnly & !parm.lblValue && !value.equals(map.get(parm.key))) {
-              //System.out.println(parm.name + ": changed from " + map.get(parm.key) + " to " + value);
+            Object value = parm.value instanceof Boolean ? ((boolean) parm.value ? "1" : "0") :
+              parm.value instanceof ParameterDialog.BField ? Integer.toString(((ParameterDialog.BField) parm.value).getValue()) : parm.value;
+            if (!parm.readOnly & !parm.lblValue && !value.equals(sVals.get(parm.key))) {
+              //System.out.println(parm.name + ": changed from " + sVals.get(parm.key) + " to " + value);
               cmds.add(parm.key + "=" + value);
             }
           }
@@ -148,11 +113,23 @@ class GRBLBase {
           System.out.println("Cancel");
         }
       } else {
-        sPanel = new JPanel(new GridLayout(map.size() + 1, 2, 4, 0));
-        sPanel.add(new JLabel("GRBL Version: unknown"));
-        for (String key : map.keySet()) {
-          sPanel.add(new JLabel(map.get(key)));
+        sPanel = new JPanel(new GridLayout(sVals.size() + 5, 2, 4, 0));
+        Font font = new Font("Courier", Font.PLAIN, 14);
+        JLabel lbl;
+        int idx1 = rsps[0].indexOf("[");
+        int idx2 = rsps[0].indexOf("]");
+        if (rsps.length == 2 && idx1 >= 0 && idx2 > 0) {
+          grblVersion = rsps[0].substring(1, rsps[0].length() - 2);
         }
+        sPanel.add(new JLabel("GRBL Version: " + (grblVersion != null ? grblVersion : "unknown")));
+        sPanel.add(new JSeparator());
+        for (String key : sVals.keySet()) {
+          sPanel.add(lbl = new JLabel(padSpace(key + ":", 6) + sVals.get(key)));
+          lbl.setFont(font);
+        }
+        sPanel.add(new JSeparator());
+        sPanel.add(new JLabel("Note: upgrade to GRBL 1.1, or later"));
+        sPanel.add(new JLabel("to enable settings editor."));
         Object[] options = {"OK"};
         showOptionDialog(parent, sPanel, "GRBL Settings", OK_CANCEL_OPTION, PLAIN_MESSAGE, null, options, options[0]);
       }
@@ -161,6 +138,13 @@ class GRBLBase {
       }
     });
     return settings;
+  }
+
+  private String padSpace (String txt, int len) {
+    while (txt.length() < len) {
+      txt = txt + " ";
+    }
+    return txt;
   }
 
   JMenuItem getGRBLJogMenu (Frame parent, JSSCPort jPort) {

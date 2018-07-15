@@ -865,6 +865,18 @@ public class DrawSurface extends JPanel {
     return newShapes;
   }
 
+  ArrayList<LaserCut.CADShape> selectCncItems () {
+    // Cull out items that will not CNC Itemd
+    ArrayList<LaserCut.CADShape> cullShapes = new ArrayList<>();
+    for (LaserCut.CADShape shape : getDesign()) {
+      if (shape instanceof LaserCut.CNCPath) {
+        cullShapes.add(shape);
+      }
+    }
+    return cullShapes;
+  }
+
+
   public void paint (Graphics g) {
     Dimension d = getSize();
     Graphics2D g2 = (Graphics2D) g;

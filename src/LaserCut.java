@@ -86,15 +86,23 @@ public class LaserCut extends JFrame {
   private boolean               snapToGrid = prefs.getBoolean("snapToGrid", true);
   private boolean               displayGrid = prefs.getBoolean("displayGrid", true);
   private boolean               enableMiniLaser = prefs.getBoolean("enableMiniLaser", true);
-  private boolean               enableCnc = prefs.getBoolean("enableCnc", false);
+  private boolean               enableMiniCnc = prefs.getBoolean("enableMiniCnc", false);
   private MiniLaser             miniLaser;
+  private MiniCNC               miniCnc;
   private String                errorMsg;
 
   private boolean quitHandler () {
     if (savedCrc == surface.getDesignChecksum() || showWarningDialog("You have unsaved changes!\nDo you really want to quit?")) {
-      if (enableMiniLaser) {
+      if (enableMiniLaser && miniLaser != null) {
         try {
           miniLaser.close();
+        } catch (Throwable ex) {
+          ex.printStackTrace();
+        }
+      }
+      if (enableMiniCnc && miniCnc != null) {
+        try {
+          miniCnc.close();
         } catch (Throwable ex) {
           ex.printStackTrace();
         }
@@ -112,7 +120,7 @@ public class LaserCut extends JFrame {
       ex.printStackTrace();
     }
     String jsscInfo = null;
-    if (enableMiniLaser) {
+    if (enableMiniLaser || enableMiniCnc) {
       try {
         jsscInfo = "  Java Simple Serial Connector " + SerialNativeInterface.getLibraryVersion() + "\n" +
                    "  JSSC Native Code DLL Version " + SerialNativeInterface.getNativeLibraryVersion() + "\n";
@@ -135,8 +143,8 @@ public class LaserCut extends JFrame {
   private void showPreferencesBox () {
     Map<String,ParameterDialog.ParmItem> items = new LinkedHashMap<>();
     items.put("enableMiniLaser", new ParameterDialog.ParmItem("Mini Laser (restart to enable)", enableMiniLaser));
-    items.put("enableCnc", new ParameterDialog.ParmItem("CNC Path (restart to enabled)", enableCnc));
-    items.put("useMouseWheel", new ParameterDialog.ParmItem("ouse Wheel Scrolling", prefs.getBoolean("useMouseWheel", false)));
+    items.put("enableMiniCnc", new ParameterDialog.ParmItem("Mini CNC (restart to enabled)", enableMiniCnc));
+    items.put("useMouseWheel", new ParameterDialog.ParmItem("Mouse Wheel Scrolling", prefs.getBoolean("useMouseWheel", false)));
     items.put("useDblClkZoom", new ParameterDialog.ParmItem("Double-click Zoom{Dbl click to Zoom 2x, Shift + dbl click to unZoom}",
         prefs.getBoolean("useDblClkZoom", false)));
     items.put("enableGerber", new ParameterDialog.ParmItem("Enable Gerber ZIP Import", prefs.getBoolean("gerber.import", false)));
@@ -153,8 +161,8 @@ public class LaserCut extends JFrame {
           configureMouseWheel();
         } else if ("enableMiniLaser".equals(name)) {
           prefs.putBoolean("enableMiniLaser", enableMiniLaser = (Boolean) parm.value);
-        } else if ("enableCnc".equals(name)) {
-          prefs.putBoolean("enableCnc", enableCnc = (Boolean) parm.value);
+        } else if ("enableMiniCnc".equals(name)) {
+          prefs.putBoolean("enableMiniCnc", enableMiniCnc = (Boolean) parm.value);
         } else if ("useDblClkZoom".equals(name)) {
           surface.setDoubleClickZoomEnable((Boolean) parm.value);
         } else if ("enableGerber".equals(name)) {
@@ -655,7 +663,7 @@ public class LaserCut extends JFrame {
     // Add "Generate CNC Path from Selected" Menu Item
     //
     JMenuItem cncSelected = new JMenuItem("Generate CNC Path from Selected");
-    if (enableCnc) {
+    if (enableMiniCnc) {
       cncSelected.setEnabled(false);
       cncSelected.addActionListener((ev) -> {
         // Display dialog to get tool radius and inset flag
@@ -732,7 +740,7 @@ public class LaserCut extends JFrame {
       editSelected.setEnabled(selected);
       moveSelected.setEnabled(canSelect);
       roundCorners.setEnabled(canSelect);
-      if (enableCnc) {
+      if (enableMiniCnc) {
         cncSelected.setEnabled(canSelect);
       }
       saveSelected.setEnabled(canSelect);
@@ -924,16 +932,19 @@ public class LaserCut extends JFrame {
     // Add "Zing Laser" Menu to Export Menu
     //
     exportMenu.add(ZingLaser.getZingMenu(this));
-    boolean jPortError = false;
+    //
+    // Add "Mini Laser" Menu to Export Menu
+    //
     if (enableMiniLaser) {
       try {
-        //
-         // Add "Mini Laser" Menu to Export Menu
-        //
         exportMenu.add((miniLaser = new MiniLaser(this)).getMiniLaserMenu());
       } catch (Throwable ex) {
-        prefs.putBoolean("enableMiniLaser", enableMiniLaser = false);
-        jPortError = true;
+        if (showWarningDialog("Unable to initialize JSSCPort serial port (See \"Errors\" menu for more details)\n" +
+                              "Click OK to disable the Mini Laser and prevent this error from happening again.\n" +
+                              "Note; you can use the Preferences dialog box to renable the Mini Laser.\n" +
+                              "Do you want to disable the Mini Laser features?")) {
+          prefs.putBoolean("enableMiniLaser", enableMiniLaser = false);
+        }
         // Save stack trace for "Error" menu
         ByteArrayOutputStream bout = new ByteArrayOutputStream();
         PrintWriter pout = new PrintWriter(bout);
@@ -942,7 +953,32 @@ public class LaserCut extends JFrame {
           pout.close();
           bout.close();
         } catch (Exception ex2) {}
-        errorMsg = bout.toString();
+        errorMsg = "Mini Laser Error:\n" + bout.toString();
+        ex.printStackTrace();
+      }
+    }
+    //
+    // Add "Mini CNC" Menu to Export Menu
+    //
+    if (enableMiniCnc) {
+      try {
+        exportMenu.add((miniCnc = new MiniCNC(this)).getMiniCncMenu());
+      } catch (Throwable ex) {
+        if (showWarningDialog("Unable to initialize JSSCPort serial port (See \"Errors\" menu for more details)\n" +
+                              "Click OK to disable the Mini CNC and prevent this error from happening again.\n" +
+                              "Note; you can use the Preferences dialog box to renable the Mini CNC.\n" +
+                              "Do you want to disable the Mini CNC features?")) {
+          prefs.putBoolean("enableMiniCnc", enableMiniCnc = false);
+        }
+        // Save stack trace for "Error" menu
+        ByteArrayOutputStream bout = new ByteArrayOutputStream();
+        PrintWriter pout = new PrintWriter(bout);
+        ex.printStackTrace(pout);
+        try {
+          pout.close();
+          bout.close();
+        } catch (Exception ex2) {}
+        errorMsg = (errorMsg != null ? errorMsg + "\n" : "") + "Mini CNC Error:\n" + bout.toString();
         ex.printStackTrace();
       }
     }
@@ -1094,12 +1130,6 @@ public class LaserCut extends JFrame {
       surface.addShape(new CADGear(2.25, 2.25, .1, 30, 10, 20, .25, 0, mmToInches(3)));
       savedCrc = surface.getDesignChecksum();   // Allow quit if unchanged
     }
-    // Display error dialog if JSSC failed to initialize
-    if (jPortError) {
-      showErrorDialog("Unable to initialize JSSCPort serial port, so Mini Laser is\n" +
-                      "disabled.  Reenable with Preferences dialog box to retry.\n" +
-                      "See \"Errors\" menu for more details on error.");
-    }
   }
 
   private List<CADShape> loadDesign (File fName) throws IOException, ClassNotFoundException {
@@ -1133,11 +1163,13 @@ public class LaserCut extends JFrame {
 
   public void showScrollingDialog (String msg) {
     JTextArea textArea = new JTextArea(30, 122);
+    textArea.setMargin(new Insets(2, 4, 4, 2));
     textArea.setFont(new Font("Courier", Font.PLAIN, 12));
     textArea.setTabSize(4);
     JScrollPane scrollPane = new JScrollPane(textArea);
     textArea.setText(msg);
     textArea.setEditable(false);
+    textArea.setCaretPosition(0);
     showMessageDialog(this, scrollPane);
   }
 
