@@ -20,7 +20,7 @@ class MiniLaser extends GRBLBase {
 
   JMenu getMiniLaserMenu () throws Exception {
     JMenu miniLaserMenu = new JMenu("Mini Laser");
-    jPort = new JSSCPort("mini.", laserCut.prefs);
+    jPort = new JSSCPort("mini.laser.", laserCut.prefs);
     // Add "Send to Mini Laser" Submenu Item
     JPanel panel = new JPanel(new GridLayout(1, 2));
     panel.add(new JLabel("Iterations: ", JLabel.RIGHT));
@@ -31,16 +31,16 @@ class MiniLaser extends GRBLBase {
       if (jPort.hasSerial()) {
         if (showConfirmDialog(laserCut, panel, "Send GRBL to Mini Laser", YES_NO_OPTION, PLAIN_MESSAGE, null) == OK_OPTION) {
           try {
-            boolean miniDynamicLaser = laserCut.prefs.getBoolean("mini.dynamic", true);
+            boolean miniDynamicLaser = laserCut.prefs.getBoolean("mini.laser.dynamic", true);
             int iterations = Integer.parseInt(tf.getText());
             // Generate G_Code for GRBL 1.1
             List<String> cmds = new ArrayList<>();
             // Add starting G-codes
             cmds.add("G20");                                                // Set Inches as Units
-            int speed = laserCut.prefs.getInt("mini.speed", MINI_SPEED_DEFAULT);
+            int speed = laserCut.prefs.getInt("mini.laser.speed", MINI_SPEED_DEFAULT);
             speed = Math.max(10, speed);                                    // Min speed = 10 inches/min
             cmds.add("M05");                                                // Set Laser Off
-            int power = laserCut.prefs.getInt("mini.power", MINI_POWER_DEFAULT);
+            int power = laserCut.prefs.getInt("mini.laser.power", MINI_POWER_DEFAULT);
             power = Math.min(1000, power);                                  // Max power == 1000
             cmds.add("S" + power);                                          // Set Laser Power (0 - 1000)
             cmds.add("F" + speed);                                          // Set feed rate (inches/minute)
@@ -105,15 +105,15 @@ class MiniLaser extends GRBLBase {
     JMenuItem miniLazerSettings = new JMenuItem("Mini Lazer Settings");
     miniLazerSettings.addActionListener(ev -> {
       ParameterDialog.ParmItem[] parmSet = {
-          new ParameterDialog.ParmItem("Dynamic Laser", laserCut.prefs.getBoolean("mini.dynamic", true)),
-          new ParameterDialog.ParmItem("Power|%", laserCut.prefs.getInt("mini.power", MINI_POWER_DEFAULT)),
-          new ParameterDialog.ParmItem("Speed{inches/minute}", laserCut.prefs.getInt("mini.speed", MINI_SPEED_DEFAULT))
+          new ParameterDialog.ParmItem("Dynamic Laser", laserCut.prefs.getBoolean("mini.laser.dynamic", true)),
+          new ParameterDialog.ParmItem("Power|%", laserCut.prefs.getInt("mini.laser.power", MINI_POWER_DEFAULT)),
+          new ParameterDialog.ParmItem("Speed{inches/minute}", laserCut.prefs.getInt("mini.laser.speed", MINI_SPEED_DEFAULT))
       };
       if (ParameterDialog.showSaveCancelParameterDialog(parmSet, laserCut)) {
         int ii = 0;
-        laserCut.prefs.putBoolean("mini.dynamic", (Boolean) parmSet[ii++].value);
-        laserCut.prefs.putInt("mini.power", (Integer) parmSet[ii++].value);
-        laserCut.prefs.putInt("mini.speed", (Integer) parmSet[ii].value);
+        laserCut.prefs.putBoolean("mini.laser.dynamic", (Boolean) parmSet[ii++].value);
+        laserCut.prefs.putInt("mini.laser.power", (Integer) parmSet[ii++].value);
+        laserCut.prefs.putInt("mini.laser.speed", (Integer) parmSet[ii].value);
       }
     });
     miniLaserMenu.add(miniLazerSettings);

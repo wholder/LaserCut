@@ -342,7 +342,7 @@ public class DXFReader {
       case 21:                                    // Mid Point Y
         my = Double.parseDouble(value) * uScale;
         break;
-      case 70:                                    // Dimension type (0-6 plus bits at 32,64,128)
+      case 70:                                    // Dimension type (0-6 plus numBits at 32,64,128)
         type = Integer.parseInt(value);
         break;
       case 71:                                    // Attachment orientation (1-9) for 1=UL, 2=UC, 3=UR, etc

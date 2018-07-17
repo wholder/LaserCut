@@ -70,12 +70,12 @@ public class JSSCPort implements SerialPortEventListener {
         break;
     }
     portName = prefs.get(prefix + "serial.port", null);
-    baudRate = prefs.getInt(prefix + "serial.baud", 9600);
+    baudRate = prefs.getInt(prefix + "serial.baud", 115200);                        // GRBL 1.1 uses 115200 Baud
     for (String name : SerialPortList.getPortNames(macPat)) {
       if (name.equals(portName)) {
         serialPort = new SerialPort(portName);
         serialPort.openPort();
-        serialPort.setParams(baudRate, dataBits, stopBits, parity, false, false);  // baud, 8 bits, 1 stop bit, no parity
+        serialPort.setParams(baudRate, dataBits, stopBits, parity, false, false);   // baud, 8 numBits, 1 stop bit, no parity
         serialPort.setEventsMask(eventMasks);
         serialPort.setFlowControlMode(flowCtrl);
         serialPort.addEventListener(this);
@@ -176,7 +176,7 @@ public class JSSCPort implements SerialPortEventListener {
           }
           serialPort = new SerialPort(portName);
           serialPort.openPort();
-          serialPort.setParams(baudRate, dataBits, stopBits, parity, false, false);  // baud, 8 bits, 1 stop bit, no parity
+          serialPort.setParams(baudRate, dataBits, stopBits, parity, false, false);  // baud, 8 numBits, 1 stop bit, no parity
           serialPort.setEventsMask(eventMasks);
           serialPort.setFlowControlMode(flowCtrl);
           serialPort.addEventListener(JSSCPort.this);
@@ -203,7 +203,7 @@ public class JSSCPort implements SerialPortEventListener {
         prefs.putInt(prefix + "serial.baud", baudRate = Integer.parseInt(cmd));
         if (serialPort != null && serialPort.isOpened()) {
           try {
-            serialPort.setParams(baudRate, dataBits, stopBits, parity, false, false);  // baud, 8 bits, 1 stop bit, no parity
+            serialPort.setParams(baudRate, dataBits, stopBits, parity, false, false);  // baud, 8 numBits, 1 stop bit, no parity
           } catch (Exception ex) {
             ex.printStackTrace(System.out);
           }

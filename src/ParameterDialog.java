@@ -20,6 +20,11 @@ class ParameterDialog extends JDialog {
     JComponent  field;
     boolean     readOnly, lblValue, sepBefore;
 
+    ParmItem (String name, Map<String,String> map, String key, String[] fields) {
+      this(name, new BField(fields, Integer.parseInt(map.get(key))), false);
+      this.key = key;
+    }
+
     ParmItem (String name, Map<String,String> map, String key) {
       this(name, map.get(key));
       this.key = key;
@@ -73,7 +78,22 @@ class ParameterDialog extends JDialog {
       }
     }
 
-    // Return true of invalid value
+    String getStringValue () {
+      if (value instanceof Boolean) {
+        return (boolean) value ? "1" : "0";
+      } else if (value instanceof ParameterDialog.BField) {
+        return Integer.toString(((ParameterDialog.BField) value).getValue());
+      } else if (value instanceof String) {
+        return (String) value;
+      } else if (value instanceof Integer) {
+        return Integer.toString((int) value);
+      } else if (value instanceof Double) {
+        return Double.toString((double) value);
+      }
+      return null;
+    }
+
+    // Return true if invalid value
     private boolean setValueAndValidate (String newValue, boolean mmUnits) {
       if (valueType instanceof Integer) {
         try {
@@ -198,6 +218,8 @@ class ParameterDialog extends JDialog {
         String[] values = getValues((String[]) parm.valueType);
         select.setSelectedIndex(Arrays.asList(values).indexOf((String) parm.value));
         fields.add(parm.field = select, getGbc(1, jj));
+      } else if (parm.value instanceof JComponent) {
+        fields.add(parm.field = (JComponent) parm.value, getGbc(1, jj));
       } else {
         String val;
         if (parm.value instanceof Double) {
@@ -254,7 +276,7 @@ class ParameterDialog extends JDialog {
             textArea.setWrapStyleWord(true);
             textArea.setEditable(false);
             textArea.setCaretPosition(0);
-            showMessageDialog(this, scrollPane, tmp.length > 1 ? tmp[0] : "Info", JOptionPane.INFORMATION_MESSAGE, icon);
+            showMessageDialog(this, scrollPane, tmp.length > 1 ? tmp[0] : "Info", JOptionPane.PLAIN_MESSAGE);
             });
           } catch (Exception ex) {
             ex.printStackTrace();
@@ -295,7 +317,7 @@ class ParameterDialog extends JDialog {
       }
     });
     Object[] buts = new Object[] {button, options[1]};
-    JOptionPane optionPane = new JOptionPane(fields, JOptionPane.PLAIN_MESSAGE, JOptionPane.YES_NO_OPTION, null, buts, button);
+    JOptionPane optionPane = new JOptionPane(fields, JOptionPane.PLAIN_MESSAGE, JOptionPane.YES_NO_OPTION, null, buts, options[1]);
     setContentPane(optionPane);
     setDefaultCloseOperation(DISPOSE_ON_CLOSE);
     optionPane.addPropertyChangeListener(ev -> {
@@ -343,6 +365,32 @@ class ParameterDialog extends JDialog {
     pack();
   }
 
+  static class BField extends JPanel {
+    JCheckBox[] chks;
+
+    BField (String[] fields, int value) {
+      setLayout(new GridLayout(1, fields.length));
+      chks = new JCheckBox[fields.length];
+      for (int ii = 0; ii< chks.length; ii++) {
+        String field = fields[ii];
+        add(chks[ii] = new JCheckBox(field, (value & (1 << ( chks.length - ii - 1))) != 0));
+        JCheckBox chk = chks[ii];
+        chk.addActionListener(ev -> {
+          boolean selected = !chk.isSelected();
+          chk.setSelected(!selected);
+        });
+      }
+    }
+
+    int getValue () {
+      int val = 0;
+      for (int ii = 0; ii < chks.length; ii++) {
+        val |= (chks[ii].isSelected() ? 1 << ( chks.length - ii - 1) : 0);
+      }
+      return val;
+    }
+  }
+
   /**
    * Display parameter edit dialog
    * @param parms Array of ParameterDialog.ParmItem objects initialized with name and value
@@ -365,6 +413,7 @@ class ParameterDialog extends JDialog {
         new ParmItem("Motor:Nema 8|0:Nema 11|1:Nema 14|2:Nema 17|3:Nema 23|4", "2"),
         new ParmItem("Font:plain:bold:italic", "bold", true),
         new ParmItem("Speed", 60),
+        new ParmItem("Bit Field", new BField(new String[] {"X", "Y", "Z"}, 5)),
         new ParmItem("@Freq|Hz", 500.123456)};
     if (showSaveCancelParameterDialog(parmSet, null)) {
       for (ParmItem parm : parmSet) {
