@@ -13,6 +13,46 @@ import static javax.swing.JOptionPane.*;
 import static javax.swing.JOptionPane.showMessageDialog;
 
   /*
+   *  GRBL 1.1 Pinouts and commands
+   *     D2 - Step Pulse X-Axis Output
+   *     D3 - Step Pulse Y-Axis Output
+   *     D4 - Step Pulse Z-Axis Output
+   *     D5 - Direction X-Axis Output
+   *     D6 - Direction Y-Axis Output
+   *     D7 - Direction Z-Axis Output
+   *     D8 - Stepper Enable/Disable Output
+   *     D9 - Limit X-Axis Input (to Ground, NC if $5=1 or NO  if $5=0)
+   *    D10 - Limit Y-Axis Input (to Ground,  NC if $5=1 or NO  if $5=0)
+   *  (Note: pins D11 and D12 are different from GRBL v0.9)
+   *    D11 - Spindle PWM Output
+   *    D12 - Limit Z-Axis Input (to Ground, NC if $5=1 or NO  if $5=0)
+   *    D13 - Spindle Direction Output
+   *     A0 - Reset/Abort Input
+   *     A1 - Feed Hold Input
+   *     A2 - Cycle Start Input
+   *     A3 - Coolant Enable Output
+   *     A4 - Coolant Mist Enable (normally disabled in code "//#define ENABLE_M7")
+   *     A5 - Probe Input (to Ground)
+   *
+   *  Basic Movement commands:
+   *     G0 - Rapid move to position
+   *     G1 - Linear mode to position (used for cutting)
+   *
+   *  Spindle-related commands: (enabled by $32=0 setting)
+   *     M3 - Set CW rotation (CNC only)
+   *     M4 - Set CCW rotation (CNC only)
+   *     M5 - Spindle Off
+   *
+   *  Laser-related commands: (enabled by $32=1 setting)
+   *     M3 - Laser On
+   *     M4 - Laser On (dynamic mode)
+   *     M5 - Laser Off
+   *
+   *  Coolant State commands
+   *     M7 - Mist Coolant (pin A4 On, but must #define ENABLE_M7 to use)
+   *     M8 - Flood Coolant (pin A3 On)
+   *     M9 - All Coolant Off (pin A3 Off)
+   *
    *  Probe-related  commands:
    *    g32.2                       Probe toward workpiece, stop on contact, signal error if failure
    *    g32.3                       Probe toward workpiece, stop on contact
@@ -310,7 +350,9 @@ class GRBLBase {
           while (running) {
             try {
               Thread.sleep(50);
-            } catch (InterruptedException ex) {}
+            } catch (InterruptedException ex) {
+              ex.printStackTrace();
+            }
           }
           pressed = true;
           running = true;

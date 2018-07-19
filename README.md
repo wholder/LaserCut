@@ -38,6 +38,9 @@ LaserCut uses the Java Language's reflection and object serialization features t
 - Export vector designs to a PDF file (experimental)
 - Freeform drawing of shapes (Beta) using [Catmull-Rom Splines](https://en.wikipedia.org/wiki/Centripetal_Catmull–Rom_spline) and then automatically convert them into [Bézier Curve](https://en.wikipedia.org/wiki/Bézier_curve)-based shapes.
 - Raster images which can be engraved on Zing or used as tracing templates for spline shapes
+## Jog Dialog
+<p align="center"><img src="https://github.com/wholder/LaserCut/blob/master/images/Jog%20Dialog.png"></p>
+
 ## New Additions
   - **7/6/2018** - Added a Material Settings selection menu for Zing Laser.  Material settings are stored as text file in the resource fork of the Jar file.  Currently only two materials, _1/8" Baltic Birch Plywood_ and _1/8" Cast Acrylic Plastic_ are supported.  More work needed to add a decent library of materials settings.
   - **7/7/2018** - Added new "Units" menu to select either `inches`, or `millimeters` as the default units for offset and size measurements.  Note: can switch back and forth, as needed, and can override setting by adding "`in`" or "`mm`" as a suffix to an input value.  Caution: still not completely tested.
