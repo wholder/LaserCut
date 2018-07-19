@@ -38,7 +38,7 @@ LaserCut uses the Java Language's reflection and object serialization features t
 - Export vector designs to a PDF file (experimental)
 - Freeform drawing of shapes (Beta) using [Catmull-Rom Splines](https://en.wikipedia.org/wiki/Centripetal_Catmull–Rom_spline) and then automatically convert them into [Bézier Curve](https://en.wikipedia.org/wiki/Bézier_curve)-based shapes.
 - Raster images which can be engraved on Zing or used as tracing templates for spline shapes
-## Jog Dialog
+## Jog Controls
 <p align="center"><img src="https://github.com/wholder/LaserCut/blob/master/images/Jog%20Dialog.png"></p>
 
 ## New Additions
