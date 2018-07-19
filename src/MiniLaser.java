@@ -91,7 +91,7 @@ class MiniLaser extends GRBLBase {
             // Add ending G-codes
             cmds.add("M5");                                                 // Set Laser Off
             cmds.add("G00 X0 Y0");                                          // Move back to Origin
-            new GRBLSender(laserCut, jPort, cmds.toArray(new String[0]));
+            new GRBLSender(laserCut, jPort, cmds.toArray(new String[0]), new String[] {"M5"});
           } catch (Exception ex2) {
             laserCut.showErrorDialog("Invalid parameter " + tf.getText());
           }

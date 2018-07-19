@@ -64,7 +64,7 @@
       jPort = new JSSCPort("mini.cnc.", laserCut.prefs);
       // Add "Send to Mini Laser" Submenu Item
       JPanel panel = new JPanel(new GridLayout(1, 2));
-      panel.add(new JLabel("Iterations: ", JLabel.RIGHT));
+      panel.add(new JLabel("Z Depth: ", JLabel.RIGHT));
       JTextField tf = new JTextField("1", 4);
       panel.add(tf);
       JMenuItem sendToMiniCnc = new JMenuItem("Send GRBL to Mini CNC");
@@ -72,40 +72,39 @@
         if (jPort.hasSerial()) {
           if (showConfirmDialog(laserCut, panel, "Send GRBL to Mini CNC", YES_NO_OPTION, PLAIN_MESSAGE, null) == OK_OPTION) {
             try {
-              int iterations = Integer.parseInt(tf.getText());
+              double zDepth = Double.parseDouble(tf.getText());
+              zDepth = zDepth > 0 ? -zDepth : zDepth;                         // Make sure Z depth is negative (move down)
               // Generate G_Code for GRBL 1.1
               List<String> cmds = new ArrayList<>();
               // Add starting G-codes
               cmds.add("G20");                                                // Set Inches as Units
               int rpm = laserCut.prefs.getInt("mini.cnc.rpm", MINI_CNC_RPM_DEFAULT);
-              rpm = Math.max(10, rpm);                                        // Min speed = 10 inches/min
-              cmds.add("M05");                                                // Set Laser Off
+              rpm = Math.min(1000, rpm);                                      // Max RPM == 1000
               int feed = laserCut.prefs.getInt("mini.cnc.feed", MINI_CNC_FEED_DEFAULT);
-              feed = Math.min(1000, feed);                                    // Max power == 1000
-              cmds.add("S" + feed);                                           // Set Spindle Speed (0 - 1000)
-              cmds.add("F" + rpm);                                            // Set feed rate (inches/minute)
-              for (int ii = 0; ii < iterations; ii++) {
-                for (LaserCut.CADShape shape : laserCut.surface.selectCncItems()) {
-                  for (Line2D.Double[] lines : shape.getListOfScaledLines(1)) {
-                    String x1 = LaserCut.df.format(lines[0].x1);
-                    String y1 = LaserCut.df.format(lines[0].y1);
-                    cmds.add("G00 X" + x1 + " Y" + y1);                       // Move to first x1 y1
-                    // Move Z Axis down to cutting position
-                    //  ** Need code here
-                    for (Line2D.Double line : lines) {
-                      String x2 = LaserCut.df.format(line.x2);
-                      String y2 = LaserCut.df.format(line.y2);
-                      cmds.add("G01 X" + x2 + " Y" + y2);                     // Line to next x2 y2
-                    }
+              feed = Math.max(1, feed);                                       // Min feed = 1 inches/min
+              for (LaserCut.CADShape shape : laserCut.surface.selectCncItems()) {
+                for (Line2D.Double[] lines : shape.getListOfScaledLines(1)) {
+                  String x1 = LaserCut.df.format(lines[0].x1);
+                  String y1 = LaserCut.df.format(lines[0].y1);
+                  String z1 = LaserCut.df.format(zDepth);
+                  cmds.add("S" + rpm);                                        // Set Spindle RPM (0 - 1000)
+                  cmds.add("F" + feed);                                       // Set feed rate (inches/minute)
+                  cmds.add("G00 X" + x1 + " Y" + y1);                         // Fast Move to first x1 y1
+                  cmds.add("G01 Z" + z1);                                     // Slow Move Z Axis down to cutting position
+                  for (Line2D.Double line : lines) {
+                    String x2 = LaserCut.df.format(line.x2);
+                    String y2 = LaserCut.df.format(line.y2);
+                    cmds.add("G01 X" + x2 + " Y" + y2);                       // Slow cut Line to next x2 y2
                   }
-                  // Retract Z Axis before move to next position
-                  //  ** Need code nere
                 }
+                cmds.add("G00 Z0");                                           // Fast Retract Z axis before move to next position
               }
               // Add ending G-codes
-              cmds.add("M5");                                                 // Set Laser Off
+              cmds.add("G00 Z0");                                             // Fast Retract Z axis (in case of abort)
+              cmds.add("S0");                                                 // Set Spindle to zero RPM
               cmds.add("G00 X0 Y0");                                          // Move back to Origin
-              new GRBLSender(laserCut, jPort, cmds.toArray(new String[0]));
+              new GRBLSender(laserCut, jPort, cmds.toArray(new String[0]),    // Send commands to Mini CNC
+                             new String[] {"F0"});                            // On abort, Spindle to zero RPM
             } catch (Exception ex2) {
               laserCut.showErrorDialog("Invalid parameter " + tf.getText());
             }

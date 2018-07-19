@@ -44,6 +44,7 @@ LaserCut uses the Java Language's reflection and object serialization features t
   - **7/7/2018** - Enabled `java.awt.desktop`-related features, recompiled for Java 9 and updated to PDFBox 2.0.11.
   - **7/11/2018** - Added simple parallel path finder for eventual support for some 2D CNC operations.
   - **7/13/2018** - Reworked GRBL Settings dialog to support editing and saving settings and added "Info" button for each item.
+  - **7/19/2018** - Added real time position readout to Jog controls and G-Code Monitor dialog and G-Code Monitor now stays visible until all steps are processed.
 ## Under Development
 - Support for a user-extendable library of specialized cutout shapes, such as for mounting RC Servos (to replace and extend the current Nema Stepper code)
 - Import vector shapes from EPS (Encapsulated PostScript®) files

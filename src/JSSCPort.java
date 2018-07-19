@@ -161,10 +161,12 @@ public class JSSCPort implements SerialPortEventListener {
 
   public JMenu getPortMenu () {
     JMenu menu = new JMenu("Port");
+    menu.setVisible(true);
     ButtonGroup group = new ButtonGroup();
+    boolean selected= false;
     for (String pName : SerialPortList.getPortNames(macPat)) {
       JRadioButtonMenuItem item = new JRadioButtonMenuItem(pName, pName.equals(portName));
-      menu.setVisible(true);
+      selected |= item.isSelected();
       menu.add(item);
       group.add(item);
       item.addActionListener((ev) -> {
@@ -186,6 +188,23 @@ public class JSSCPort implements SerialPortEventListener {
         }
       });
     }
+    // Add "non" option to free up port
+    JRadioButtonMenuItem item = new JRadioButtonMenuItem("None", !selected);
+    item.addActionListener((ev) -> {
+      try {
+      if (serialPort != null && serialPort.isOpened()) {
+        serialPort.removeEventListener();
+        serialPort.closePort();
+      }
+      prefs.remove(prefix + "serial.port");
+      serialPort = null;
+      } catch (Exception ex) {
+        ex.printStackTrace(System.out);
+      }
+    });
+    menu.add(item);
+    group.add(item);
+
     return menu;
   }
 

@@ -5,11 +5,29 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
+import java.text.DecimalFormat;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
 
 import static javax.swing.JOptionPane.*;
 import static javax.swing.JOptionPane.showMessageDialog;
+
+  /*
+   *  Probe-related  commands:
+   *    g32.2                       Probe toward workpiece, stop on contact, signal error if failure
+   *    g32.3                       Probe toward workpiece, stop on contact
+   *    g32.4                       Probe away from workpiece, stop on loss of contact, signal error if failure
+   *    g32.5                       Probe away from workpiece, stop on loss of contact
+   *    g38.3 f100 z-10             Start probe move to z-10 with feedrate 100, stop on probe contact, or end of move
+   *    g0                          Exit probe command state
+   *    $X                          Clear Alarm state
+   *
+   *  Probe responses:
+    *   [PRB:5.000,5.000,-6.000:1]  On probe contact
+    *   ALARM:4                     The probe is not in the expected initial state before starting probe cycle
+   *    ALARM:5                     Probe fails to contact in within the programmed travel for G38.2 and G38.4
+   *    error:9                     G-code locked out during alarm or jog state
+   */
 
 class GRBLBase {
 
@@ -17,9 +35,8 @@ class GRBLBase {
     JMenuItem settings = new JMenuItem("Get GRBL Settings");
     settings.addActionListener(ev -> {
       if (jPort.hasSerial()) {
-      StringBuilder buf = new StringBuilder();
-      new GRBLRunner(jPort, "$I", buf);
-      String[] rsps = buf.toString().split("\n");
+      String receive = sendGrbl(jPort, "$I");
+      String[] rsps = receive.split("\n");
       String grblBuild = null;
       String grblVersion = null;
       String grblOptions = null;
@@ -40,9 +57,8 @@ class GRBLBase {
           grblOptions = rsp.substring(5, rsp.length() - 2);
         }
       }
-      buf.setLength(0);
-      new GRBLRunner(jPort, "$$", buf);
-      String[] opts = buf.toString().split("\n");
+      receive = sendGrbl(jPort, "$$");
+      String[] opts = receive.split("\n");
       HashMap<String,String> sVals = new LinkedHashMap<>();
       for (String opt : opts) {
         String[] vals = opt.split("=");
@@ -146,37 +162,80 @@ class GRBLBase {
     return txt;
   }
 
+  static class DroPanel extends JPanel {
+    static DecimalFormat  fmt = new DecimalFormat("#0.000");
+    private String[]      lblTxt = {"X", "Y", "Z"};
+    private JTextField[]  lbl = new JTextField[3];
+
+    DroPanel () {
+      setLayout(new GridLayout(1, 3));
+      for (int ii = 0; ii < 3; ii++) {
+        JPanel axis = new JPanel();
+        axis.add(new JLabel(lblTxt[ii]));
+        axis.add(lbl[ii] = new JTextField("0", 6));
+        lbl[ii].setHorizontalAlignment(JTextField.RIGHT);
+        add(axis);
+      }
+    }
+
+    // Responses to "?" command
+    //  <Run|MPos:0.140,0.000,0.000|FS:20,0|Pn:Z>
+    //  <Idle|MPos:0.000,0.000,0.000|FS:0,0|Pn:Z>
+    //  <Jog|MPos:0.000,0.000,0.000|FS:0,0|Pn:Z>
+    void setPosition (String rsp) {
+      int idx1 = rsp.indexOf("|MPos:");
+      if (idx1 >= 0) {
+        idx1 += 6;
+        int idx2 = rsp.indexOf('|', idx1);
+        if (idx2 > idx1) {
+          String[] tmp = rsp.substring(idx1, idx2).split(",");
+          if (tmp.length == 3) {
+            for (int ii = 0; ii < 3; ii++) {
+              lbl[ii].setText(fmt.format(Double.parseDouble(tmp[ii])));
+            }
+          }
+        }
+      }
+    }
+  }
+
   JMenuItem getGRBLJogMenu (Frame parent, JSSCPort jPort) {
     JMenuItem jogMenu = new JMenuItem("Jog Controls");
     jogMenu.addActionListener((ev) -> {
       if (jPort.hasSerial()) {
         // Build Jog Controls
         JPanel frame = new JPanel(new BorderLayout(0, 2));
+        JPanel topPanel = new JPanel();
+        topPanel.setLayout(new BorderLayout(0, 2));
+        DroPanel dro = new DroPanel();
+        dro.setPosition(sendGrbl(jPort, "?"));                                  // Show initial position
+        topPanel.add(dro, BorderLayout.NORTH);
         JSlider speed = new JSlider(10, 100, 100);
+        topPanel.add(speed, BorderLayout.SOUTH);
         speed.setMajorTickSpacing(10);
         speed.setPaintTicks(true);
         speed.setPaintLabels(true);
-        frame.add(speed, BorderLayout.NORTH);
+        frame.add(topPanel, BorderLayout.NORTH);
         JPanel buttons = new JPanel(new GridLayout(3, 4, 4, 4));
         JLabel tmp;
         Font font2 = new Font("Monospaced", Font.PLAIN, 20);
         // Row 1
-        buttons.add(new JogButton(new Arrow(135), jPort, speed, "Y-% X-%"));   // Up Left
-        buttons.add(new JogButton(new Arrow(180), jPort, speed, "Y-%"));       // Up
-        buttons.add(new JogButton(new Arrow(225), jPort, speed, "Y-% X+%"));   // Up Right
-        buttons.add(new JogButton(new Arrow(180), jPort, speed, "Z+%"));       // Up
+        buttons.add(new JogButton(new Arrow(135), jPort, speed, dro, "Y-% X-%"));    // Up Left
+        buttons.add(new JogButton(new Arrow(180), jPort, speed, dro, "Y-%"));        // Up
+        buttons.add(new JogButton(new Arrow(225), jPort, speed, dro, "Y-% X+%"));    // Up Right
+        buttons.add(new JogButton(new Arrow(180), jPort, speed, dro, "Z+%"));        // Up
         // Row 2
-        buttons.add(new JogButton(new Arrow(90), jPort, speed, "X-%"));        // Left
+        buttons.add(new JogButton(new Arrow(90), jPort, speed, dro, "X-%"));         // Left
         buttons.add(tmp = new JLabel("X/Y", JLabel.CENTER));
         tmp.setFont(font2);
-        buttons.add(new JogButton(new Arrow(270), jPort, speed, "X+%"));       // Right
+        buttons.add(new JogButton(new Arrow(270), jPort, speed, dro, "X+%"));        // Right
         buttons.add(tmp = new JLabel("Z", JLabel.CENTER));
         tmp.setFont(font2);
         // Row 3
-        buttons.add(new JogButton(new Arrow(45), jPort, speed, "Y+% X-%"));    // Down Left
-        buttons.add(new JogButton(new Arrow(0), jPort, speed, "Y+%"));         // Down
-        buttons.add(new JogButton(new Arrow(315), jPort, speed, "Y+% X+%"));   // Down Right
-        buttons.add(new JogButton(new Arrow(0), jPort, speed, "Z-%"));         // Down
+        buttons.add(new JogButton(new Arrow(45), jPort, speed, dro, "Y+% X-%"));     // Down Left
+        buttons.add(new JogButton(new Arrow(0), jPort, speed, dro, "Y+%"));          // Down
+        buttons.add(new JogButton(new Arrow(315), jPort, speed, dro, "Y+% X+%"));    // Down Right
+        buttons.add(new JogButton(new Arrow(0), jPort, speed, dro, "Z-%"));          // Down
         frame.add(buttons, BorderLayout.CENTER);
         // Bring up Jog Controls
         Object[] options = {"Set Origin", "Cancel"};
@@ -227,24 +286,33 @@ class GRBLBase {
   }
 
   static class JogButton extends JButton implements Runnable, JSSCPort.RXEvent {
-    private JSSCPort    jPort;
-    private JSlider     speed;
-    private String      cmd;
-    private long        step;
+    private JSSCPort      jPort;
+    private JSlider       speed;
+    private DroPanel      dro;
+    private StringBuilder response = new StringBuilder();
+    private String        cmd, lastResponse;
+    private long          step, nextStep;
+    transient boolean     pressed, running;
     private final JogButton.Lock lock = new JogButton.Lock();
-    transient boolean   running;
 
     private static final class Lock { }
 
-    JogButton (Icon icon, JSSCPort jPort, JSlider speed, String cmd) {
+    JogButton (Icon icon, JSSCPort jPort, JSlider speed, DroPanel dro, String cmd) {
       super(icon);
       this.jPort = jPort;
       this.speed = speed;
+      this.dro = dro;
       this.cmd = cmd;
       addMouseListener(new MouseAdapter() {
         @Override
         public void mousePressed (MouseEvent e) {
           super.mousePressed(e);
+          while (running) {
+            try {
+              Thread.sleep(50);
+            } catch (InterruptedException ex) {}
+          }
+          pressed = true;
           running = true;
           (new Thread(JogButton.this)).start();
         }
@@ -252,15 +320,14 @@ class GRBLBase {
         @Override
         public void mouseReleased (MouseEvent e) {
           super.mouseReleased(e);
-          running = false;
+          pressed = false;
         }
       });
     }
 
     public void run () {
       jPort.setRXHandler(JogButton.this);
-      step = 0;
-      int nextStep = 0;
+      nextStep = step = 0;
       boolean firstPress = true;
       try {
         int sp = speed.getValue();
@@ -269,21 +336,26 @@ class GRBLBase {
         String sDist = LaserCut.df.format(.1 * ratio);
         String jogCmd = "$J=G91 G20 " + fRate + " " + cmd + "\n";
         jogCmd = jogCmd.replaceAll("%", sDist);
-        while (running) {
+        while (pressed) {
           jPort.sendString(jogCmd);
-          nextStep++;
-          synchronized (lock) {
-            while (step < nextStep) {
-              lock.wait(20);
-            }
-            if (firstPress) {
-              Thread.sleep(100);
-            }
-            firstPress = false;
+          stepWait();
+          jPort.sendString("?");
+          stepWait();
+          dro.setPosition(lastResponse);
+          // Minimum move time 50ms
+          if (firstPress) {
+            Thread.sleep(50);
           }
+          firstPress = false;
         }
+        do {
+          jPort.sendString("?");
+          stepWait();
+          dro.setPosition(lastResponse);
+        } while (lastResponse.contains("<Jog"));
         jPort.sendByte((byte) 0x85);
         Thread.sleep(500);
+        running = false;
       } catch (Exception ex) {
         ex.printStackTrace(System.out);
       } finally {
@@ -291,16 +363,29 @@ class GRBLBase {
       }
     }
 
+    private void stepWait () throws InterruptedException{
+      nextStep++;
+      synchronized (lock) {
+        while (step < nextStep) {
+          lock.wait(20);
+        }
+      }
+    }
+
     public void rxChar (byte cc) {
       if (cc == '\n') {
+        lastResponse = response.toString();
+        response.setLength(0);
         synchronized (lock) {
           step++;
         }
+      } else {
+        response.append((char) cc);
       }
     }
   }
 
-  class GRBLRunner extends Thread implements JSSCPort.RXEvent {
+  private class GRBLRunner extends Thread implements JSSCPort.RXEvent {
     private StringBuilder   response, line = new StringBuilder();
     private CountDownLatch latch = new CountDownLatch(1);
     private JSSCPort        jPort;
@@ -337,8 +422,9 @@ class GRBLBase {
       while (running) {
         try {
           Thread.sleep(100);
-          if (timeout-- < 0)
+          if (timeout-- < 0) {
             break;
+          }
         } catch (InterruptedException ex) {
           ex.printStackTrace();
         }
@@ -348,11 +434,24 @@ class GRBLBase {
     }
   }
 
+  /**
+   * Send one line GRBL command and return response (terminated by "ok\n" or timeout)
+   * @param jPort Open JSSC port
+   * @param cmd command string
+   * @return response string (excluding "ok\n")
+   */
+  String sendGrbl (JSSCPort jPort, String cmd) {
+    StringBuilder buf = new StringBuilder();
+    new GRBLRunner(jPort, cmd, buf);
+    return buf.toString();
+  }
+
   // https://github.com/gnea/grbl/wiki
 
   class GRBLSender extends Thread implements JSSCPort.RXEvent {
     private StringBuilder   response = new StringBuilder();
-    private String[]        cmds;
+    private String          lastResponse = "";
+    private String[]        cmds, abortCmds;
     private JDialog         frame;
     private JTextArea       grbl;
     private JProgressBar    progress;
@@ -364,8 +463,13 @@ class GRBLBase {
     final class Lock { }
 
     GRBLSender (Frame parent, JSSCPort jPort, String[] cmds) {
+      this(parent, jPort, cmds, new String[0]);
+    }
+
+    GRBLSender (Frame parent, JSSCPort jPort, String[] cmds, String[] abortCmds) {
       this.jPort = jPort;
       this.cmds = cmds;
+      this.abortCmds = abortCmds;
       frame = new JDialog(parent, "G-Code Monitor");
       frame.setLocationRelativeTo(parent);
       frame.add(progress = new JProgressBar(), BorderLayout.NORTH);
@@ -380,7 +484,7 @@ class GRBLBase {
       frame.add(abort, BorderLayout.SOUTH);
       abort.addActionListener(ev -> doAbort = true);
       Rectangle loc = frame.getBounds();
-      frame.setSize(300, 300);
+      frame.setSize(600, 300);
       frame.setLocation(loc.x + loc.width / 2 - 150, loc.y + loc.height / 2 - 150);
       frame.setVisible(true);
       start();
@@ -388,7 +492,7 @@ class GRBLBase {
 
     public void rxChar (byte cc) {
       if (cc == '\n') {
-        grbl.append(response.toString());
+        grbl.append(lastResponse = response.toString());
         grbl.append("\n");
         response.setLength(0);
         synchronized (lock) {
@@ -408,6 +512,10 @@ class GRBLBase {
       }
     }
 
+    // Responses to "?" command
+    //  <Run|MPos:0.140,0.000,0.000|FS:20,0|Pn:Z>
+    //  <Idle|MPos:0.000,0.000,0.000|FS:0,0|Pn:Z>
+
     public void run () {
       jPort.setRXHandler(GRBLSender.this);
       step = 0;
@@ -420,11 +528,23 @@ class GRBLBase {
           jPort.sendString(gcode + '\n');
           stepWait();
         }
-        //jPort.sendByte((byte) 0x18);      // Locks up GRBL (can't jog after issued)
-        jPort.sendString("M5\n");           // Set Laser Off
-        stepWait();
-        jPort.sendString("G00 X0 Y0\n");    // Move back to Origin
-        stepWait();
+        // Wait until all commands have been processed
+        boolean waiting = true;
+        while (waiting && !doAbort) {
+          Thread.sleep(200);
+          jPort.sendString("?");              // Set ? command to query status
+          stepWait();
+          if (lastResponse.contains("<Idle")) {
+            waiting = false;
+          }
+        }
+        if (doAbort) {
+          //jPort.sendByte((byte) 0x18);      // Locks up GRBL (can't jog after issued)
+          for (String cmd : abortCmds) {
+            jPort.sendString(cmd + "\n");     // Set abort command
+            stepWait();
+          }
+        }
       } catch (Exception ex) {
         ex.printStackTrace();
       }
