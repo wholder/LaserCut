@@ -134,7 +134,7 @@
       miniResize.addActionListener(ev -> laserCut.surface.setSurfaceSize(miniCncSize));
       miniCncMenu.add(miniResize);
       // Add "Jog Controls" Submenu Item
-      miniCncMenu.add(getGRBLJogMenu(laserCut, jPort));
+      miniCncMenu.add(getGRBLJogMenu(laserCut, jPort, true));
       // Add "Get GRBL Settings" Menu Item
       miniCncMenu.add(getGRBLSettingsMenu(laserCut, jPort));
       // Add "Port" and "Baud" Submenu to MenuBar

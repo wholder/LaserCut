@@ -239,7 +239,7 @@ class GRBLBase {
     }
   }
 
-  JMenuItem getGRBLJogMenu (Frame parent, JSSCPort jPort) {
+  JMenuItem getGRBLJogMenu (Frame parent, JSSCPort jPort, boolean probeEnabled) {
     JMenuItem jogMenu = new JMenuItem("Jog Controls");
     jogMenu.addActionListener((ev) -> {
       if (jPort.hasSerial()) {
@@ -248,7 +248,7 @@ class GRBLBase {
         JPanel topPanel = new JPanel();
         topPanel.setLayout(new BorderLayout(0, 2));
         DroPanel dro = new DroPanel();
-        dro.setPosition(sendGrbl(jPort, "?"));                                  // Show initial position
+        dro.setPosition(sendGrbl(jPort, "?"));                                      // Show initial position
         topPanel.add(dro, BorderLayout.NORTH);
         JSlider speed = new JSlider(10, 100, 100);
         topPanel.add(speed, BorderLayout.SOUTH);
@@ -278,22 +278,34 @@ class GRBLBase {
         buttons.add(new JogButton(new Arrow(0), jPort, speed, dro, "Z-%"));          // Down
         frame.add(buttons, BorderLayout.CENTER);
         // Bring up Jog Controls
-        Object[] options = {"Set Origin", "Cancel"};
+        Object[] options = probeEnabled ? new String[] {"Cancel", "Set Origin", "Probe Z"} : new String[] {"Cancel", "Set Origin"};
         int res = showOptionDialog(parent, frame, "Jog Controls", OK_CANCEL_OPTION, PLAIN_MESSAGE, null, options, options[0]);
-        if (res == OK_OPTION) {
-          // Reset coords to new position after jog
-          try {
-            jPort.sendString("G92 X0 Y0 Z0\n");
-          } catch (Exception ex) {
-            ex.printStackTrace();
-          }
-        } else {
+        switch (res) {
+        case 0:
           // Return to old home position
           try {
-            jPort.sendString("G00 X0 Y0 Z0\n");
+            sendGrbl(jPort, "G00 X0 Y0 Z0");
           } catch (Exception ex) {
             ex.printStackTrace();
           }
+          break;
+        case 1:
+          // Reset coords to new position after jog
+          try {
+            sendGrbl(jPort, "G92 X0 Y0 Z0");
+          } catch (Exception ex) {
+            ex.printStackTrace();
+          }
+          break;
+        case 2:
+          if (showConfirmDialog(parent, "Is Z Axis Probe Target Ready?", "Caution", YES_NO_OPTION, PLAIN_MESSAGE) == OK_OPTION) {
+            System.out.println("Probing Z");
+            sendGrbl(jPort, "G20");
+            System.out.println(sendGrbl(jPort, "G38.3 F40 Z-1"));
+            sendGrbl(jPort, "G0");
+            System.out.println(sendGrbl(jPort, "?"));
+            }
+          break;
         }
       } else {
         showMessageDialog(parent, "No Serial Port Selected", "Error", PLAIN_MESSAGE);
@@ -347,6 +359,7 @@ class GRBLBase {
         @Override
         public void mousePressed (MouseEvent e) {
           super.mousePressed(e);
+          // Wait for any prior thread to complete
           while (running) {
             try {
               Thread.sleep(50);
@@ -381,21 +394,22 @@ class GRBLBase {
         while (pressed) {
           jPort.sendString(jogCmd);
           stepWait();
+          dro.setPosition(lastResponse);
+          // Minimum move time 20ms
+          if (firstPress) {
+            firstPress = false;
+            Thread.sleep(20);
+          }
           jPort.sendString("?");
           stepWait();
           dro.setPosition(lastResponse);
-          // Minimum move time 50ms
-          if (firstPress) {
-            Thread.sleep(50);
-          }
-          firstPress = false;
         }
+        jPort.sendByte((byte) 0x85);
         do {
           jPort.sendString("?");
           stepWait();
           dro.setPosition(lastResponse);
         } while (lastResponse.contains("<Jog"));
-        jPort.sendByte((byte) 0x85);
         Thread.sleep(500);
         running = false;
       } catch (Exception ex) {

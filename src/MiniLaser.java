@@ -123,7 +123,7 @@ class MiniLaser extends GRBLBase {
     miniResize.addActionListener(ev -> laserCut.surface.setSurfaceSize(miniSize));
     miniLaserMenu.add(miniResize);
     // Add "Jog Controls" Submenu Item
-    miniLaserMenu.add(getGRBLJogMenu(laserCut, jPort));
+    miniLaserMenu.add(getGRBLJogMenu(laserCut, jPort, false));
     // Add "Get GRBL Settings" Menu Item
     miniLaserMenu.add(getGRBLSettingsMenu(laserCut, jPort));
     // Add "Port" and "Baud" Submenu to MenuBar
