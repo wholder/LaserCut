@@ -51,7 +51,7 @@
   class MiniCNC extends GRBLBase {
     private static final int      MINI_CNC_FEED_DEFAULT = 255;
     private static final int      MINI_CNC_RPM_DEFAULT = 100;
-    private static Dimension      miniCncSize = new Dimension((int) (7 * LaserCut.SCREEN_PPI), (int) (8 * LaserCut.SCREEN_PPI));
+    private static Dimension      miniCncSize = new Dimension((int) (6 * LaserCut.SCREEN_PPI), (int) (5 * LaserCut.SCREEN_PPI));
     private JSSCPort              jPort;
     private LaserCut              laserCut;
 
@@ -129,8 +129,8 @@
       });
       miniCncMenu.add(miniLazerSettings);
       // Add "Resize for Mini Lazer" Submenu Item
-      JMenuItem miniResize = new JMenuItem("Resize for Mini Lazer (" + (miniCncSize.width / LaserCut.SCREEN_PPI) +
-        "x" + (miniCncSize.height / LaserCut.SCREEN_PPI) + ")");
+      JMenuItem miniResize = new JMenuItem("Resize for Mini CNC (" + (miniCncSize.width / LaserCut.SCREEN_PPI) +
+        " x " + (miniCncSize.height / LaserCut.SCREEN_PPI) + ")");
       miniResize.addActionListener(ev -> laserCut.surface.setSurfaceSize(miniCncSize));
       miniCncMenu.add(miniResize);
       // Add "Jog Controls" Submenu Item

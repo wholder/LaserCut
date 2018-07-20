@@ -119,7 +119,7 @@ class MiniLaser extends GRBLBase {
     miniLaserMenu.add(miniLazerSettings);
     // Add "Resize for Mini Lazer" Submenu Item
     JMenuItem miniResize = new JMenuItem("Resize for Mini Lazer (" + (miniSize.width / LaserCut.SCREEN_PPI) +
-          "x" + (miniSize.height / LaserCut.SCREEN_PPI) + ")");
+          " x " + (miniSize.height / LaserCut.SCREEN_PPI) + ")");
     miniResize.addActionListener(ev -> laserCut.surface.setSurfaceSize(miniSize));
     miniLaserMenu.add(miniResize);
     // Add "Jog Controls" Submenu Item

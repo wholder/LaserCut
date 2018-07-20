@@ -209,11 +209,11 @@ class ZingLaser {
         zingMenu.add(matMenu);
     }
     // Add "Resize for Zing" Full Size Submenu Items
-    JMenuItem zingResize = new JMenuItem("Resize for Zing (" + (zingFullSize.width / LaserCut.SCREEN_PPI) + "x" +
+    JMenuItem zingResize = new JMenuItem("Resize for Zing (" + (zingFullSize.width / LaserCut.SCREEN_PPI) + " x " +
           (zingFullSize.height / LaserCut.SCREEN_PPI) + ")");
     zingResize.addActionListener(ev -> laserCut.surface.setSurfaceSize(zingFullSize));
     zingMenu.add(zingResize);
-    JMenuItem zing12x12 = new JMenuItem("Resize for Zing (" + (zing12x12Size.width / LaserCut.SCREEN_PPI) + "x" +
+    JMenuItem zing12x12 = new JMenuItem("Resize for Zing (" + (zing12x12Size.width / LaserCut.SCREEN_PPI) + " x " +
           (zing12x12Size.height / LaserCut.SCREEN_PPI) + ")");
     zing12x12.addActionListener(ev -> laserCut.surface.setSurfaceSize(zing12x12Size));
     zingMenu.add(zing12x12);

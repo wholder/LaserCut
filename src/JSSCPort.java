@@ -17,8 +17,11 @@ import jssc.*;
 
 import javax.swing.*;
 
+import static javax.swing.JOptionPane.showMessageDialog;
+
 public class JSSCPort implements SerialPortEventListener {
   private static final Map<String,Integer> baudRates = new LinkedHashMap<>();
+  private static Map<String,String> portsInUse = new HashMap<>();
   private ArrayBlockingQueue<Integer>  queue = new ArrayBlockingQueue<>(1000);
   private Pattern             macPat = Pattern.compile("cu.");
   private Preferences         prefs;
@@ -26,6 +29,7 @@ public class JSSCPort implements SerialPortEventListener {
   private int                 baudRate, dataBits = 8, stopBits = 1, parity = 0;
   private int                 eventMasks = SerialPort.MASK_RXCHAR;                // Also, SerialPort.MASK_CTS, SerialPort.MASK_DSR
   private int                 flowCtrl = SerialPort.FLOWCONTROL_NONE;
+  private JMenu               portMenu;
   private SerialPort          serialPort;
   private final ArrayList<RXEvent>  rxHandlers = new ArrayList<>();
 
@@ -72,7 +76,8 @@ public class JSSCPort implements SerialPortEventListener {
     portName = prefs.get(prefix + "serial.port", null);
     baudRate = prefs.getInt(prefix + "serial.baud", 115200);                        // GRBL 1.1 uses 115200 Baud
     for (String name : SerialPortList.getPortNames(macPat)) {
-      if (name.equals(portName)) {
+      if (name.equals(portName) && !portsInUse.containsKey(name)) {
+        portsInUse.put(name, prefix);
         serialPort = new SerialPort(portName);
         serialPort.openPort();
         serialPort.setParams(baudRate, dataBits, stopBits, parity, false, false);   // baud, 8 numBits, 1 stop bit, no parity
@@ -160,52 +165,73 @@ public class JSSCPort implements SerialPortEventListener {
   }
 
   public JMenu getPortMenu () {
-    JMenu menu = new JMenu("Port");
-    menu.setVisible(true);
+    portMenu = new JMenu("Port");
+    portMenu.setVisible(true);
+    buildPortMenu();
+    return portMenu;
+  }
+
+  private void buildPortMenu () {
     ButtonGroup group = new ButtonGroup();
+    // Add "Rescan" option to rebuild port menu
+    JRadioButtonMenuItem rescan = new JRadioButtonMenuItem("Rescan");
+    rescan.addActionListener((ev) -> {
+      portMenu.removeAll();
+      buildPortMenu();
+    });
+    portMenu.add(rescan);
+    portMenu.addSeparator();
     boolean selected= false;
     for (String pName : SerialPortList.getPortNames(macPat)) {
       JRadioButtonMenuItem item = new JRadioButtonMenuItem(pName, pName.equals(portName));
       selected |= item.isSelected();
-      menu.add(item);
+      portMenu.add(item);
       group.add(item);
       item.addActionListener((ev) -> {
         portName = ev.getActionCommand();
         try {
           if (serialPort != null && serialPort.isOpened()) {
+            portsInUse.remove(serialPort.getPortName());
             serialPort.removeEventListener();
             serialPort.closePort();
           }
-          serialPort = new SerialPort(portName);
-          serialPort.openPort();
-          serialPort.setParams(baudRate, dataBits, stopBits, parity, false, false);  // baud, 8 numBits, 1 stop bit, no parity
-          serialPort.setEventsMask(eventMasks);
-          serialPort.setFlowControlMode(flowCtrl);
-          serialPort.addEventListener(JSSCPort.this);
-          prefs.put(prefix + "serial.port", portName);
+          if (!portsInUse.containsKey(portName)) {
+            portsInUse.put(portName, prefix);
+            serialPort = new SerialPort(portName);
+            serialPort.openPort();
+            serialPort.setParams(baudRate, dataBits, stopBits, parity, false, false);  // baud, 8 numBits, 1 stop bit, no parity
+            serialPort.setEventsMask(eventMasks);
+            serialPort.setFlowControlMode(flowCtrl);
+            serialPort.addEventListener(JSSCPort.this);
+            prefs.put(prefix + "serial.port", portName);
+          } else {
+            // Select "None" (last item in list)
+            JRadioButtonMenuItem tmp = (JRadioButtonMenuItem) portMenu.getMenuComponent(portMenu.getMenuComponentCount() - 1);
+            tmp.setSelected(true);
+            showMessageDialog(portMenu.getParent(), "Port is in use by " + portsInUse.get(portName));
+          }
         } catch (Exception ex) {
           ex.printStackTrace(System.out);
         }
       });
     }
-    // Add "non" option to free up port
-    JRadioButtonMenuItem item = new JRadioButtonMenuItem("None", !selected);
-    item.addActionListener((ev) -> {
+    // Add "None" option to free up port
+    JRadioButtonMenuItem none = new JRadioButtonMenuItem("None", !selected);
+    none.addActionListener((ev) -> {
       try {
-      if (serialPort != null && serialPort.isOpened()) {
-        serialPort.removeEventListener();
-        serialPort.closePort();
-      }
-      prefs.remove(prefix + "serial.port");
-      serialPort = null;
+        if (serialPort != null && serialPort.isOpened()) {
+          portsInUse.remove(serialPort.getPortName());
+          serialPort.removeEventListener();
+          serialPort.closePort();
+        }
+        prefs.remove(prefix + "serial.port");
+        serialPort = null;
       } catch (Exception ex) {
         ex.printStackTrace(System.out);
       }
     });
-    menu.add(item);
-    group.add(item);
-
-    return menu;
+    portMenu.add(none);
+    group.add(none);
   }
 
   public JMenu getBaudMenu () {

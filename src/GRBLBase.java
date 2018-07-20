@@ -34,8 +34,8 @@ import static javax.swing.JOptionPane.showMessageDialog;
    *     A4 - Coolant Mist Enable (normally disabled in code "//#define ENABLE_M7")
    *     A5 - Probe Input (to Ground)
    *
-   *  Basic Movement commands:
-   *     G0 - Rapid move to position
+   *  Basic G-Code Movement commands:
+   *     G0 - Rapid move to position (also G00)
    *     G1 - Linear mode to position (used for cutting)
    *
    *  Spindle-related commands: (enabled by $32=0 setting)
@@ -165,7 +165,7 @@ class GRBLBase {
             new GRBLSender(parent, jPort, cmds.toArray(new String[0]));
           }
         } else {
-          System.out.println("Cancel");
+          //System.out.println("Cancel");
         }
       } else {
         sPanel = new JPanel(new GridLayout(sVals.size() + 5, 2, 4, 0));
