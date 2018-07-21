@@ -112,6 +112,7 @@ class GRBLBase {
           new ParameterDialog.ParmItem("@Grbl Version",  grblVersion),
           new ParameterDialog.ParmItem("@Grbl Build", grblBuild != null ? grblBuild : "unknown"),
           new ParameterDialog.ParmItem("@Grbl Options", grblOptions != null ? grblOptions : "unknown"),
+          new ParameterDialog.ParmItem(new JSeparator()),
           new ParameterDialog.ParmItem("Step pulse|usec",               sVals, "$0"),
           new ParameterDialog.ParmItem("Step idle delay|msec",          sVals, "$1"),
           new ParameterDialog.ParmItem("Step port invert",              sVals, "$2", new String[] {"X", "Y", "Z"}),   // Bitfield
@@ -147,7 +148,6 @@ class GRBLBase {
           new ParameterDialog.ParmItem("Y Max travel|mm",               sVals, "$131"),
           new ParameterDialog.ParmItem("Z Max travel|mm",               sVals, "$132"),
         };
-        parmSet[3].sepBefore = true;
         Properties info = parent.getProperties(parent.getResourceFile("grbl/grblparms.props"));
         ParameterDialog dialog = (new ParameterDialog(parmSet, new String[] {"Save", "Cancel"}, false, info));
         dialog.setLocationRelativeTo(parent);

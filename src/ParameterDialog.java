@@ -18,10 +18,10 @@ class ParameterDialog extends JDialog {
     String      name, units = "", hint, key;
     Object      value, valueType;
     JComponent  field;
-    boolean     readOnly, lblValue, sepBefore;
+    boolean     readOnly, lblValue;
 
     ParmItem (String name, Map<String,String> map, String key, String[] fields) {
-      this(name, new BField(fields, Integer.parseInt(map.get(key))), false);
+      this(name, new BField(fields, Integer.parseInt(map.get(key))));
       this.key = key;
     }
 
@@ -30,11 +30,12 @@ class ParameterDialog extends JDialog {
       this.key = key;
     }
 
-    ParmItem (String name, Object value) {
-      this(name, value, false);
+
+    ParmItem (Object value) {
+      this.value = value;
     }
 
-    ParmItem (String name, Object value, boolean sepBefore) {
+    ParmItem (String name, Object value) {
       int idx1 = name.indexOf("{");
       int idx2 = name.indexOf("}");
       if (idx1 >= 0 && idx2 >= 0 && idx2 > idx1) {
@@ -68,13 +69,18 @@ class ParameterDialog extends JDialog {
       } else {
         this.value = value;
       }
-      this.sepBefore = sepBefore;
     }
 
     void setValue (Object value) {
       this.value = value;
       if (valueType == null) {
         valueType = value;
+      }
+    }
+
+    void setField (String value) {
+      if (field instanceof JTextField) {
+        ((JTextField) field).setText(value != null ? value : "");
       }
     }
 
@@ -193,16 +199,19 @@ class ParameterDialog extends JDialog {
     fields.setLayout(new GridBagLayout());
     int jj = 0;
     for (ParmItem parm : parms) {
-      boolean inches = parm.units.equals("in");
-      if (parm.sepBefore) {
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.gridx = 0;
-        gbc.weightx = 1;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        gbc.gridwidth = GridBagConstraints.REMAINDER;
-        fields.add(new JSeparator(), gbc);
-        jj++;
+      if (parm.name == null) {
+        if (parm.value instanceof JComponent) {
+          GridBagConstraints gbc = new GridBagConstraints();
+          gbc.gridx = 0;
+          gbc.weightx = 1;
+          gbc.fill = GridBagConstraints.HORIZONTAL;
+          gbc.gridwidth = GridBagConstraints.REMAINDER;
+          fields.add((JComponent) parm.value, gbc);
+          jj++;
+        }
+        continue;
       }
+      boolean inches = parm.units.equals("in");
       fields.add(new JLabel(parm.name + ": "), getGbc(0, jj));
       if (parm.valueType instanceof Boolean) {
         JCheckBox select = new JCheckBox();
@@ -408,10 +417,12 @@ class ParameterDialog extends JDialog {
   public static void main (String... args) {
     ParmItem[] parmSet = {
         new ParmItem("Ready|boolean", "1"),
-        new ParmItem("Enabled", true),
+        new ParmItem(new JSeparator()),
+        new ParmItem("Enabled"),
         new ParmItem("*Power|%{tool tip}", 80),
         new ParmItem("Motor:Nema 8|0:Nema 11|1:Nema 14|2:Nema 17|3:Nema 23|4", "2"),
-        new ParmItem("Font:plain:bold:italic", "bold", true),
+        new ParmItem("Font:plain:bold:italic", "bold"),
+        new ParmItem(new JButton("Full width component")),
         new ParmItem("Speed", 60),
         new ParmItem("Bit Field", new BField(new String[] {"X", "Y", "Z"}, 5)),
         new ParmItem("@Freq|Hz", 500.123456)};
