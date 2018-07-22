@@ -7,6 +7,7 @@ import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
 import java.text.DecimalFormat;
 import java.util.*;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 
 import static javax.swing.JOptionPane.*;
@@ -34,9 +35,21 @@ import static javax.swing.JOptionPane.showMessageDialog;
    *     A4 - Coolant Mist Enable (normally disabled in code "//#define ENABLE_M7")
    *     A5 - Probe Input (to Ground)
    *
-   *  Basic G-Code Movement commands:
+   *  Basic G-Code Motion Modes:
    *     G0 - Rapid move to position (also G00)
    *     G1 - Linear mode to position (used for cutting)
+   *     G2 - Arc Move Clockwise
+   *     G3 - Arc Move Counterclockwise
+   *     G38.2 - Probe toward workpiece, stop on contact, signal error if failure
+   *     G38.3 - Probe toward workpiece, stop on contact
+   *     G38.4 - Probe away from workpiece, stop on loss of contact, signal error if failure
+   *     G38.5 - Probe away from workpiece, stop on loss of contact
+   *
+   *  Program Modes:
+   *     M0 - Pause Program (tool change)
+   *     M1 - Pause Program if stop switch enabled
+   *     M2 - End Program (obsolete, use M30)
+   *    M30 - End Program and Reset
    *
    *  Spindle-related commands: (enabled by $32=0 setting)
    *     M3 - Set CW rotation (CNC only)
@@ -53,11 +66,7 @@ import static javax.swing.JOptionPane.showMessageDialog;
    *     M8 - Flood Coolant (pin A3 On)
    *     M9 - All Coolant Off (pin A3 Off)
    *
-   *  Probe-related  commands:
-   *    g32.2                       Probe toward workpiece, stop on contact, signal error if failure
-   *    g32.3                       Probe toward workpiece, stop on contact
-   *    g32.4                       Probe away from workpiece, stop on loss of contact, signal error if failure
-   *    g32.5                       Probe away from workpiece, stop on loss of contact
+   *  Probe-related commands:
    *    g38.3 f100 z-10             Start probe move to z-10 with feedrate 100, stop on probe contact, or end of move
    *    g0                          Exit probe command state
    *    $X                          Clear Alarm state
@@ -164,7 +173,7 @@ class GRBLBase {
           if (cmds.size() > 0) {
             new GRBLSender(parent, jPort, cmds.toArray(new String[0]));
           }
-        } else {
+        //} else {
           //System.out.println("Cancel");
         }
       } else {
@@ -179,7 +188,7 @@ class GRBLBase {
         sPanel.add(new JLabel("GRBL Version: " + (grblVersion != null ? grblVersion : "unknown")));
         sPanel.add(new JSeparator());
         for (String key : sVals.keySet()) {
-          sPanel.add(lbl = new JLabel(padSpace(key + ":", 6) + sVals.get(key)));
+          sPanel.add(lbl = new JLabel(padSpace(key + ":") + sVals.get(key)));
           lbl.setFont(font);
         }
         sPanel.add(new JSeparator());
@@ -195,27 +204,47 @@ class GRBLBase {
     return settings;
   }
 
-  private String padSpace (String txt, int len) {
-    while (txt.length() < len) {
-      txt = txt + " ";
+  private String padSpace (String txt) {
+    StringBuilder txtBuilder = new StringBuilder(txt);
+    while (txtBuilder.length() < 6) {
+      txtBuilder.append(" ");
     }
-    return txt;
+    return txtBuilder.toString();
   }
 
   static class DroPanel extends JPanel {
     static DecimalFormat  fmt = new DecimalFormat("#0.000");
     private String[]      lblTxt = {"X", "Y", "Z"};
+    private String[]      vals;
     private JTextField[]  lbl = new JTextField[3];
 
     DroPanel () {
+      this("0", "0", "0", false);
+    }
+
+    DroPanel (String x, String y, String z, boolean canEdit) {
+      vals = new String[] {x, y, z};
       setLayout(new GridLayout(1, 3));
       for (int ii = 0; ii < 3; ii++) {
         JPanel axis = new JPanel();
         axis.add(new JLabel(lblTxt[ii]));
-        axis.add(lbl[ii] = new JTextField("0", 6));
+        axis.add(lbl[ii] = new JTextField(vals[ii], 6));
+        lbl[ii].setEditable(canEdit);
         lbl[ii].setHorizontalAlignment(JTextField.RIGHT);
+        if (!canEdit) {
+          lbl[ii].setForeground(Color.darkGray);
+          lbl[ii].setBorder(BorderFactory.createEmptyBorder(1, 5, 1, 5));
+        }
         add(axis);
       }
+    }
+
+    String[] getInitialVals () {
+      return vals;
+    }
+
+    String[] getVals () {
+      return new String[] {lbl[0].getText(), lbl[1].getText(), lbl[2].getText()};
     }
 
     // Responses to "?" command
@@ -237,6 +266,59 @@ class GRBLBase {
         }
       }
     }
+  }
+
+  JMenuItem getGRBLCoordsMenu (LaserCut parent, JSSCPort jPort) {
+    JMenuItem coords = new JMenuItem("Get GRBL Coordinates");
+    coords.addActionListener(ev -> {
+      if (jPort.hasSerial()) {
+        String receive = sendGrbl(jPort, "$#");
+        String[] rsps = receive.split("\n");
+        List<ParameterDialog.ParmItem> list = new ArrayList<>();
+        for (String rsp : rsps) {
+          if (rsp.startsWith("[") && rsp.endsWith("]")) {
+            rsp = rsp.substring(1, rsp.length() - 1);
+            String[] g1 = rsp.split(":");
+            if (g1.length == 2) {
+              String name = g1[0];
+              String[] vals = g1[1].split(",");
+              if (vals.length == 3) {
+                int gNum = Integer.parseInt(name.substring(1));
+                list.add(new ParameterDialog.ParmItem(name, new DroPanel(vals[0], vals[1], vals[2], gNum >= 54 && gNum <= 59)));
+              }
+            }
+          }
+        }
+        ParameterDialog.ParmItem[] parmSet = list.toArray(new ParameterDialog.ParmItem[0]);
+        if (ParameterDialog.showSaveCancelParameterDialog(parmSet, parent)) {
+          for (ParameterDialog.ParmItem parm : parmSet) {
+            if (parm.value instanceof DroPanel) {
+              DroPanel dro = (DroPanel) parm.value;
+              String[] oVals = dro.getVals();
+              String[] iVals = dro.getInitialVals();
+              if (!iVals[0].equals(oVals[0]) || !iVals[1].equals(oVals[1]) || !iVals[2].equals(oVals[2])) {
+                //System.out.println("Update: " + parm.name + " - X = " + oVals[0] + ", Y = " + oVals[1] + ", Z = " + oVals[2]);
+                if (parm.name.startsWith("G")) {
+                  // Update G55 - G59
+                  int num = Integer.parseInt(parm.name.substring(1)) - 53;
+                  String cmd = "G90 G20 G10 L2 P" + num + " X" + oVals[0] + " Y" + oVals[1] + " Z" + oVals[2];
+                  //System.out.println(cmd);
+                  sendGrbl(jPort, cmd);
+                } else if ("G28".equals(parm.name)) {
+
+                } else if ("30".equals(parm.name)) {
+                }
+              }
+            } else {
+              System.out.println(parm.name + ": " + parm.value);
+            }
+          }
+        } else {
+          System.out.println("Cancel");
+        }
+      }
+    });
+    return coords;
   }
 
   JMenuItem getGRBLJogMenu (Frame parent, JSSCPort jPort, boolean probeEnabled) {
@@ -496,7 +578,7 @@ class GRBLBase {
    * @param cmd command string
    * @return response string (excluding "ok\n")
    */
-  String sendGrbl (JSSCPort jPort, String cmd) {
+  private String sendGrbl (JSSCPort jPort, String cmd) {
     StringBuilder buf = new StringBuilder();
     new GRBLRunner(jPort, cmd, buf);
     return buf.toString();

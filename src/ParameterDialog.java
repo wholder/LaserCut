@@ -13,6 +13,7 @@ class ParameterDialog extends JDialog {
   private static final DecimalFormat inf = new DecimalFormat("#0.0###");   // 0.1 mils
   private boolean   cancelled = true;
   private Point     mouseLoc;
+  private double    lblWeight = 0.5;
 
   static class ParmItem {
     String      name, units = "", hint, key;
@@ -149,13 +150,17 @@ class ParameterDialog extends JDialog {
     }
   }
 
+  private void selLabelWeight (double lblWeight) {
+    this.lblWeight = lblWeight;
+  }
+
   private GridBagConstraints getGbc (int x, int y) {
     GridBagConstraints gbc = new GridBagConstraints();
     gbc.gridx = x;
     gbc.gridy = y;
     gbc.anchor = (x == 0) ? GridBagConstraints.WEST : GridBagConstraints.EAST;
     gbc.fill = (x == 0) ? GridBagConstraints.BOTH : GridBagConstraints.HORIZONTAL;
-    gbc.weightx = (x == 0) ? 0.5 : 0.5;
+    gbc.weightx = (x == 0) ? lblWeight : 1.0 - lblWeight;
     gbc.ipady = 2;
     return gbc;
   }
@@ -188,27 +193,30 @@ class ParameterDialog extends JDialog {
    * Constructor for Pop Up Parameters Dialog with error checking
    * @param parms array of ParmItem objects that describe each parameter
    */
-  ParameterDialog (ParmItem[] parms, String[] options, boolean mmUnits) {
-    this(parms, options, mmUnits, null);
+  ParameterDialog (ParmItem[] parms, String[] buttons, boolean mmUnits) {
+    this(parms, buttons, mmUnits, null);
   }
 
-  ParameterDialog (ParmItem[] parms, String[] options, boolean mmUnits, Properties info) {
+  ParameterDialog (ParmItem[] parms, String[] buttons, boolean mmUnits, Properties info) {
     super((Frame) null, true);
     setTitle("Edit Parameters");
     JPanel fields = new JPanel();
     fields.setLayout(new GridBagLayout());
     int jj = 0;
     for (ParmItem parm : parms) {
-      if (parm.name == null) {
-        if (parm.value instanceof JComponent) {
+      if (parm.value instanceof JComponent) {
+        if (parm.name != null) {
+          fields.add(new JLabel(parm.name + ": "), getGbc(0, jj));
+          fields.add((JComponent) parm.value, getGbc(1, jj));
+        } else {
           GridBagConstraints gbc = new GridBagConstraints();
           gbc.gridx = 0;
           gbc.weightx = 1;
           gbc.fill = GridBagConstraints.HORIZONTAL;
           gbc.gridwidth = GridBagConstraints.REMAINDER;
           fields.add((JComponent) parm.value, gbc);
-          jj++;
         }
+        jj++;
         continue;
       }
       boolean inches = parm.units.equals("in");
@@ -310,11 +318,11 @@ class ParameterDialog extends JDialog {
     }
     // Define a custion action button so we can catch and save the screen coordinates where the "Place" button was clicked...
     // Yeah, it's a lot of weird code but it avoids having the placed object not show up until the mouse is moved.
-    JButton button = new JButton( options[0]);
+    JButton button = new JButton( buttons[0]);
     button.addActionListener(actionEvent -> {
       JButton but = ((JButton) actionEvent.getSource());
       JOptionPane pane = (JOptionPane) but.getParent().getParent();
-      pane.setValue(options[0]);
+      pane.setValue(buttons[0]);
       JOptionPane.getRootFrame().dispose();
     });
     button.addMouseListener(new MouseAdapter() {
@@ -325,8 +333,8 @@ class ParameterDialog extends JDialog {
         mouseLoc = new Point(bl.x + ev.getX(), bl.y + ev.getY());
       }
     });
-    Object[] buts = new Object[] {button, options[1]};
-    JOptionPane optionPane = new JOptionPane(fields, JOptionPane.PLAIN_MESSAGE, JOptionPane.YES_NO_OPTION, null, buts, options[1]);
+    Object[] buts = new Object[] {button, buttons[1]};
+    JOptionPane optionPane = new JOptionPane(fields, JOptionPane.PLAIN_MESSAGE, JOptionPane.YES_NO_OPTION, null, buts, buttons[1]);
     setContentPane(optionPane);
     setDefaultCloseOperation(DISPOSE_ON_CLOSE);
     optionPane.addPropertyChangeListener(ev -> {
@@ -338,7 +346,7 @@ class ParameterDialog extends JDialog {
           // Reset the JOptionPane's value.  If you don't do this, then if the user
           // presses the same button next time, no property change event will be fired.
           optionPane.setValue(JOptionPane.UNINITIALIZED_VALUE);
-          if (options[0].equals(value)) {
+          if (buttons[0].equals(value)) {
             boolean invalid = false;
             for (ParmItem parm : parms) {
               Component comp = parm.field;
@@ -423,6 +431,7 @@ class ParameterDialog extends JDialog {
         new ParmItem("Motor:Nema 8|0:Nema 11|1:Nema 14|2:Nema 17|3:Nema 23|4", "2"),
         new ParmItem("Font:plain:bold:italic", "bold"),
         new ParmItem(new JButton("Full width component")),
+        new ParmItem("JButton", new JButton("JButton with label")),
         new ParmItem("Speed", 60),
         new ParmItem("Bit Field", new BField(new String[] {"X", "Y", "Z"}, 5)),
         new ParmItem("@Freq|Hz", 500.123456)};

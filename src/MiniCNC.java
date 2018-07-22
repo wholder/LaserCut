@@ -137,6 +137,8 @@
       miniCncMenu.add(getGRBLJogMenu(laserCut, jPort, true));
       // Add "Get GRBL Settings" Menu Item
       miniCncMenu.add(getGRBLSettingsMenu(laserCut, jPort));
+      // Add "Get GRBL Coordinates" Menu Item
+      miniCncMenu.add(getGRBLCoordsMenu(laserCut, jPort));
       // Add "Port" and "Baud" Submenu to MenuBar
       miniCncMenu.add(jPort.getPortMenu());
       miniCncMenu.add(jPort.getBaudMenu());
