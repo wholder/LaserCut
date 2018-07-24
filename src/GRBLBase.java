@@ -24,26 +24,36 @@ import static javax.swing.JOptionPane.showMessageDialog;
    *     D8 - Stepper Enable/Disable Output
    *     D9 - Limit X-Axis Input (to Ground, NC if $5=1 or NO  if $5=0)
    *    D10 - Limit Y-Axis Input (to Ground,  NC if $5=1 or NO  if $5=0)
-   *  (Note: pins D11 and D12 are different from GRBL v0.9)
+   *  (Note: the function of pins D11 and D12 are swapped from GRBL v0.9)
    *    D11 - Spindle PWM Output
    *    D12 - Limit Z-Axis Input (to Ground, NC if $5=1 or NO  if $5=0)
    *    D13 - Spindle Direction Output
    *     A0 - Reset/Abort Input
    *     A1 - Feed Hold Input
    *     A2 - Cycle Start Input
-   *     A3 - Coolant Enable Output
+   *     A3 - Coolant Enable Output (controlled by M8 [on],M9 [off] commands and 0xA0 realtime toggle command)
    *     A4 - Coolant Mist Enable (normally disabled in code "//#define ENABLE_M7")
    *     A5 - Probe Input (to Ground)
    *
    *  Basic G-Code Motion Modes:
-   *     G0 - Rapid move to position (also G00)
-   *     G1 - Linear mode to position (used for cutting)
+   *     G0 - Rapid Move to position (also G00)
+   *     G1 - Linear Move to position (used for cutting)
    *     G2 - Arc Move Clockwise
    *     G3 - Arc Move Counterclockwise
    *     G38.2 - Probe toward workpiece, stop on contact, signal error if failure
    *     G38.3 - Probe toward workpiece, stop on contact
    *     G38.4 - Probe away from workpiece, stop on loss of contact, signal error if failure
    *     G38.5 - Probe away from workpiece, stop on loss of contact
+   *
+   *  Alarm-related commands
+   *     $X - Kill Alarm Lock
+   *     $H - Run Homing Cycle (requires limit switches)
+   *
+   *  Units-related commands
+   *    G20 - Set Default Units to Inches
+   *    G21 - Set Default Units to Millimeters
+   *    G90 - Movement commands are absolute
+   *    G91 - Movement commands are incremental
    *
    *  Program Modes:
    *     M0 - Pause Program (tool change)
@@ -66,9 +76,23 @@ import static javax.swing.JOptionPane.showMessageDialog;
    *     M8 - Flood Coolant (pin A3 On)
    *     M9 - All Coolant Off (pin A3 Off)
    *
+   *  Real-Time commmands:
+   *     ~ - Cycle Start
+   *     ! - Feed Hold
+   *     ? - Get Current Status (typical response: "<Idle,MPos:5.529,0.560,7.000,WPos:1.529,-5.440,-0.000>")
+   *    ^x - Ctrl-x - GRBL Soft Reset (recommended before starting job)
+   *  0x90 - Set Feed Rate to 100% of programmed rate
+   *  0x91 - Increase Linear Move Feed Rate 10%
+   *  0x92 - Decrease Linear Move Feed Rate 10%
+   *  0x93 - Increase Linear Move Feed Rate 1%
+   *  0x94 - Decrease Linear Move Feed Rate 1%
+   *  0x95 - Set Rapid Move Rate to 100% (full)
+   *  0x96 - Set Rapid Move Rate to 50%
+   *  0x97 - Set Rapid Move Rate to 25%
+   *
    *  Probe-related commands:
-   *    g38.3 f100 z-10             Start probe move to z-10 with feedrate 100, stop on probe contact, or end of move
-   *    g0                          Exit probe command state
+   *    G38.3 G20 F40 Z-1           Start probe move to Z to 1 inch with feedrate 40, stop on probe contact, or end of move
+   *    G0 Z0                       Exit probe command state and move probe back to initial position
    *    $X                          Clear Alarm state
    *
    *  Probe responses:
@@ -76,6 +100,9 @@ import static javax.swing.JOptionPane.showMessageDialog;
     *   ALARM:4                     The probe is not in the expected initial state before starting probe cycle
    *    ALARM:5                     Probe fails to contact in within the programmed travel for G38.2 and G38.4
    *    error:9                     G-code locked out during alarm or jog state
+   *
+   *  G-Code Referances:
+   *    http://linuxcnc.org/docs/html/gcode.html
    */
 
 class GRBLBase {
@@ -279,18 +306,31 @@ class GRBLBase {
           if (rsp.startsWith("[") && rsp.endsWith("]")) {
             rsp = rsp.substring(1, rsp.length() - 1);
             String[] g1 = rsp.split(":");
-            if (g1.length == 2) {
+            if (g1.length >= 2) {
               String name = g1[0];
               String[] vals = g1[1].split(",");
               if (vals.length == 3) {
-                int gNum = Integer.parseInt(name.substring(1));
-                list.add(new ParameterDialog.ParmItem(name, new DroPanel(vals[0], vals[1], vals[2], gNum >= 54 && gNum <= 59)));
+                boolean canEdit = false;
+                boolean addSep = false;
+                if (name.startsWith("G")) {
+                  int gNum = Integer.parseInt(name.substring(1));
+                  canEdit = gNum >= 54 && gNum <= 59;
+                  addSep = gNum == 59;
+                }
+                list.add(new ParameterDialog.ParmItem(name, new DroPanel(vals[0], vals[1], vals[2], canEdit)));
+                if (addSep) {
+                  list.add(new ParameterDialog.ParmItem(new JSeparator()));
+                }
               }
             }
           }
         }
         ParameterDialog.ParmItem[] parmSet = list.toArray(new ParameterDialog.ParmItem[0]);
-        if (ParameterDialog.showSaveCancelParameterDialog(parmSet, parent)) {
+        ParameterDialog dialog = (new ParameterDialog(parmSet, new String[] {"Save", "Cancel"}, false));
+        dialog.setLocationRelativeTo(parent);
+        dialog.setTitle("Workspace Coordinates");
+        dialog.setVisible(true);                                                    // Note: this call invokes dialog
+        if (dialog.doAction()) {
           for (ParameterDialog.ParmItem parm : parmSet) {
             if (parm.value instanceof DroPanel) {
               DroPanel dro = (DroPanel) parm.value;
@@ -383,8 +423,10 @@ class GRBLBase {
           if (showConfirmDialog(parent, "Is Z Axis Probe Target Ready?", "Caution", YES_NO_OPTION, PLAIN_MESSAGE) == OK_OPTION) {
             System.out.println("Probing Z");
             sendGrbl(jPort, "G20");
-            System.out.println(sendGrbl(jPort, "G38.3 F40 Z-1"));
-            sendGrbl(jPort, "G0");
+            System.out.println(sendGrbl(jPort, "G38.3 F5 Z-1"));                    // Lower Z axis until contact
+            System.out.println(sendGrbl(jPort, "G38.5 F5 Z0"));                     // Raise until contact lost
+            System.out.println(sendGrbl(jPort, "G38.3 F1 Z-1"));                    // Lower Z axis at slower speed until contact
+            sendGrbl(jPort, "G0 Z0");
             System.out.println(sendGrbl(jPort, "?"));
             }
           break;
