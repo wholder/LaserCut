@@ -382,54 +382,101 @@ class GRBLBase {
         JLabel tmp;
         Font font2 = new Font("Monospaced", Font.PLAIN, 20);
         // Row 1
-        buttons.add(new JogButton(new Arrow(135), jPort, speed, dro, "Y-% X-%"));    // Up Left
-        buttons.add(new JogButton(new Arrow(180), jPort, speed, dro, "Y-%"));        // Up
-        buttons.add(new JogButton(new Arrow(225), jPort, speed, dro, "Y-% X+%"));    // Up Right
-        buttons.add(new JogButton(new Arrow(180), jPort, speed, dro, "Z+%"));        // Up
+        buttons.add(new JogButton(new Arrow(135), jPort, speed, dro, "Y-% X-%"));     // Up Left
+        buttons.add(new JogButton(new Arrow(180), jPort, speed, dro, "Y-%"));         // Up
+        buttons.add(new JogButton(new Arrow(225), jPort, speed, dro, "Y-% X+%"));     // Up Right
+        buttons.add(new JogButton(new Arrow(180), jPort, speed, dro, "Z+%"));         // Up
         // Row 2
-        buttons.add(new JogButton(new Arrow(90), jPort, speed, dro, "X-%"));         // Left
+        buttons.add(new JogButton(new Arrow(90), jPort, speed, dro, "X-%"));          // Left
         buttons.add(tmp = new JLabel("X/Y", JLabel.CENTER));
         tmp.setFont(font2);
-        buttons.add(new JogButton(new Arrow(270), jPort, speed, dro, "X+%"));        // Right
+        buttons.add(new JogButton(new Arrow(270), jPort, speed, dro, "X+%"));         // Right
         buttons.add(tmp = new JLabel("Z", JLabel.CENTER));
         tmp.setFont(font2);
         // Row 3
-        buttons.add(new JogButton(new Arrow(45), jPort, speed, dro, "Y+% X-%"));     // Down Left
-        buttons.add(new JogButton(new Arrow(0), jPort, speed, dro, "Y+%"));          // Down
-        buttons.add(new JogButton(new Arrow(315), jPort, speed, dro, "Y+% X+%"));    // Down Right
-        buttons.add(new JogButton(new Arrow(0), jPort, speed, dro, "Z-%"));          // Down
+        buttons.add(new JogButton(new Arrow(45), jPort, speed, dro, "Y+% X-%"));      // Down Left
+        buttons.add(new JogButton(new Arrow(0), jPort, speed, dro, "Y+%"));           // Down
+        buttons.add(new JogButton(new Arrow(315), jPort, speed, dro, "Y+% X+%"));     // Down Right
+        buttons.add(new JogButton(new Arrow(0), jPort, speed, dro, "Z-%"));           // Down
         frame.add(buttons, BorderLayout.CENTER);
+        if (probeEnabled) {
+          // Setup Probe Z controls
+          JPanel probePanel = new JPanel(new GridLayout(1, 2));
+          JButton probeButton = new JButton("Probe Z Axis");
+          JTextField probeDisp = new JTextField();
+          probeDisp.setHorizontalAlignment(JTextField.RIGHT);
+          probeDisp.setEditable(false);
+          probePanel.add(probeButton);
+          probePanel.add(probeDisp);
+          frame.add(probePanel, BorderLayout.SOUTH);
+          probeButton.addActionListener(ev2 -> {
+            if (showConfirmDialog(parent, "Is Z Axis Probe Target Ready?", "Caution", YES_NO_OPTION, PLAIN_MESSAGE) == OK_OPTION) {
+              Runnable probe = () -> {
+                probeDisp.setText("Probing...");
+                int state = 0;
+                boolean error = false;
+                String rsp = "";
+                while (state < 3) {
+                  switch (state++) {
+                  case 0:
+                    rsp = sendGrbl(jPort, "G38.3 G20 F5 Z-1", 20);                      // Lower Z axis until contact
+                    break;
+                  case 1:
+                    rsp = sendGrbl(jPort, "G38.5 G20 F5 Z0", 20);                       // Raise until contact lost
+                    break;
+                  case 2:
+                    rsp = sendGrbl(jPort, "G38.3 G20 F1 Z-1", 20);                      // Lower Z axis at slower speed until contact
+                    break;
+                  }
+                  String[] rLines = rsp.split("\n");
+                  if (rLines.length < 2 || !"ok".equals(rLines[1])) {
+                    error = true;
+                    break;
+                  }
+                  rsp = rLines[0];
+                  if (rsp.toLowerCase().contains("alarm")) {
+                    error = true;
+                    sendGrbl(jPort, "$X");
+                  }
+                  if (rsp.startsWith("[PRB:") && rsp.endsWith(":1]")) {
+                    rsp = rsp.substring(5, rsp.length() - 3);
+                    String[] axes = rsp.split(",");
+                    if (axes.length == 3) {
+                      probeDisp.setText(axes[2]);
+                    } else {
+                      error = true;
+                      break;
+                    }
+                  } else {
+                    error = true;
+                    break;
+                  }
+                }
+                if (error) {
+                  probeDisp.setText("Error");
+                }
+                sendGrbl(jPort, "G0 Z0", 20);                                       // Cancel probe mode and return Z to home
+              };
+              new Thread(probe).start();
+            }
+          });
+        }
         // Bring up Jog Controls
-        Object[] options = probeEnabled ? new String[] {"Cancel", "Set Origin", "Probe Z"} : new String[] {"Cancel", "Set Origin"};
-        int res = showOptionDialog(parent, frame, "Jog Controls", OK_CANCEL_OPTION, PLAIN_MESSAGE, null, options, options[0]);
-        switch (res) {
-        case 0:
-          // Return to old home position
-          try {
-            sendGrbl(jPort, "G00 X0 Y0 Z0");
-          } catch (Exception ex) {
-            ex.printStackTrace();
-          }
-          break;
-        case 1:
-          // Reset coords to new position after jog
+        Object[] options = new String[] {"Set Origin", "Cancel"};
+        if (showOptionDialog(parent, frame, "Jog Controls", OK_CANCEL_OPTION, PLAIN_MESSAGE, null, options, options[1]) == 0) {
+          // User pressed "Set Origin" so set coords to new position after jog
           try {
             sendGrbl(jPort, "G92 X0 Y0 Z0");
           } catch (Exception ex) {
             ex.printStackTrace();
           }
-          break;
-        case 2:
-          if (showConfirmDialog(parent, "Is Z Axis Probe Target Ready?", "Caution", YES_NO_OPTION, PLAIN_MESSAGE) == OK_OPTION) {
-            System.out.println("Probing Z");
-            sendGrbl(jPort, "G20");
-            System.out.println(sendGrbl(jPort, "G38.3 F5 Z-1"));                    // Lower Z axis until contact
-            System.out.println(sendGrbl(jPort, "G38.5 F5 Z0"));                     // Raise until contact lost
-            System.out.println(sendGrbl(jPort, "G38.3 F1 Z-1"));                    // Lower Z axis at slower speed until contact
-            sendGrbl(jPort, "G0 Z0");
-            System.out.println(sendGrbl(jPort, "?"));
-            }
-          break;
+        } else {
+          // User pressed "Cancel" so fast move back to old home position
+          try {
+            sendGrbl(jPort, "G00 X0 Y0 Z0");
+          } catch (Exception ex) {
+            ex.printStackTrace();
+          }
         }
       } else {
         showMessageDialog(parent, "No Serial Port Selected", "Error", PLAIN_MESSAGE);
@@ -565,20 +612,45 @@ class GRBLBase {
     }
   }
 
-  private class GRBLRunner extends Thread implements JSSCPort.RXEvent {
-    private StringBuilder   response, line = new StringBuilder();
-    private CountDownLatch latch = new CountDownLatch(1);
-    private JSSCPort        jPort;
-    transient boolean       running = true;
+  /**
+   * Send one line GRBL command and return buf (terminated by "ok\n" or timeout)
+   * @param jPort Open JSSC port
+   * @param cmd command string
+   * @return buf string (excluding "ok\n")
+   */
+  private String sendGrbl (JSSCPort jPort, String cmd) {
+    StringBuilder buf = new StringBuilder();
+    new GRBLRunner(jPort, cmd, buf);
+    return buf.toString();
+  }
 
-    GRBLRunner (JSSCPort jPort, String cmd, StringBuilder response) {
+  private String sendGrbl (JSSCPort jPort, String cmd, int seconds) {
+    StringBuilder buf = new StringBuilder();
+    new GRBLRunner(jPort, cmd, buf, seconds);
+    return buf.toString();
+  }
+
+  private static class GRBLRunner extends Thread implements JSSCPort.RXEvent {
+    private StringBuilder   buf, line = new StringBuilder();
+    private JSSCPort        jPort;
+    private int             timeout;
+    transient boolean       running = true, done;
+
+    GRBLRunner (JSSCPort jPort, String cmd, StringBuilder rsp) {
+      this(jPort, cmd, rsp, 1);
+    }
+
+    GRBLRunner (JSSCPort jPort, String cmd, StringBuilder rsp, int seconds) {
       this.jPort = jPort;
-      this.response = response;
+      this.buf = rsp;
+      this.timeout = seconds * 10;
       jPort.setRXHandler(GRBLRunner.this);
       start();
       try {
         jPort.sendString(cmd + '\n');
-        latch.await();
+        while (!done) {
+          Thread.sleep(10);
+        }
       } catch (Exception ex) {
         ex.printStackTrace();
       }
@@ -590,15 +662,14 @@ class GRBLBase {
           running = false;
         }
         line.setLength(0);
-        response.append('\n');
+        buf.append('\n');
       } else if (cc != '\r'){
         line.append((char) cc);
-        response.append((char) cc);
+        buf.append((char) cc);
       }
     }
 
     public void run () {
-      int timeout = 10;
       while (running) {
         try {
           Thread.sleep(100);
@@ -609,26 +680,14 @@ class GRBLBase {
           ex.printStackTrace();
         }
       }
-      latch.countDown();
       jPort.removeRXHandler(GRBLRunner.this);
+      done = true;
     }
-  }
-
-  /**
-   * Send one line GRBL command and return response (terminated by "ok\n" or timeout)
-   * @param jPort Open JSSC port
-   * @param cmd command string
-   * @return response string (excluding "ok\n")
-   */
-  private String sendGrbl (JSSCPort jPort, String cmd) {
-    StringBuilder buf = new StringBuilder();
-    new GRBLRunner(jPort, cmd, buf);
-    return buf.toString();
   }
 
   // https://github.com/gnea/grbl/wiki
 
-  class GRBLSender extends Thread implements JSSCPort.RXEvent {
+  static class GRBLSender extends Thread implements JSSCPort.RXEvent {
     private StringBuilder   response = new StringBuilder();
     private String          lastResponse = "";
     private String[]        cmds, abortCmds;
@@ -636,7 +695,7 @@ class GRBLBase {
     private JTextArea       grbl;
     private JProgressBar    progress;
     private long            step, nextStep;
-    private final GRBLSender.Lock lock = new GRBLSender.Lock();
+    private final Lock      lock = new Lock();
     private JSSCPort        jPort;
     private boolean         doAbort;
 
@@ -678,7 +737,7 @@ class GRBLBase {
         synchronized (lock) {
           step++;
         }
-      } else {
+      } else if (cc != '\r'){
         response.append((char) cc);
       }
     }
