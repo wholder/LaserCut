@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.Properties;
 import javax.swing.*;
+import javax.swing.plaf.basic.BasicComboBoxRenderer;
 
 import static javax.swing.JOptionPane.showMessageDialog;
 
@@ -150,6 +151,40 @@ class ParameterDialog extends JDialog {
     }
   }
 
+  /**
+   * Subclass of JComboBox that displays a list of fonts showing the typeface in the component
+   */
+  class FontList extends JComboBox<String> {
+    private Dimension   dim;
+
+    FontList (String[] fonts) {
+      super(fonts);
+      dim = getPreferredSize();
+      int points = 14;
+      setSelectedItem(0);
+      setFont(new Font((String) getSelectedItem(), Font.PLAIN, points));
+      setRenderer(new BasicComboBoxRenderer() {
+        @Override
+        public Component getListCellRendererComponent(JList list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
+          super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+          setFont(new Font((String) value, Font.PLAIN, points));
+          return this;
+        }
+      });
+      addItemListener(e -> {
+        if (e.getStateChange() == ItemEvent.SELECTED) {
+          setFont(new Font((String) getSelectedItem(), Font.PLAIN, points));
+        }
+      });
+    }
+
+    @Override
+    public Dimension getPreferredSize () {
+      return dim == null ? super.getPreferredSize() : dim;
+    }
+  }
+
+
   private void selLabelWeight (double lblWeight) {
     this.lblWeight = lblWeight;
   }
@@ -231,7 +266,7 @@ class ParameterDialog extends JDialog {
         fields.add(parm.field = select, getGbc(1, jj));
       } else if (parm.valueType instanceof String[]) {
         String[] labels = getLabels((String[]) parm.valueType);
-        JComboBox select = new JComboBox<>(labels);
+        JComboBox select = parm.name.equals("fontName") ? new FontList(labels) : new JComboBox<>(labels);
         String[] values = getValues((String[]) parm.valueType);
         select.setSelectedIndex(Arrays.asList(values).indexOf((String) parm.value));
         fields.add(parm.field = select, getGbc(1, jj));
@@ -380,6 +415,7 @@ class ParameterDialog extends JDialog {
       }
     });
     pack();
+    setResizable(false);
   }
 
   static class BField extends JPanel {

@@ -2411,7 +2411,6 @@ public class LaserCut extends JFrame {
       for (String tmp : availFonts) {
         aMap.put(tmp, tmp);
       }
-      addIfAvailable(aMap, "");
       addIfAvailable(aMap, "American Typewriter");
       addIfAvailable(aMap, "Arial");
       addIfAvailable(aMap, "Arial Black");

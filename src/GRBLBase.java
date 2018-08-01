@@ -8,7 +8,6 @@ import java.awt.image.BufferedImage;
 import java.text.DecimalFormat;
 import java.util.*;
 import java.util.List;
-import java.util.concurrent.CountDownLatch;
 
 import static javax.swing.JOptionPane.*;
 import static javax.swing.JOptionPane.showMessageDialog;
@@ -399,6 +398,9 @@ class GRBLBase {
         buttons.add(new JogButton(new Arrow(315), jPort, speed, dro, "Y+% X+%"));     // Down Right
         buttons.add(new JogButton(new Arrow(0), jPort, speed, dro, "Z-%"));           // Down
         frame.add(buttons, BorderLayout.CENTER);
+        // Create button for Jog Dialog
+        final JButton setOrigin = getButton("Set Origin");
+        final JButton cancel = getButton("Cancel");
         if (probeEnabled) {
           // Setup Probe Z controls
           JPanel probePanel = new JPanel(new GridLayout(1, 2));
@@ -412,6 +414,8 @@ class GRBLBase {
           probeButton.addActionListener(ev2 -> {
             if (showConfirmDialog(parent, "Is Z Axis Probe Target Ready?", "Caution", YES_NO_OPTION, PLAIN_MESSAGE) == OK_OPTION) {
               Runnable probe = () -> {
+                setOrigin.setEnabled(false);
+                cancel.setEnabled(false);
                 probeDisp.setText("Probing...");
                 int state = 0;
                 boolean error = false;
@@ -456,13 +460,15 @@ class GRBLBase {
                   probeDisp.setText("Error");
                 }
                 sendGrbl(jPort, "G0 Z0", 20);                                       // Cancel probe mode and return Z to home
-              };
+                setOrigin.setEnabled(true);
+                cancel.setEnabled(true);
+             };
               new Thread(probe).start();
             }
           });
         }
         // Bring up Jog Controls
-        Object[] options = new String[] {"Set Origin", "Cancel"};
+        Object[] options = new Object[] {setOrigin, cancel};
         if (showOptionDialog(parent, frame, "Jog Controls", OK_CANCEL_OPTION, PLAIN_MESSAGE, null, options, options[1]) == 0) {
           // User pressed "Set Origin" so set coords to new position after jog
           try {
@@ -485,6 +491,18 @@ class GRBLBase {
     return jogMenu;
   }
 
+  private static JButton getButton (String label) {
+    final JButton button = new JButton(label);
+    button.addActionListener(ev2 -> {
+      Object tmp = ((JComponent) ev2.getSource()).getParent();
+      while (!(tmp instanceof JOptionPane)) {
+        tmp = ((JComponent) tmp).getParent();
+      }
+      ((JOptionPane) tmp).setValue(button);
+    });
+    return button;
+  }
+
   static class Arrow extends ImageIcon {
     Rectangle bounds = new Rectangle(26, 26);
     private Polygon arrow;
@@ -500,7 +518,7 @@ class GRBLBase {
       g2.setBackground(Color.white);
       g2.clearRect(0, 0, bounds.width, bounds.height);
       g2.setColor(Color.darkGray);
-      AffineTransform at = AffineTransform.getTranslateInstance(bounds.width / 2, bounds.height / 2);
+      AffineTransform at = AffineTransform.getTranslateInstance(bounds.width / 2.0, bounds.height / 2.0);
       at.rotate(Math.toRadians(rotation));
       g2.fill(at.createTransformedShape(arrow));
       g2.setColor(Color.white);
