@@ -1181,9 +1181,9 @@ public class LaserCut extends JFrame {
     return inches * 25.4;
   }
 
-  public String getResourceFile (String file) {
+  public static String getResourceFile (String file) {
     try {
-      InputStream fis = getClass().getResourceAsStream(file);
+      InputStream fis = LaserCut.class.getResourceAsStream(file);
       if (fis != null) {
         byte[] data = new byte[fis.available()];
         fis.read(data);
@@ -2391,6 +2391,60 @@ public class LaserCut extends JFrame {
     }
   }
 
+  static class VectorFont {
+    private static Map<String,VectorFont> vFonts = new HashMap();
+    int[][][] font;
+    int       height;
+
+    VectorFont (String name) {
+      height = 32;
+      switch (name) {
+      case "Vector 1":
+        font = getFontData("hershey1.txt");
+        break;
+      case "Vector 2":
+        font = getFontData("hershey2.txt");
+        break;
+      case "Vector 3":
+        font = getFontData("hershey3.txt");
+        break;
+      }
+    }
+
+    static VectorFont getFont (String name) {
+      VectorFont font = vFonts.get(name);
+      if (font == null) {
+        vFonts.put(name, font = new VectorFont(name));
+      }
+      return font;
+    }
+
+    private int[][][] getFontData (String name) {
+      String data = getResourceFile("fonts/" + name);
+      StringTokenizer tok = new StringTokenizer(data, "\n");
+      int[][][] font = new int[128][][];
+      while (tok.hasMoreElements()) {
+        String line = tok.nextToken();
+        if (line.charAt(3) == ':') {
+          char cc = line.charAt(1);
+          line = line.substring(4);
+          String[] vecs = line.split("\\|");
+          int[][] vec = new int[vecs.length][];
+          font[cc - 32] = vec;
+          for (int ii = 0; ii < vecs.length; ii++) {
+            String[] coords = vecs[ii].split(",");
+            int[] tmp = new int[coords.length];
+            for (int jj = 0; jj < tmp.length; jj++) {
+              tmp[jj] = Integer.parseInt(coords[jj]);
+              vec[ii] = tmp;
+            }
+          }
+        }
+      }
+      return font;
+    }
+  }
+
   static class CADText extends CADShape implements Serializable {
     private static final long serialVersionUID = 4314642313295298841L;
     public String   text, fontName, fontStyle;
@@ -2430,6 +2484,9 @@ public class LaserCut extends JFrame {
       addIfAvailable(aMap, "OCR A Std");
       addIfAvailable(aMap, "Times New Roman");
       addIfAvailable(aMap, "Stencil");
+      fonts.add("Vector 1");
+      fonts.add("Vector 2");
+      fonts.add("Vector 3");
     }
 
     private static void addIfAvailable (Map avail, String font) {
@@ -2474,27 +2531,74 @@ public class LaserCut extends JFrame {
 
     @Override
     Shape buildShape () {
-      // Code from: http://www.java2s.com/Tutorial/Java/0261__2D-Graphics/GenerateShapeFromText.htm
-      BufferedImage img = new BufferedImage(10, 10, BufferedImage.TYPE_INT_RGB);
-      Graphics2D g2 = img.createGraphics();
-      Font font = new Font(fontName, styles.get(fontStyle), fontSize);
-      HashMap<TextAttribute, Object> attrs = new HashMap<>();
-      attrs.put(TextAttribute.KERNING, TextAttribute.KERNING_ON);
-      attrs.put(TextAttribute.LIGATURES, TextAttribute.LIGATURES_ON);
-      attrs.put(TextAttribute.TRACKING, tracking);
-      font = font.deriveFont(attrs);
-      g2.setFont(font);
-      try {
-        GlyphVector vect = font.createGlyphVector(g2.getFontRenderContext(), text);
+      if (fontName.startsWith("Vector")) {
+        Path2D.Double path = new Path2D.Double();
+        VectorFont font = VectorFont.getFont(fontName);
+        int[][][] stroke = font.font;
+        int lastX = 1000, lastY = 1000;
+        int xOff = 0;
+        for (int ii = 0; ii < text.length(); ii++) {
+          char cc = text.charAt(ii);
+          cc = cc >= 32 & cc <= 127 ? cc : '_';   // Substitute '_' for codes outside printable ASCII range
+          if (cc >= 32 && cc <= 127) {
+            int[][] glyph = stroke[cc - 32];
+            int left = glyph[0][0];
+            int right = glyph[0][1];
+            for (int jj = 1; jj < glyph.length; jj++) {
+              int x1 = glyph[jj][0] - left;
+              int y1 = glyph[jj][1];
+              int x2 = glyph[jj][2] - left;
+              int y2 = glyph[jj][3];
+
+              if (x1 != lastX || y1 != lastY) {
+                path.moveTo(x1 + xOff, y1);
+              }
+              path.lineTo(x2 + xOff, lastY = y2);
+              lastX = x2;
+            }
+            int step = right - left;
+            xOff += step;
+          }
+        }
         AffineTransform at = new AffineTransform();
-        at.scale(1 / 72.0, 1 / 72.0);
-        Shape text = at.createTransformedShape(vect.getOutline());
+        double scale = fontSize / (72.0 * font.height);
+        at.scale(scale, scale);
+        Shape text = at.createTransformedShape(path);
         Rectangle2D bounds = text.getBounds2D();
         at = new AffineTransform();
-        at.translate(-bounds.getWidth() / 2, bounds.getHeight() / 2);
+        at.translate(-bounds.getX(), -bounds.getY());
+        text = at.createTransformedShape(text);
+        bounds = text.getBounds2D();
+        at = new AffineTransform();
+        at.translate(-bounds.getWidth() / 2, -bounds.getHeight() / 2);
         return at.createTransformedShape(text);
-      } finally {
-        g2.dispose();
+      } else {
+        // Code from: http://www.java2s.com/Tutorial/Java/0261__2D-Graphics/GenerateShapeFromText.htm
+        BufferedImage img = new BufferedImage(10, 10, BufferedImage.TYPE_INT_RGB);
+        Graphics2D g2 = img.createGraphics();
+        Font font = new Font(fontName, styles.get(fontStyle), fontSize);
+        HashMap<TextAttribute, Object> attrs = new HashMap<>();
+        attrs.put(TextAttribute.KERNING, TextAttribute.KERNING_ON);
+        attrs.put(TextAttribute.LIGATURES, TextAttribute.LIGATURES_ON);
+        attrs.put(TextAttribute.TRACKING, tracking);
+        font = font.deriveFont(attrs);
+        g2.setFont(font);
+        try {
+          GlyphVector vect = font.createGlyphVector(g2.getFontRenderContext(), text);
+          AffineTransform at = new AffineTransform();
+          at.scale(1 / 72.0, 1 / 72.0);
+          Shape text = at.createTransformedShape(vect.getOutline());
+          Rectangle2D bounds = text.getBounds2D();
+          at = new AffineTransform();
+          at.translate(-bounds.getX(), -bounds.getY());
+          text = at.createTransformedShape(text);
+          bounds = text.getBounds2D();
+          at = new AffineTransform();
+          at.translate(-bounds.getWidth() / 2, -bounds.getHeight() / 2);
+          return at.createTransformedShape(text);
+        } finally {
+          g2.dispose();
+        }
       }
     }
   }
