@@ -36,6 +36,10 @@ import static javax.swing.JOptionPane.*;
   Zoom & Pan: https://community.oracle.com/thread/1263955
   https://developer.apple.com/library/content/documentation/Java/Conceptual/Java14Development/07-NativePlatformIntegration/NativePlatformIntegration.html
 
+  Engraving with G-Code:
+    https://github.com/nebarnix/img2gco/
+    https://github.com/magdesign/Raster2Gcode
+
   Note: unable to use CMD-A, CMD-C, CMD-H, CMD-Q as shortcut keys
   */
 
@@ -923,6 +927,54 @@ public class LaserCut extends JFrame {
       }
     });
     importMenu.add(gerberZip);
+    /*
+     *  Add "Import Notes to MusicBox Strip" Menu
+     */
+    JMenuItem musicBox = new JMenuItem("Import Notes to MusicBox Strip");
+    musicBox.addActionListener(ev -> {
+      JFileChooser fileChooser = new JFileChooser();
+      fileChooser.setDialogTitle("Select a Text File with Notes");
+      fileChooser.setDialogType(JFileChooser.OPEN_DIALOG);
+      FileNameExtensionFilter nameFilter = new FileNameExtensionFilter(".txt files (*.txt)", "txt");
+      fileChooser.addChoosableFileFilter(nameFilter);
+      fileChooser.setFileFilter(nameFilter);
+      fileChooser.setSelectedFile(new File(prefs.get("default.notes.dir", "/")));
+      if (fileChooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
+        try {
+          File tFile = fileChooser.getSelectedFile();
+          prefs.put("default.notes.dir", tFile.getAbsolutePath());
+          Scanner lines = new Scanner(new FileInputStream(tFile));
+          List<String[]> cols = new ArrayList<>();
+          int col = 0;
+          while (lines.hasNextLine()) {
+            Scanner line = new Scanner(lines.nextLine().trim());
+            int time = line.nextInt();
+            List<String> notes = new ArrayList<>();
+            while (line.hasNext()) {
+              String item = line.next();
+              item = item.endsWith(",") ? item.substring(0, item.length() - 1) : item;
+              notes.add(item);
+            }
+            while (time-- > 0) {
+              cols.add(notes.toArray(new String[0]));
+              notes = new ArrayList<>();
+            }
+          }
+          String[][] song = cols.toArray(new String[cols.size()][0]);
+          CADMusicStrip mStrip = new CADMusicStrip();
+          mStrip.setNotes(song);
+          if (mStrip.placeParameterDialog(surface, useMillimeters)) {
+            surface.placeShape(mStrip);
+          }
+        } catch (Exception ex) {
+          showErrorDialog("Unable to load MusicBox Notes file");
+          ex.printStackTrace(System.out);
+        }
+      }
+    });
+    importMenu.add(musicBox);
+
+
     menuBar.add(importMenu);
     /*
      *  Add "Export" Menu
@@ -1554,6 +1606,11 @@ public class LaserCut extends JFrame {
      */
     void cancelMove () { }
 
+    /**
+     * Override in subclass to update object's internal state after parameter edit
+     */
+    void updateStateAfterParameterEdit () { }
+
 
     void setPosition (double newX, double newY) {
       if (!(this instanceof CNCPath)) {
@@ -1696,6 +1753,8 @@ public class LaserCut extends JFrame {
             ex.printStackTrace();
           }
         }
+        // Update shape's internal state after parameter edit
+        updateStateAfterParameterEdit();
         // Position shape where user clicked on the "Place" butto
         Point dLoc = surface.getLocationOnScreen();
         Point mLoc = dialog.getMouseLoc();
@@ -2011,22 +2070,57 @@ public class LaserCut extends JFrame {
 
   static class CADMusicStrip extends CADShape implements Serializable {
     private static final long serialVersionUID = 7398125917619364676L;
-    private static String[] symb = {"E ", "D ", "C ", "B ", "A#", "A ", "G#", "G ", "F#", "F ", "E ", "D#", "D ", "C#", "C ",
-                                    "B ", "A#", "A ", "G#", "G ", "F#", "F ", "E ", "D ", "C ", "B ", "A ", "G ", "D ", "C "};
+    private static String[] symb = {"E6", "D6", "C6", "B5", "A#5", "A5", "G#5", "G5", "F#5", "F5", "E5", "D#5", "D5", "C#5", "C5",
+                                    "B4", "A#4", "A4", "G#4", "G4", "F#4", "F4", "E4", "D4", "C4", "B3", "A3", "G3", "D3", "C3"};
+    private static Map<String,Integer>  noteIndex = new HashMap<>();
     private static double     xStep = 4.0;
     private static double     yStep = 2.017;
     private static double     xOff = mmToInches(8);
     private static double     yOff = mmToInches(6);
     private static double     holeDiam = mmToInches(2.4);
-    private static final int  cols = 60;
     private boolean           checkClicked;
+    public int                columns = 60;
     public double width,      height;
-    public boolean[][]        notes = new boolean[cols][30];
+    public boolean[][]        notes;
     private transient Shape   rect;
 
-    @SuppressWarnings("unused")
+    static {
+      for (int ii = 0; ii < symb.length; ii++) {
+        noteIndex.put(symb[ii], ii);
+      }
+    }
+
     CADMusicStrip () {
-      width = mmToInches(cols * 4 + 16);
+    }
+
+    void setNotes (String[][] song) {
+      notes = new boolean[song.length][30];
+      for (int ii = 0; ii < song.length; ii++) {
+        for (String note : song[ii]) {
+          if (noteIndex.containsKey(note)) {
+            notes[ii][noteIndex.get(note)] = true;
+          }
+        }
+      }
+      width = mmToInches(song.length * 4 + 16);
+      height = mmToInches(70);
+    }
+
+    @Override
+    void updateStateAfterParameterEdit () {
+      if (notes == null) {
+        notes = new boolean[columns][30];
+      } else {
+        // Resize array and copy notes from old array
+        boolean[][] nNotes = new boolean[columns][30];
+        for (int ii = 0; ii < Math.min(notes.length, nNotes.length); ii++) {
+          for (int jj = 0; jj < notes[ii].length; jj++) {
+            nNotes[ii][jj] = notes[ii][jj];
+          }
+        }
+        notes = nNotes;
+      }
+      width = mmToInches(columns * 4 + 16);
       height = mmToInches(70);
     }
 
@@ -2041,17 +2135,17 @@ public class LaserCut extends JFrame {
       g2.setFont(new Font("Arial", Font.PLAIN, (int) (8 * zf)));
       for (int ii = 0; ii <= notes.length; ii++) {
         double sx = mx + mmToInches(ii * xStep * zoom);
-        g2.setColor((ii & 1) == 0 ? Color.black : Color.lightGray);
+        g2.setColor((ii & 1) == 0 ? Color.black : isSelected() ? Color.black : Color.lightGray);
         g2.setStroke((ii & 1) == 0 ? thick : thin);
         g2.draw(new Line2D.Double(sx, my, sx, my + mmToInches(29 * yStep * zoom)));
         for (int jj = 0; jj < 30; jj++) {
           double sy = my + mmToInches(jj * yStep * zoom);
-          g2.setColor(jj == 0 || jj == 29 ? Color.black : Color.lightGray);
+          g2.setColor(jj == 0 || jj == 29 ? Color.black : isSelected() ? Color.black : Color.lightGray);
           g2.setStroke(jj == 0 || jj == 29 ? thick : thin);
-          g2.draw(new Line2D.Double(mx, sy, mx + mmToInches(cols * xStep * zoom), sy));
+          g2.draw(new Line2D.Double(mx, sy, mx + mmToInches(columns * xStep * zoom), sy));
           if (ii == 0 ) {
-            g2.setColor(Color.orange);
-            g2.drawString(symb[jj], (int) (sx - 16 * zf), (int) (sy + 2.5 * zf));
+            g2.setColor(Color.red);
+            g2.drawString(symb[jj], (int) (sx - 18 * zf), (int) (sy + 2.5 * zf));
           }
         }
       }
@@ -2070,13 +2164,13 @@ public class LaserCut extends JFrame {
       double dY = yy - gridY * yStep;
       double dist = Math.sqrt(dX * dX + dY * dY);
       //System.out.println(df.format(gridX) + ", " + df.format(gridY) + " - " +  df.format(dist));
-      if (dist <= .75 && gridX < notes.length && gridY < 30) {
+      if (dist <= 1.5 && gridX >= 0 && gridX < notes.length && gridY >= 0 && gridY < 30) {
         // Used has clicked in a note circle
         notes[(int) gridX][(int) gridY] ^= true;
         updateShape();
         return true;
       }
-      return false;
+      return gridX >= 0 && gridX < notes.length && gridY >= 0 && gridY < 30 ? true : false;
     }
 
     @Override
@@ -2128,12 +2222,12 @@ public class LaserCut extends JFrame {
 
     @Override
     protected List<String> getEditFields () {
-      return Arrays.asList("xLoc|in", "yLoc|in");
+      return Arrays.asList("columns", "xLoc|in", "yLoc|in");
     }
 
     @Override
     protected List<String> getPlaceFields () {
-      return Arrays.asList("xLoc|in", "yLoc|in");
+      return Arrays.asList("columns", "xLoc|in", "yLoc|in");
     }
   }
 

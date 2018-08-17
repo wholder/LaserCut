@@ -857,6 +857,11 @@ public class DXFReader {
                 String units = attrs.get(70);
                 setUnits(units);
               }
+              attrs = section.attributes.get("$LUNITS");
+              if (attrs != null) {
+                String units = attrs.get(70);
+                setUnits(units);
+              }
             }
           }
           cEntity = null;
