@@ -2070,12 +2070,12 @@ public class LaserCut extends JFrame {
 
   static class CADMusicStrip extends CADShape implements Serializable {
     private static final long serialVersionUID = 7398125917619364676L;
-    private static String[] symb = {"E6", "D6", "C6", "B5", "A#5", "A5", "G#5", "G5", "F#5", "F5", "E5", "D#5", "D5", "C#5", "C5",
-                                    "B4", "A#4", "A4", "G#4", "G4", "F#4", "F4", "E4", "D4", "C4", "B3", "A3", "G3", "D3", "C3"};
+    private static String[] symb = {"6E", "6D", "6C", "5B", "5A#", "5A", "5G#", "5G", "5F#", "5F", "5E", "5D#", "5D", "5C#", "5C",
+                                    "4B", "4A#", "4A", "4G#", "4G", "4F#", "4F", "4E", "4D", "4C", "3B", "3A", "3G", "3D", "3C"};
     private static Map<String,Integer>  noteIndex = new HashMap<>();
     private static double     xStep = 4.0;
     private static double     yStep = 2.017;
-    private static double     xOff = mmToInches(8);
+    private static double     xOff = mmToInches(12);
     private static double     yOff = mmToInches(6);
     private static double     holeDiam = mmToInches(2.4);
     private boolean           checkClicked;
@@ -2083,6 +2083,7 @@ public class LaserCut extends JFrame {
     public double width,      height;
     public boolean[][]        notes;
     private transient Shape   rect;
+    private transient int     lastCol = 0;
 
     static {
       for (int ii = 0; ii < symb.length; ii++) {
@@ -2132,7 +2133,7 @@ public class LaserCut extends JFrame {
       double mx = (xLoc + xOff) * zoom;
       double my = (yLoc + yOff) * zoom;
       double zf = zoom / SCREEN_PPI;
-      g2.setFont(new Font("Arial", Font.PLAIN, (int) (8 * zf)));
+      g2.setFont(new Font("Arial", Font.PLAIN, (int) (7 * zf)));
       for (int ii = 0; ii <= notes.length; ii++) {
         double sx = mx + mmToInches(ii * xStep * zoom);
         g2.setColor((ii & 1) == 0 ? Color.black : isSelected() ? Color.black : Color.lightGray);
@@ -2143,9 +2144,9 @@ public class LaserCut extends JFrame {
           g2.setColor(jj == 0 || jj == 29 ? Color.black : isSelected() ? Color.black : Color.lightGray);
           g2.setStroke(jj == 0 || jj == 29 ? thick : thin);
           g2.draw(new Line2D.Double(mx, sy, mx + mmToInches(columns * xStep * zoom), sy));
-          if (ii == 0 ) {
+          if (ii == lastCol ) {
             g2.setColor(Color.red);
-            g2.drawString(symb[jj], (int) (sx - 18 * zf), (int) (sy + 2.5 * zf));
+            g2.drawString(symb[jj], (int) (sx - 14 * zf), (int) (sy + 2.5 * zf));
           }
         }
       }
@@ -2167,6 +2168,7 @@ public class LaserCut extends JFrame {
       if (dist <= 1.5 && gridX >= 0 && gridX < notes.length && gridY >= 0 && gridY < 30) {
         // Used has clicked in a note circle
         notes[(int) gridX][(int) gridY] ^= true;
+        lastCol = (int) gridX;
         updateShape();
         return true;
       }
