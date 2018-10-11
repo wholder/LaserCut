@@ -187,7 +187,7 @@ class GRBLBase {
         ParameterDialog dialog = (new ParameterDialog(parmSet, new String[] {"Save", "Cancel"}, false, info));
         dialog.setLocationRelativeTo(parent);
         dialog.setVisible(true);              // Note: this call invokes dialog
-        if (dialog.doAction()) {
+        if (dialog.wasPressed()) {
           java.util.List<String> cmds = new ArrayList<>();
           for (ParameterDialog.ParmItem parm : parmSet) {
             String value = parm.getStringValue();
@@ -329,7 +329,7 @@ class GRBLBase {
         dialog.setLocationRelativeTo(parent);
         dialog.setTitle("Workspace Coordinates");
         dialog.setVisible(true);                                                    // Note: this call invokes dialog
-        if (dialog.doAction()) {
+        if (dialog.wasPressed()) {
           for (ParameterDialog.ParmItem parm : parmSet) {
             if (parm.value instanceof DroPanel) {
               DroPanel dro = (DroPanel) parm.value;

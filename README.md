@@ -49,7 +49,7 @@ LaserCut uses the Java Language's reflection and object serialization features t
   - **7/13/2018** - Reworked GRBL Settings dialog to support editing and saving settings and added "Info" button for each item.
   - **7/19/2018** - Added real time position readout to Jog controls and G-Code Monitor dialog and G-Code Monitor now stays visible until all steps are processed.
   - **7/20/2018** - Moved "Materials" Menu into "Zing Settings" Menu using enhancements to ParameterDialog class.
-   - **7/22/2018** - Added "Get GRBL Coordinates" Menu to Mini CNC (used to read and set G54, etc coordinate space values)
+  - **7/22/2018** - Added "Get GRBL Coordinates" Menu to Mini CNC (used to read and set G54, etc coordinate space values)
 ## Under Development
 - Support for a user-extendable library of specialized cutout shapes, such as for mounting RC Servos (to replace and extend the current Nema Stepper code)
 - Import vector shapes from EPS (Encapsulated PostScript®) files

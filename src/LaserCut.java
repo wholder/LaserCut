@@ -39,6 +39,8 @@ import static javax.swing.JOptionPane.*;
   Engraving with G-Code:
     https://github.com/nebarnix/img2gco/
     https://github.com/magdesign/Raster2Gcode
+    https://github.com/Uthayne/3dpBurner-Image2Gcode
+    https://www.picengrave.com/Pic%20Programs%20Page/PDF%20Files/misc/Understanding%20Gcode.pdf
 
   Note: unable to use CMD-A, CMD-C, CMD-H, CMD-Q as shortcut keys
   */
@@ -157,7 +159,7 @@ public class LaserCut extends JFrame {
     ParameterDialog dialog = (new ParameterDialog(parmSet, new String[] {"Save", "Cancel"}, useMillimeters));
     dialog.setLocationRelativeTo(this);
     dialog.setVisible(true);              // Note: this call invokes dialog
-    if (dialog.doAction() ) {
+    if (dialog.wasPressed() ) {
       for (String name : items.keySet()) {
         ParameterDialog.ParmItem parm = items.get(name);
         if ("useMouseWheel".equals(name)) {
@@ -455,7 +457,8 @@ public class LaserCut extends JFrame {
             JFileChooser fileChooser = new JFileChooser();
             fileChooser.setDialogTitle("Select an Image File");
             fileChooser.setDialogType(JFileChooser.OPEN_DIALOG);
-            FileNameExtensionFilter nameFilter = new FileNameExtensionFilter("Image files (jpg, jpeg, png, gif, bmp)", "jpg", "jpeg", "png", "gif", "bmp");
+            FileNameExtensionFilter nameFilter = new FileNameExtensionFilter("Image files (jpg, jpeg, png, gif, bmp)",
+                                                                              "jpg", "jpeg", "png", "gif", "bmp");
             fileChooser.addChoosableFileFilter(nameFilter);
             fileChooser.setFileFilter(nameFilter);
             fileChooser.setSelectedFile(new File(prefs.get("image.dir", "/")));
@@ -656,7 +659,7 @@ public class LaserCut extends JFrame {
       ParameterDialog rDialog = (new ParameterDialog(rParms, new String[] {"Round", "Cancel"}, useMillimeters));
       rDialog.setLocationRelativeTo(surface.getParent());
       rDialog.setVisible(true);              // Note: this call invokes dialog
-      if (rDialog.doAction()) {
+      if (rDialog.wasPressed()) {
         surface.pushToUndoStack();
         double val = (Double) rParms[0].value;
         surface.roundSelected(val);
@@ -667,27 +670,25 @@ public class LaserCut extends JFrame {
     // Add "Generate CNC Path from Selected" Menu Item
     //
     JMenuItem cncSelected = new JMenuItem("Generate CNC Path from Selected");
-    if (enableMiniCnc) {
-      cncSelected.setEnabled(false);
-      cncSelected.addActionListener((ev) -> {
-        // Display dialog to get tool radius and inset flag
-        ParameterDialog.ParmItem[] rParms = {new ParameterDialog.ParmItem("radius|in{radius of tool}", 0d),
-                                             new ParameterDialog.ParmItem("inset{If checked, toolpath routes interior" +
-                                                                          " of shape, else outside}", true)};
-        ParameterDialog rDialog = (new ParameterDialog(rParms, new String[] {"OK", "Cancel"}, useMillimeters));
-        rDialog.setLocationRelativeTo(surface.getParent());
-        rDialog.setVisible(true);              // Note: this call invokes dialog
-        if (rDialog.doAction()) {
-          surface.pushToUndoStack();
-          double radius = (Double) rParms[0].value;
-          boolean inset = (Boolean) rParms[1].value;
-          CADShape shape = surface.getSelected();
-          CNCPath path = new CNCPath(shape, radius, inset);
-          surface.addShape(path);
-        }
-      });
-      editMenu.add(cncSelected);
-    }
+    cncSelected.setEnabled(true);
+    cncSelected.addActionListener((ev) -> {
+      // Display dialog to get tool radius and inset flag
+      ParameterDialog.ParmItem[] rParms = {new ParameterDialog.ParmItem("radius|in{radius of tool}", 0d),
+                                           new ParameterDialog.ParmItem("inset{If checked, toolpath routes interior" +
+                                                                        " of shape, else outside}", true)};
+      ParameterDialog rDialog = (new ParameterDialog(rParms, new String[] {"OK", "Cancel"}, useMillimeters));
+      rDialog.setLocationRelativeTo(surface.getParent());
+      rDialog.setVisible(true);              // Note: this call invokes dialog
+      if (rDialog.wasPressed()) {
+        surface.pushToUndoStack();
+        double radius = (Double) rParms[0].value;
+        boolean inset = (Boolean) rParms[1].value;
+        CADShape shape = surface.getSelected();
+        CNCPath path = new CNCPath(shape, radius, inset);
+        surface.addShape(path);
+      }
+    });
+    editMenu.add(cncSelected);
     //
     // Add "Ungroup Selected" Menu Item
     //
@@ -744,9 +745,6 @@ public class LaserCut extends JFrame {
       editSelected.setEnabled(selected);
       moveSelected.setEnabled(canSelect);
       roundCorners.setEnabled(canSelect);
-      if (enableMiniCnc) {
-        cncSelected.setEnabled(canSelect);
-      }
       saveSelected.setEnabled(canSelect);
       boolean hasGroup = surface.getSelected() != null && surface.getSelected().getGroup() != null;
       unGroupSelected.setEnabled(hasGroup);
@@ -840,7 +838,7 @@ public class LaserCut extends JFrame {
         try {
           File tFile = fileChooser.getSelectedFile();
           prefs.put("default.dxf.dir", tFile.getAbsolutePath());
-          DXFReader dxf = new DXFReader();
+          DXFReader dxf = new DXFReader(useMillimeters);
           Shape[] shapes = dxf.parseFile(tFile, 12, 2);
           shapes = SVGParser.removeOffset(shapes);
           CADShapeGroup group = new CADShapeGroup();
@@ -938,7 +936,9 @@ public class LaserCut extends JFrame {
       FileNameExtensionFilter nameFilter = new FileNameExtensionFilter(".txt files (*.txt)", "txt");
       fileChooser.addChoosableFileFilter(nameFilter);
       fileChooser.setFileFilter(nameFilter);
-      fileChooser.setSelectedFile(new File(prefs.get("default.notes.dir", "/")));
+      File selFile = new File(prefs.get("default.notes.dir", "/"));
+      fileChooser.setSelectedFile(selFile);
+      fileChooser.ensureFileIsVisible(selFile);
       if (fileChooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
         try {
           File tFile = fileChooser.getSelectedFile();
@@ -973,8 +973,6 @@ public class LaserCut extends JFrame {
       }
     });
     importMenu.add(musicBox);
-
-
     menuBar.add(importMenu);
     /*
      *  Add "Export" Menu
@@ -1450,7 +1448,9 @@ public class LaserCut extends JFrame {
         int type = pi.currentSegment(coords);
         switch (type) {
           case PathIterator.SEG_CLOSE:
-            lines.add(new Line2D.Double(xx, yy, mX, mY));
+            if (xx != mX || yy != mY) {
+              lines.add(new Line2D.Double(xx, yy, mX, mY));
+            }
             break;
           case PathIterator.SEG_MOVETO:
             if (lines.size() > 0) {
@@ -1461,7 +1461,9 @@ public class LaserCut extends JFrame {
             mY = yy = coords[1];
             break;
           case PathIterator.SEG_LINETO:
-            lines.add(new Line2D.Double(xx, yy, xx = coords[0], yy = coords[1]));
+            if (xx != coords[0] || yy != coords[1]) {
+              lines.add(new Line2D.Double(xx, yy, xx = coords[0], yy = coords[1]));
+            }
             break;
           case PathIterator.SEG_CUBICTO:
             // Decompose 4 point, cubic bezier curve into line segments
@@ -1485,7 +1487,9 @@ public class LaserCut extends JFrame {
                   tmp[jj].y -= (tmp[jj].y - tmp[jj + 1].y) * t;
                 }
               }
-              lines.add(new Line2D.Double(xx, yy, xx = tmp[0].x, yy = tmp[0].y));
+              if (xx != tmp[0].x || yy != tmp[0].y) {
+                lines.add(new Line2D.Double(xx, yy, xx = tmp[0].x, yy = tmp[0].y));
+              }
             }
             break;
           case PathIterator.SEG_QUADTO:
@@ -1503,11 +1507,15 @@ public class LaserCut extends JFrame {
               double step = (double) ii / segments;
               double x = (1 - step) * (1 - step) * q1.x + 2 * (1 - step) * step * q2.x + step * step * q3.x;
               double y = (1 - step) * (1 - step) * q1.y + 2 * (1 - step) * step * q2.y + step * step * q3.y;
-              lines.add(new Line2D.Double(xLast, yLast, x, y));
-              xLast = x;
-              yLast = y;
+              if (xLast != x || yLast != y) {
+                lines.add(new Line2D.Double(xLast, yLast, x, y));
+                xLast = x;
+                yLast = y;
+              }
             }
-            lines.add(new Line2D.Double(xLast, yLast, xx = q3.x, yy = q3.y));
+            if (xLast != q3.x || yLast != q3.y) {
+              lines.add(new Line2D.Double(xLast, yLast, xx = q3.x, yy = q3.y));
+            }
             break;
           default:
             System.out.println("Error, Unknown PathIterator Type: " + type);
@@ -1743,7 +1751,7 @@ public class LaserCut extends JFrame {
       ParameterDialog dialog = (new ParameterDialog(parmSet, new String[] {actionButton, "Cancel"}, mmUnits));
       dialog.setLocationRelativeTo(surface.getParent());
       dialog.setVisible(true);              // Note: this call invokes dialog
-      if (dialog.doAction()) {
+      if (dialog.wasPressed()) {
         surface.pushToUndoStack();
         for (ParameterDialog.ParmItem parm : parmSet) {
           try {
@@ -1985,7 +1993,8 @@ public class LaserCut extends JFrame {
 
     @Override
     protected List<String> getEditFields () {
-      return Arrays.asList("xLoc|in", "yLoc|in", "*width|in", "*height|in", "*imagePpi", "rotation|deg", "scale|%", "centered", "engrave", "engrave3D");
+      return Arrays.asList("xLoc|in", "yLoc|in", "*width|in", "*height|in", "*imagePpi", "rotation|deg",
+                            "scale|%", "centered", "engrave", "engrave3D");
     }
 
     @Override
@@ -2029,13 +2038,13 @@ public class LaserCut extends JFrame {
             Element tree = (Element) meta.getAsTree(formatName);
             NodeList nodes;
             if ((nodes = tree.getElementsByTagName("app0JFIF")).getLength() > 0) {
-              // Read DPI for JPEG File (if it contained needed Metadata)
+              // Read DPI for JPEG File (if it's contained needed Metadata)
               Element jfif = (Element) nodes.item(0);
               int dpiH = Integer.parseInt(jfif.getAttribute("Xdensity"));
               int dpiV = Integer.parseInt(jfif.getAttribute("Ydensity"));
               return new Dimension(dpiH, dpiV);
             } else if ((nodes = tree.getElementsByTagName("pHYs")).getLength() > 0) {
-              // Read DPI for PNG File (if it contained needed Metadata)
+              // Read DPI for PNG File (if it's contained needed Metadata)
               Element jfif = (Element) nodes.item(0);
               long dpiH = Math.round(Double.parseDouble(jfif.getAttribute("pixelsPerUnitXAxis")) / 39.3701);
               long dpiV = Math.round(Double.parseDouble(jfif.getAttribute("pixelsPerUnitYAxis")) / 39.3701);
@@ -2994,11 +3003,11 @@ public class LaserCut extends JFrame {
       return new Color(0, 153, 0);
     }
 
-      @Override
-    BasicStroke getShapeStroke (boolean highlight, boolean isSelected) {
-      return new BasicStroke(highlight ? isSelected ? 1.8f : 1.4f : 1.0f, BasicStroke.CAP_BUTT,
-                             BasicStroke.JOIN_MITER,  5.0f, new float[] {5.0f}, 0.0f);
-    }
+    //  @Override
+    //BasicStroke getShapeStroke (boolean highlight, boolean isSelected) {
+    //  return new BasicStroke(highlight ? isSelected ? 1.8f : 1.4f : 1.0f, BasicStroke.CAP_BUTT,
+    //                         BasicStroke.JOIN_MITER,  5.0f, new float[] {5.0f}, 0.0f);
+    //}
 
     @Override
     protected Shape getLocallyTransformedShape () {
@@ -3023,7 +3032,22 @@ public class LaserCut extends JFrame {
       Path2D.Double path = new Path2D.Double();
       boolean first = true;
       for (Line2D.Double[] lines : transformShapeToLines(baseShape.getShape(), 1.0)) {
-        Point2D.Double[] points = CNCTools.getParallelPath(lines, radius, !inset);
+        if (false) {
+          DecimalFormat df = new DecimalFormat("#.###");
+          for (Line2D.Double line : lines) {
+            if (line.x1 == line.x2 && line.y1 == line.y2) {
+              int dum = 0;
+            } else {
+              double x1 = (line.x1 + .15) * 4000;
+              double y1 = (line.y1 + .15) * 4000;
+              double x2 = (line.x2 + .15) * 4000;
+              double y2 = (line.y2 + .15) * 4000;
+              System.out.println("new Line2D.Double(" + df.format(x1) + ", " + df.format(y1) + ", " +
+                df.format(x2) + ", " + df.format(y2) + "),");
+            }
+          }
+        }
+        Point2D.Double[] points = CNCTools.pruneOverlap(CNCTools.getParallelPath(lines, radius, !inset));
         for (Point2D.Double point : points) {
           if (first) {
             path.moveTo(point.x, point.y);

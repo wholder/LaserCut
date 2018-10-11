@@ -50,9 +50,18 @@ public class DXFReader {
   private Rectangle2D           bounds;
   private double                uScale = 0.039370078740157; // default to millimeters as units
   private String                units = "unknown";
-  private boolean               scaled;
+  private boolean               scaled, useMillimeters;
 
   interface AutoPop {}
+
+
+  public DXFReader() {
+    this(true);
+  }
+
+  public DXFReader (boolean useMillimeters) {
+    this.useMillimeters = useMillimeters;
+  }
 
   class Entity {
     private String        type;
@@ -105,8 +114,8 @@ public class DXFReader {
   private void setUnits (String val) {
     if (val != null) {
       switch (Integer.parseInt(val)) {
-      case 0:             // unitless (assume millimeters)
-        uScale = 0.039370078740157;
+      case 0:             // unitless (millimeters, or inches)
+        uScale = useMillimeters ? 0.039370078740157 : 1.0;
         units = "unitless";
         break;
       case 1:             // inches

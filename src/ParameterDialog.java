@@ -216,7 +216,7 @@ class ParameterDialog extends JDialog {
     return tmp;
   }
 
-  boolean doAction () {
+  boolean wasPressed () {
     return !cancelled;
   }
 
@@ -227,11 +227,20 @@ class ParameterDialog extends JDialog {
   /**
    * Constructor for Pop Up Parameters Dialog with error checking
    * @param parms array of ParmItem objects that describe each parameter
+   * @param buttons String] array of button names (first name in array is action button)
+   * @param mmUnits true if display units in millimeters, else inches
    */
   ParameterDialog (ParmItem[] parms, String[] buttons, boolean mmUnits) {
     this(parms, buttons, mmUnits, null);
   }
 
+  /**
+   * Constructor for Pop Up Parameters Dialog with error checking
+   * @param parms array of ParmItem objects that describe each parameter
+   * @param buttons String] array of button names (first name in array is action button)
+   * @param mmUnits true if display units in millimeters, else inches
+   * @param info Properties object containing ParmItem info displayed in an extra column (see getGRBLSettingsMenu())
+   */
   ParameterDialog (ParmItem[] parms, String[] buttons, boolean mmUnits, Properties info) {
     super((Frame) null, true);
     setTitle("Edit Parameters");
@@ -369,7 +378,7 @@ class ParameterDialog extends JDialog {
       }
     });
     Object[] buts = new Object[] {button, buttons[1]};
-    JOptionPane optionPane = new JOptionPane(fields, JOptionPane.PLAIN_MESSAGE, JOptionPane.YES_NO_OPTION, null, buts, buttons[1]);
+    JOptionPane optionPane = new JOptionPane(fields, JOptionPane.PLAIN_MESSAGE, JOptionPane.YES_NO_OPTION, null, buts, buts[0]);
     setContentPane(optionPane);
     setDefaultCloseOperation(DISPOSE_ON_CLOSE);
     optionPane.addPropertyChangeListener(ev -> {
@@ -448,14 +457,13 @@ class ParameterDialog extends JDialog {
    * Display parameter edit dialog
    * @param parms Array of ParameterDialog.ParmItem objects initialized with name and value
    * @param parent parent Component (needed to set position on screen)
-   * @return true if user pressed OK
+   * @return true if user pressed "Save"
    */
-
   static boolean showSaveCancelParameterDialog (ParmItem[] parms, Component parent) {
     ParameterDialog dialog = (new ParameterDialog(parms, new String[] {"Save", "Cancel"}, false));
     dialog.setLocationRelativeTo(parent);
     dialog.setVisible(true);              // Note: this call invokes dialog
-    return dialog.doAction();
+    return dialog.wasPressed();
   }
 
   public static void main (String... args) {
