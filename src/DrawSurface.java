@@ -18,7 +18,6 @@ import java.util.prefs.Preferences;
 import java.util.zip.CRC32;
 
 public class DrawSurface extends JPanel {
-  private LaserCut                            laserCut;
   private Preferences                         prefs;
   private Dimension                           workSize;
   private JTextField                          infoText;
@@ -68,9 +67,8 @@ public class DrawSurface extends JPanel {
   }
 
 
-  DrawSurface (LaserCut laserCut, Preferences prefs, JScrollPane scrollPane, Dimension workSize) {
+  DrawSurface (Preferences prefs, JScrollPane scrollPane, Dimension workSize) {
     super(true);
-    this.laserCut = laserCut;
     this.prefs = prefs;
     gridSpacing = prefs.getDouble("gridSpacing", 0);
     gridMajor = prefs.getInt("gridMajor", 0);
@@ -214,7 +212,7 @@ public class DrawSurface extends JPanel {
             setInfoText("");
             showMeasure = false;
             scrollPoint = newLoc;
-            laserCut.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
           }
         }
         repaint();
@@ -258,7 +256,7 @@ public class DrawSurface extends JPanel {
       public void mouseReleased (MouseEvent ev) {
         dragged = null;
         scrollPoint = null;
-        laserCut.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+        setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
         pushedToStack = false;
         if (selected != null) {
           selected.cancelMove();
@@ -368,7 +366,8 @@ public class DrawSurface extends JPanel {
     setSize(size);
     double tmp = zoomFactor;
     zoomFactor = 1;
-    laserCut.pack();
+    JFrame container = (JFrame) getFocusCycleRootAncestor();
+    container.pack();
     zoomFactor = tmp;
     getParent().revalidate();
     repaint();

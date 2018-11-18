@@ -184,7 +184,6 @@ class ParameterDialog extends JDialog {
     }
   }
 
-
   private void selLabelWeight (double lblWeight) {
     this.lblWeight = lblWeight;
   }
@@ -275,7 +274,7 @@ class ParameterDialog extends JDialog {
         fields.add(parm.field = select, getGbc(1, jj));
       } else if (parm.valueType instanceof String[]) {
         String[] labels = getLabels((String[]) parm.valueType);
-        JComboBox select = parm.name.equals("fontName") ? new FontList(labels) : new JComboBox<>(labels);
+        JComboBox<String> select = parm.name.equals("fontName") ? new FontList(labels) : new JComboBox<>(labels);
         String[] values = getValues((String[]) parm.valueType);
         select.setSelectedIndex(Arrays.asList(values).indexOf((String) parm.value));
         fields.add(parm.field = select, getGbc(1, jj));

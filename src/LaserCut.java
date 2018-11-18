@@ -197,7 +197,7 @@ public class LaserCut extends JFrame {
 
   private LaserCut () {
     setTitle("LaserCut");
-    surface = new DrawSurface(this, prefs, scrollPane = new JScrollPane(), ZingLaser.zingFullSize);
+    surface = new DrawSurface(prefs, scrollPane = new JScrollPane(), ZingLaser.zingFullSize);
     scrollPane.setViewportView(surface);
     surface.registerInfoJTextField(itemInfo);
     configureMouseWheel();
