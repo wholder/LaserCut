@@ -78,7 +78,7 @@ public class LaserCut extends JFrame {
   static final String           VERSION = "1.0 beta";
   static final double           SCREEN_PPI = java.awt.Toolkit.getDefaultToolkit().getScreenResolution();
   static final DecimalFormat    df = new DecimalFormat("#0.0###");
-  private static int            cmdMask = Toolkit.getDefaultToolkit().getMenuShortcutKeyMask();
+  private static int            cmdMask = Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx();
   transient Preferences         prefs = Preferences.userRoot().node(this.getClass().getName());
   DrawSurface                   surface;
   private JScrollPane           scrollPane;
@@ -1052,7 +1052,7 @@ public class LaserCut extends JFrame {
         }
         try {
           if (!sFile.exists() || showWarningDialog("Overwrite Existing file?")) {
-            surface.writePDF(sFile);
+            PDFTools.writePDF(surface.getDesign(), surface.getWorkSize(), sFile);
           }
         } catch (Exception ex) {
           showErrorDialog("Unable to save file");
@@ -1533,22 +1533,14 @@ public class LaserCut extends JFrame {
     void draw (Graphics g, double zoom) {
       Graphics2D g2 = (Graphics2D) g.create();
       Shape dShape = getWorkspaceTranslatedShape();
+      // Scale Shape to scale and draw it
+      AffineTransform atScale = AffineTransform.getScaleInstance(zoom, zoom);
+      dShape = atScale.createTransformedShape(dShape);
       boolean inGroup = getGroup() != null && getGroup().isGroupSelected();
       boolean highlight = isSelected || inGroup;
       g2.setStroke(getShapeStroke(highlight, isSelected));
       g2.setColor(getShapeColor(highlight, engrave));
-      // Scale Shape to scale and draw it
-      //if (false) {
-        // Use PathIterator to draw Shape line by line
-        // Note: used to debug transformShapeToLines()
-        //for (Line2D.Double line : transformShapeToLines(dShape, zoom)) {
-        //  g2.draw(line);
-        //}
-      //} else {
-        // Draw Area directly
-        AffineTransform atScale = AffineTransform.getScaleInstance(zoom, zoom);
-        g2.draw(atScale.createTransformedShape(dShape));
-      //}
+      g2.draw(dShape);
       if (!(this instanceof CNCPath)) {
         if (isSelected || this instanceof CADReference || this instanceof CADShapeSpline) {
           double mx = xLoc * zoom;

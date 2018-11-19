@@ -100,7 +100,8 @@ public class DrawSurface extends JPanel {
                 double dx = shape.xLoc - selected.xLoc;
                 double dy = shape.yLoc - selected.yLoc;
                 setInfoText(" dx: " + LaserCut.df.format(dx) + " in, dy: " + LaserCut.df.format(dy) +
-                            " in (" + LaserCut.df.format(LaserCut.inchesToMM(dx)) + " mm, " + LaserCut.df.format(LaserCut.inchesToMM(dy)) + " mm)");
+                            " in (" + LaserCut.df.format(LaserCut.inchesToMM(dx)) + " mm, " +
+                            LaserCut.df.format(LaserCut.inchesToMM(dy)) + " mm)");
                 measure1 = new Point2D.Double(selected.xLoc * LaserCut.SCREEN_PPI, selected.yLoc * LaserCut.SCREEN_PPI);
                 measure2 = new Point2D.Double(shape.xLoc * LaserCut.SCREEN_PPI, shape.yLoc * LaserCut.SCREEN_PPI);
                 showMeasure = true;
@@ -190,13 +191,15 @@ public class DrawSurface extends JPanel {
           LaserCut.CADShape procShape = null;
           for (LaserCut.CADShape shape : shapes) {
             // Check for selection or deselection of shapes
-            if (shape.isShapeClicked(newLoc, zoomFactor) || ((shape instanceof LaserCut.CADReference || shape instanceof LaserCut.CADShapeSpline) &&
+            if (shape.isShapeClicked(newLoc, zoomFactor) || ((shape instanceof LaserCut.CADReference ||
+                shape instanceof LaserCut.CADShapeSpline) &&
                 shape.isPositionClicked(newLoc, zoomFactor)) ) {
               procShape = shape;
               break;
             }
           }
-          if ((procShape == null || procShape == selected) && selected != null && selected.selectMovePoint(DrawSurface.this, newLoc, toGrid(newLoc))) {
+          if ((procShape == null || procShape == selected) && selected != null &&
+              selected.selectMovePoint(DrawSurface.this,newLoc, toGrid(newLoc))) {
             dragged = selected;
             repaint();
             return;
@@ -622,7 +625,8 @@ public class DrawSurface extends JPanel {
   void roundSelected (double radius) {
     pushToUndoStack();
     Shape oldShape = selected.buildShape();
-    LaserCut.CADShape tmp = new LaserCut.CADShape(CornerFinder.roundCorners(oldShape, radius), selected.xLoc, selected.yLoc, 0, selected.centered);
+    LaserCut.CADShape tmp = new LaserCut.CADShape(CornerFinder.roundCorners(oldShape, radius), selected.xLoc,
+                                                  selected.yLoc, 0, selected.centered);
     shapes.remove(selected);
     shapes.add(tmp);
     setSelected(tmp);
@@ -716,7 +720,8 @@ public class DrawSurface extends JPanel {
   }
 
   void rotateGroupAroundSelected () {
-    ParameterDialog.ParmItem[] parmSet = {new ParameterDialog.ParmItem("angle|deg", 0d), new ParameterDialog.ParmItem("rotateSelected", true)};
+    ParameterDialog.ParmItem[] parmSet = {new ParameterDialog.ParmItem("angle|deg", 0d),
+                                          new ParameterDialog.ParmItem("rotateSelected", true)};
     if (ParameterDialog.showSaveCancelParameterDialog(parmSet, getParent())) {
       double angle = 0;
       boolean rotateSelected = true;
@@ -954,74 +959,5 @@ public class DrawSurface extends JPanel {
     }
     path.closePath();
     return path;
-  }
-
-  void writePDF (File file) throws Exception {
-    FileOutputStream output = new FileOutputStream(file);
-    double scale = 72;
-    PDDocument doc = new PDDocument();
-    PDDocumentInformation docInfo = doc.getDocumentInformation();
-    docInfo.setCreator("Wayne Holder's LaserCut");
-    docInfo.setProducer("Apache PDFBox " + org.apache.pdfbox.util.Version.getVersion());
-    docInfo.setCreationDate(Calendar.getInstance());
-    double wid = workSize.width / LaserCut.SCREEN_PPI * 72;
-    double hyt = workSize.height / LaserCut.SCREEN_PPI * 72;
-    PDPage pdpage = new PDPage(new PDRectangle((float) wid, (float) hyt));
-    doc.addPage(pdpage);
-    PDPageContentStream stream = new PDPageContentStream(doc, pdpage, PDPageContentStream.AppendMode.APPEND, false);
-    // Flip Y axis so origin is at upper left
-    Matrix flipY = new Matrix();
-    flipY.translate(0, pdpage.getBBox().getHeight());
-    flipY.scale(1, -1);
-    stream.transform(flipY);
-    AffineTransform at = AffineTransform.getScaleInstance(scale, scale);
-    for (LaserCut.CADShape item : getDesign()) {
-      if (item instanceof LaserCut.CADReference)
-        continue;
-      if (item.engrave) {
-        stream.setStrokingColor(Color.lightGray);
-        stream.setLineWidth(1.0f);
-      } else {
-        stream.setStrokingColor(Color.black);
-        stream.setLineWidth(0.001f);
-      }
-      Shape shape = item.getWorkspaceTranslatedShape();
-      // Use PathIterator to generate sequence of line or curve segments
-      PathIterator pi = shape.getPathIterator(at);
-      while (!pi.isDone()) {
-        float[] coords = new float[6];      // p1.x, p1.y, p2.x, p2.y, p3.x, p3.y
-        int type = pi.currentSegment(coords);
-        switch (type) {
-          case PathIterator.SEG_MOVETO:   // 0
-            // Move to start of a line, or bezier curve segment
-            stream.moveTo(coords[0], coords[1]);
-            break;
-          case PathIterator.SEG_LINETO:   // 1
-            // Draw line from previous point to new point
-            stream.lineTo(coords[0], coords[1]);
-            break;
-          case PathIterator.SEG_QUADTO:   // 2
-            // Write 3 point, quadratic bezier curve from previous point to new point using one control point
-            stream.curveTo2(coords[0], coords[1], coords[2], coords[3]);
-            break;
-          case PathIterator.SEG_CUBICTO:  // 3
-            // Write 4 point, cubic bezier curve from previous point to new point using two control points
-            stream.curveTo(coords[0], coords[1], coords[2], coords[3], coords[4], coords[5]);
-            break;
-          case PathIterator.SEG_CLOSE:    // 4
-            // Close and write out the current curve
-            stream.closeAndStroke();
-            break;
-          default:
-            System.out.println("Error, Unknown PathIterator Type: " + type);
-            break;
-        }
-        pi.next();
-      }
-    }
-    stream.close();
-    doc.save(output);
-    doc.close();
-    output.close();
   }
 }
