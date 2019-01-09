@@ -366,7 +366,7 @@ public class SVGParser {
   // In development
   private AffineTransform getSVGTransform (String trans, AffineTransform inTrans) {
     AffineTransform at = new AffineTransform(inTrans);
-    Pattern iPat = Pattern.compile("((\\w+)\\(((\\-?\\d+\\.?\\d*e?\\-?\\d*,?)+)\\))+");
+    Pattern iPat = Pattern.compile("((\\w+)\\(((\\-?\\d+\\.?\\d*e?\\-?\\d*,?)+)\\))");
     Matcher mat = iPat.matcher(trans.toLowerCase());
     while (mat.find()) {
       String func = mat.group(2);

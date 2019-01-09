@@ -13,7 +13,7 @@ import java.io.FileOutputStream;
 import java.util.Calendar;
 import java.util.List;
 
-public class PDFTools {
+class PDFTools {
   static void writePDF (List<LaserCut.CADShape> design,  Dimension workSize, File file) throws Exception {
     FileOutputStream output = new FileOutputStream(file);
     double scale = 72;

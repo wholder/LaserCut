@@ -1262,6 +1262,51 @@ public class LaserCut extends JFrame {
     void shapeChanged (CADShape cadShape);
   }
 
+  /**
+   * This is the base class for all the CAD objects.  JavaCut uses serialization to save and restore
+   * a design to/from a a file, so be aware of that kinds of changes are allowable in order to be able
+   * to continue to load files made using older versions of this code:
+   *
+   * A compatible change is one that can be made to a new version of the class, which still keeps the
+   * stream compatible with older versions of the class. Examples of compatible changes are:
+   *
+   * Addition of new fields or classes does not affect serialization, as any new data in the stream is
+   * simply ignored by older versions. When the instance of an older version of the class is deserialized,
+   * the newly added field will be set to its default value.
+   *
+   * You can field change access modifiers like private, public, protected or package as they are not
+   * reflected to the serial stream.
+   *
+   * You can change a transient or static field to a non-transient or non-static field, as it is similar
+   * to adding a field.
+   *
+   * You can change the access modifiers for constructors and methods of the class. For instance a
+   * previously private method can now be made public, an instance method can be changed to static, etc.
+   * The only exception is that you cannot change the default signatures for readObject() and writeObject()
+   * if you are implementing custom serialization. The serialization process looks at only instance data,
+   * and not the methods of a class.
+   *
+   * Changes which would render the stream incompatible are:
+   *
+   * Once a class implements the Serializable interface, you cannot later make it implement the Externalizable
+   * interface, since this will result in the creation of an incompatible stream.
+   *
+   * Deleting fields can cause a problem. Now, when the object is serialized, an earlier version of the class
+   * would set the old field to its default value since nothing was available within the stream. Consequently,
+   * this default data may lead the newly created object to assume an invalid state.
+   *
+   * Changing a non-static into static or non-transient into transient is not permitted as it is equivalent
+   * to deleting fields.
+   *
+   * You also cannot change the field types within a class, as this would cause a failure when attempting to
+   * read in the original field into the new field.
+   *
+   * You cannot alter the position of the class in the class hierarchy. Since the fully-qualified class name
+   * is written as part of the bytestream, this change will result in the creation of an incompatible stream.
+   *
+   * You cannot change the name of the class or the package it belongs to, as that information is written
+   * to the stream during serialization.
+   */
   static class CADShape implements Serializable {
     private static final long serialVersionUID = 3716741066289930874L;
     public double     xLoc, yLoc, rotation;   // Note: must be public for reflection
