@@ -84,6 +84,7 @@ public class LaserCut extends JFrame {
   private JScrollPane           scrollPane;
   private JTextField            itemInfo = new JTextField();
   private JMenuItem             gerberZip;
+  private ButtonModel           noZoom;
   private int                   pxDpi = prefs.getInt("svg.pxDpi", 96);
   private long                  savedCrc;
   private boolean               useMillimeters = prefs.getBoolean("useMillimeters", false);
@@ -195,6 +196,68 @@ public class LaserCut extends JFrame {
     }
   }
 
+  /**
+   * Custom file choose for DXF files that allows selective importf of TEXT, MTEXT and DIMENSION elements
+   */
+  public class DxfFileChooser extends JFileChooser {
+    private DefaultListModel<JCheckBox> model = new DefaultListModel<>();
+
+    public DxfFileChooser () {
+      setDialogTitle("Import DXF File");
+      setDialogType(JFileChooser.OPEN_DIALOG);
+      FileNameExtensionFilter nameFilter = new FileNameExtensionFilter("AutoCad DXF files (*.dxf)", "dxf");
+      addChoosableFileFilter(nameFilter);
+      setFileFilter(nameFilter);
+      String[] elements = {"TEXT", "MTEXT", "DIMENSION"};
+      for (String element : elements) {
+        model.addElement(new JCheckBox(element));
+      }
+      JPanel panel = new JPanel(new BorderLayout());
+      panel.setBackground(Color.WHITE);
+      panel.setBorder(BorderFactory.createLineBorder(Color.BLACK));
+      panel.add(new JLabel("Include:", JLabel.CENTER), BorderLayout.NORTH);
+      JScrollPane scroll = new JScrollPane(new CheckBoxList(model));
+      panel.add(scroll, BorderLayout.CENTER);
+      setAccessory(panel);
+    }
+
+    class CheckBoxList extends JList<JCheckBox> {
+      CheckBoxList (ListModel<JCheckBox> model) {
+        setModel(model);
+        setCellRenderer((list, value, index, isSelected, cellHasFocus) -> {
+          value.setBackground(getBackground());
+          value.setForeground(getForeground());
+          value.setEnabled(isEnabled());
+          value.setFont(getFont());
+          value.setFocusPainted(false);
+          value.setBorderPainted(true);
+          return value;
+        });
+        addMouseListener(new MouseAdapter() {
+          public void mousePressed (MouseEvent e) {
+            int index = locationToIndex(e.getPoint());
+            if (index != -1) {
+              JCheckBox checkbox = getModel().getElementAt(index);
+              checkbox.setSelected(!checkbox.isSelected());
+              repaint();
+            }
+          }
+        });
+      }
+    }
+
+    public boolean isSelected (String name) {
+      for (int ii = 0; ii < model.getSize(); ii++) {
+        JCheckBox cBox = model.get(ii);
+        if (model.get(ii).getText().equals(name)) {
+          return cBox.isSelected();
+        }
+      }
+      return false;
+    }
+  }
+
+
   private LaserCut () {
     setTitle("LaserCut");
     surface = new DrawSurface(prefs, scrollPane = new JScrollPane(), ZingLaser.zingFullSize);
@@ -302,6 +365,8 @@ public class LaserCut extends JFrame {
         if (!showWarningDialog("Discard current design?"))
           return;
         surface.clear();
+        surface.setZoomFactor(1);
+        noZoom.setSelected(true);
         savedCrc = surface.getDesignChecksum();
         setTitle("LaserCut");
       }
@@ -329,6 +394,8 @@ public class LaserCut extends JFrame {
         try {
           File tFile = fileChooser.getSelectedFile();
           surface.setDesign(loadDesign(tFile));
+          surface.setZoomFactor(1);
+          noZoom.setSelected(true);
           savedCrc = surface.getDesignChecksum();
           prefs.put("default.dir", tFile.getAbsolutePath());
           setTitle("LaserCut - (" + tFile + ")");
@@ -435,13 +502,13 @@ public class LaserCut extends JFrame {
         {"Reference Point",     "CADReference"},
         {"Rectangle",           "CADRectangle"},
         {"Polygon",             "CADPolygon"},
+        {"Spline Curve",        "CADShapeSpline"},
         {"Oval",                "CADOval"},
         {"Text",                "CADText"},
         {"Gear",                "CADGear"},
         {"NEMA Stepper",        "CADNemaMotor"},
         {"Bobbin",              "CADBobbin"},
         {"Raster Image",        "CADRasterImage"},
-        {"Spline Curve",        "CADShapeSpline"},
         {"Music Box Strip",     "CADMusicStrip"}
     };
     for (String[] parts : shapeNames) {
@@ -559,6 +626,7 @@ public class LaserCut extends JFrame {
       zoomGroup.add(zItem);
       zItem.addActionListener(ev -> surface.setZoomFactor(zoom));
     }
+    noZoom = zoomGroup.getSelection();
     surface.addZoomListener((index) -> {
       for (int ii = 0; ii < zoomMenu.getMenuComponentCount(); ii++) {
         JRadioButtonMenuItem item = (JRadioButtonMenuItem) zoomMenu.getMenuComponent(ii);
@@ -634,19 +702,79 @@ public class LaserCut extends JFrame {
     JMenuItem moveSelected = new JMenuItem("Move Selected");
     moveSelected.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_M, cmdMask));
     moveSelected.setEnabled(false);
-    moveSelected.addActionListener((ev) -> {
-      surface.moveSelected();
-    });
+    moveSelected.addActionListener((ev) -> surface.moveSelected());
     editMenu.add(moveSelected);
     //
-    // Add "Move Selected" Menu Item
+    // Add "Group Selected" Menu Item
     //
-    JMenuItem rotateSelected = new JMenuItem("Rotate Group Around Selected");
+    JMenuItem groupDragSelected = new JMenuItem("Group Selected");
+    groupDragSelected.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_G, cmdMask));
+    groupDragSelected.setEnabled(false);
+    groupDragSelected.addActionListener((ev) -> surface.groupDragSelected());
+    editMenu.add(groupDragSelected);
+    //
+    // Add "Create Shape from Selected" Menu Item
+    //
+    JMenuItem combineDragSelected = new JMenuItem("Create Shape from Selected");
+    combineDragSelected.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_C, cmdMask));
+    combineDragSelected.setEnabled(false);
+    combineDragSelected.addActionListener((ev) -> surface.combineDragSelected());
+    editMenu.add(combineDragSelected);
+    //
+    // Add "Ungroup Selected" Menu Item
+    //
+    JMenuItem unGroupSelected = new JMenuItem("Ungroup Selected");
+    unGroupSelected.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_U, cmdMask));
+    unGroupSelected.setEnabled(false);
+    unGroupSelected.addActionListener((ev) -> surface.unGroupSelected());
+    editMenu.add(unGroupSelected);
+    //
+    // Add "Add Grouped Shapes" Menu Item
+    //
+    JMenuItem addSelected = new JMenuItem("Add Grouped Shape{s) to Selected Shape");
+    addSelected.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_A, cmdMask));
+    addSelected.setEnabled(false);
+    addSelected.addActionListener((ev) -> surface.addOrSubtractSelectedShapes(true));
+    editMenu.add(addSelected);
+    //
+    // Add "Subtract Group from Selected" Menu Item
+    //
+    JMenuItem subtractSelected = new JMenuItem("Subtract Grouped Shape(s) from Selected Shape");
+    subtractSelected.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_T, cmdMask));
+    subtractSelected.setEnabled(false);
+    subtractSelected.addActionListener((ev) -> surface.addOrSubtractSelectedShapes(false));
+    editMenu.add(subtractSelected);
+    //
+    // Add "Align Grouped Shape(s) to Selected Shape's" submenu
+    //
+    JMenu alignMenu = new JMenu("Align Grouped Shape(s) to Selected Shape's");
+    alignMenu.setEnabled(false);
+    //
+    // Add "X Coord" Submenu Item
+    //
+    JMenuItem alignXSelected = new JMenuItem("X Coord");
+    alignXSelected.addActionListener((ev) -> surface.alignSelectedShapes(true, false));
+    alignMenu.add(alignXSelected);
+    //
+    // Add "Y Coord" Submenu Item
+    //
+    JMenuItem alignYSelected = new JMenuItem("Y Coord");
+    alignYSelected.addActionListener((ev) -> surface.alignSelectedShapes(false, true));
+    alignMenu.add(alignYSelected);
+    //
+    // Add "X & Y Coord" Submenu Item
+    //
+    JMenuItem alignXYSelected = new JMenuItem("X & Y Coords");
+    alignXYSelected.addActionListener((ev) -> surface.alignSelectedShapes(true, true));
+    alignMenu.add(alignXYSelected);
+    editMenu.add(alignMenu);
+    //
+    // Add "Rotate Group Around Selected Shape" Menu Item
+    //
+    JMenuItem rotateSelected = new JMenuItem("Rotate Group Around Selected Shape");
     rotateSelected.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_R, cmdMask));
     rotateSelected.setEnabled(false);
-    rotateSelected.addActionListener((ev) -> {
-      surface.rotateGroupAroundSelected();
-    });
+    rotateSelected.addActionListener((ev) ->  surface.rotateGroupAroundSelected());
     editMenu.add(rotateSelected);
     //
     // Add "Round Corners of Selected Shape" Menu Item
@@ -670,12 +798,12 @@ public class LaserCut extends JFrame {
     // Add "Generate CNC Path from Selected" Menu Item
     //
     JMenuItem cncSelected = new JMenuItem("Generate CNC Path from Selected");
-    cncSelected.setEnabled(true);
+    cncSelected.setEnabled(false);
     cncSelected.addActionListener((ev) -> {
       // Display dialog to get tool radius and inset flag
       ParameterDialog.ParmItem[] rParms = {new ParameterDialog.ParmItem("radius|in{radius of tool}", 0d),
-                                           new ParameterDialog.ParmItem("inset{If checked, toolpath routes interior" +
-                                                                        " of shape, else outside}", true)};
+          new ParameterDialog.ParmItem("inset{If checked, toolpath routes interior" +
+              " of shape, else outside}", true)};
       ParameterDialog rDialog = (new ParameterDialog(rParms, new String[] {"OK", "Cancel"}, useMillimeters));
       rDialog.setLocationRelativeTo(surface.getParent());
       rDialog.setVisible(true);              // Note: this call invokes dialog
@@ -690,57 +818,12 @@ public class LaserCut extends JFrame {
     });
     editMenu.add(cncSelected);
     //
-    // Add "Ungroup Selected" Menu Item
-    //
-    JMenuItem unGroupSelected = new JMenuItem("Ungroup Selected");
-    unGroupSelected.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_U, cmdMask));
-    unGroupSelected.setEnabled(false);
-    unGroupSelected.addActionListener((ev) -> surface.unGroupSelected());
-    editMenu.add(unGroupSelected);
-    // Add "Align Grouped Shape(s) to Selected Shape's" submenu
-    JMenu alignMenu = new JMenu("Align Grouped Shape(s) to Selected Shape's");
-    alignMenu.setEnabled(false);
-    //
-    // Add "X Coord" Submenu Item
-    //
-    JMenuItem alignXSelected = new JMenuItem("X Coord");
-    alignXSelected.addActionListener((ev) -> surface.alignSelectedShapes(true, false));
-    alignMenu.add(alignXSelected);
-    //
-    // Add "Y Coord" Submenu Item
-    //
-    JMenuItem alignYSelected = new JMenuItem("Y Coord");
-    alignYSelected.addActionListener((ev) -> surface.alignSelectedShapes(false, true));
-    alignMenu.add(alignYSelected);
-    //
-    // Add "X & Y Coord" Submenu Item
-    //
-    JMenuItem alignXYSelected = new JMenuItem("X & Y Coords");
-    alignXYSelected.addActionListener((ev) -> surface.alignSelectedShapes(true, true));
-    alignMenu.add(alignXYSelected);
-    editMenu.add(alignMenu);
-    //
-    // Add "Add Grouped Shapes" Menu Item
-    //
-    JMenuItem addSelected = new JMenuItem("Add Grouped Shape{s) to Selected Shape");
-    addSelected.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_A, cmdMask));
-    addSelected.setEnabled(false);
-    addSelected.addActionListener((ev) -> surface.addOrSubtractSelectedShapes(true));
-    editMenu.add(addSelected);
-    //
-    // Add "Subtract Group from Selected" Menu Item
-    //
-    JMenuItem subtractSelected = new JMenuItem("Take Away Grouped Shape(s) from Selected Shape");
-    subtractSelected.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_T, cmdMask));
-    subtractSelected.setEnabled(false);
-    subtractSelected.addActionListener((ev) -> surface.addOrSubtractSelectedShapes(false));
-    editMenu.add(subtractSelected);
-    //
     // Add SelectListener to enable/disable menus, as needed
     //
     surface.addSelectListener((shape, selected) -> {
       boolean canSelect = !(shape instanceof CNCPath) & selected;
       removeSelected.setEnabled(selected);
+      cncSelected.setEnabled(selected);
       dupSelected.setEnabled(canSelect);
       editSelected.setEnabled(selected);
       moveSelected.setEnabled(canSelect);
@@ -752,6 +835,12 @@ public class LaserCut extends JFrame {
       alignMenu.setEnabled(hasGroup);
       subtractSelected.setEnabled(hasGroup);
       rotateSelected.setEnabled(hasGroup);
+    });
+    surface.addDragSelectListener((selected) -> {
+      moveSelected.setEnabled(selected);
+      removeSelected.setEnabled(selected);
+      combineDragSelected.setEnabled(selected);
+      groupDragSelected.setEnabled(selected);
     });
     menuBar.add(editMenu);
     /*
@@ -827,18 +916,22 @@ public class LaserCut extends JFrame {
     //
     JMenuItem dxfRead = new JMenuItem("Import DXF File");
     dxfRead.addActionListener(ev -> {
-      JFileChooser fileChooser = new JFileChooser();
-      fileChooser.setDialogTitle("Select a DXF File");
-      fileChooser.setDialogType(JFileChooser.OPEN_DIALOG);
-      FileNameExtensionFilter nameFilter = new FileNameExtensionFilter("AutoCad DXF files (*.dxf)", "dxf");
-      fileChooser.addChoosableFileFilter(nameFilter);
-      fileChooser.setFileFilter(nameFilter);
+      DxfFileChooser fileChooser = new DxfFileChooser();
       fileChooser.setSelectedFile(new File(prefs.get("default.dxf.dir", "/")));
       if (fileChooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
         try {
           File tFile = fileChooser.getSelectedFile();
           prefs.put("default.dxf.dir", tFile.getAbsolutePath());
           DXFReader dxf = new DXFReader(useMillimeters);
+          if (fileChooser.isSelected("TEXT")) {
+            dxf.setDrawText(true);
+          }
+          if (fileChooser.isSelected("MTEXT")) {
+            dxf.setDrawMText(true);
+          }
+          if (fileChooser.isSelected("DIMENSION")) {
+            dxf.setDrawDimen(true);
+          }
           Shape[] shapes = dxf.parseFile(tFile, 12, 2);
           shapes = SVGParser.removeOffset(shapes);
           CADShapeGroup group = new CADShapeGroup();
@@ -1152,7 +1245,8 @@ public class LaserCut extends JFrame {
       RoundRectangle2D.Double c2 = new RoundRectangle2D.Double(-.30, -.80, .60, 1.60, .40, .40);
       Area a1 = new Area(c1);
       a1.add(new Area(c2));
-      Point2D.Double[] quadrant = {new Point2D.Double(-1, -1), new Point2D.Double(1, -1), new Point2D.Double(-1, 1), new Point2D.Double(1, 1)};
+      Point2D.Double[] quadrant = {new Point2D.Double(-1, -1), new Point2D.Double(1, -1),
+                                   new Point2D.Double(-1, 1), new Point2D.Double(1, 1)};
       double radius = .2;
       double sqWid = radius + .1;
       for (Point2D.Double qq : quadrant) {
@@ -1262,6 +1356,14 @@ public class LaserCut extends JFrame {
     void shapeChanged (CADShape cadShape);
   }
 
+  interface Updatable {
+    boolean updateInternalState (Point2D.Double point);
+  }
+
+  interface StateMessages {
+    String getStateMsg ();
+  }
+
   /**
    * This is the base class for all the CAD objects.  JavaCut uses serialization to save and restore
    * a design to/from a a file, so be aware of that kinds of changes are allowable in order to be able
@@ -1314,7 +1416,7 @@ public class LaserCut extends JFrame {
     CADShapeGroup     group;
     Shape             shape;
     transient Shape   builtShape;
-    transient boolean isSelected;
+    transient boolean isSelected, inGroup, dragged;
     transient List<ChangeListener> changeSubscribers;
 
     /**
@@ -1330,6 +1432,22 @@ public class LaserCut extends JFrame {
       yLoc = y;
     }
 
+    @SuppressWarnings("unused")
+    CADShape (Shape shape, double xLoc, double yLoc, double rotation, boolean centered) {
+      if (shape instanceof Area) {
+        // Workaround for Area not Serializable problem
+        this.shape = AffineTransform.getTranslateInstance(0, 0).createTransformedShape(shape);
+      } else {
+        this.shape = shape;
+      }
+      setLocationAndOrientation(xLoc, yLoc, rotation, centered);
+    }
+
+    // Override in subclasses
+    String getName () {
+      return "Shape";
+    }
+
     void addChangeListener (ChangeListener subscriber) {
       if (changeSubscribers == null) {
         changeSubscribers = new LinkedList<>();
@@ -1343,17 +1461,6 @@ public class LaserCut extends JFrame {
           subscriber.shapeChanged(this);
         }
       }
-    }
-
-    @SuppressWarnings("unused")
-    CADShape (Shape shape, double xLoc, double yLoc, double rotation, boolean centered) {
-      if (shape instanceof Area) {
-        // Workaround for Area not Serializable problem
-        this.shape = AffineTransform.getTranslateInstance(0, 0).createTransformedShape(shape);
-      } else {
-        this.shape = shape;
-      }
-      setLocationAndOrientation(xLoc, yLoc, rotation, centered);
     }
 
     void setLocationAndOrientation (double xLoc, double yLoc, double rotation, boolean centered) {
@@ -1581,17 +1688,14 @@ public class LaserCut extends JFrame {
       // Scale Shape to scale and draw it
       AffineTransform atScale = AffineTransform.getScaleInstance(zoom, zoom);
       dShape = atScale.createTransformedShape(dShape);
-      boolean inGroup = getGroup() != null && getGroup().isGroupSelected();
-      boolean highlight = isSelected || inGroup;
-      g2.setStroke(getShapeStroke(highlight, isSelected));
-      g2.setColor(getShapeColor(highlight, engrave));
+      g2.setStroke(getShapeStroke(getStrokeWidth(inGroup)));
+      g2.setColor(getShapeColor(inGroup));
       g2.draw(dShape);
       if (!(this instanceof CNCPath)) {
         if (isSelected || this instanceof CADReference || this instanceof CADShapeSpline) {
           double mx = xLoc * zoom;
           double my = yLoc * zoom;
           double mWid = 3 * zoom / SCREEN_PPI;
-          g2.setStroke(new BasicStroke(highlight ? isSelected ? 1.8f : 1.4f : 1.0f));
           g2.draw(new Line2D.Double(mx - mWid, my, mx + mWid, my));
           g2.draw(new Line2D.Double(mx, my - mWid, mx, my + mWid));
         }
@@ -1601,18 +1705,58 @@ public class LaserCut extends JFrame {
 
     /**
      * Override in subclass, as needed
-     * @return Color used to draw shape based on state of highlight and engrave
+     * @return Color used to draw shape in its current state
      */
-    Color getShapeColor (boolean highlight, boolean engrave) {
-      return highlight ? engrave ? Color.RED : Color.blue : engrave ? Color.ORANGE : Color.black;
+    Color getShapeColor (boolean inGroup) {
+      if (dragged) {
+        return new Color(238, 54, 199);
+      } else {
+        if (isSelected) {
+          if (engrave) {
+            return new Color(255, 113, 21);
+          } else {
+            return new Color(29, 40, 255);
+          }
+        } else if (inGroup) {
+          if (engrave) {
+            return new Color(255, 170, 45);
+          } else {
+            return new Color(57, 108, 255);
+          }
+        } else {
+          if (engrave) {
+            return new Color(255, 200, 0);
+          } else {
+            return new Color(0, 0, 0);
+          }
+        }
+      }
     }
 
     /**
      * Override in subclass, as needed
-     * @return BasicStroke used to draw shape based on state of highlight and engrave
+     * @return width of stroke used to draw shape in its current state
      */
-    BasicStroke getShapeStroke (boolean highlight, boolean isSelected) {
-      return new BasicStroke(highlight ? isSelected ? 1.8f : 1.4f : 1.0f);
+    float getStrokeWidth (boolean inGroup) {
+      if (dragged) {
+        return 1.8f;
+      } else {
+        if (isSelected) {
+          return 1.8f;
+        } else if (inGroup) {
+          return 1.4f;
+        } else {
+          return 1.0f;
+        }
+      }
+    }
+
+    /**
+     * Override in subclass, as needed
+     * @return Stroke used to draw shape in its current state
+     */
+    Stroke getShapeStroke (float strokeWidth) {
+      return new BasicStroke(strokeWidth);
     }
 
     /**
@@ -1638,11 +1782,6 @@ public class LaserCut extends JFrame {
      * @return true if a moveable internal point is was clicked, else false
      */
     boolean selectMovePoint (DrawSurface surface, Point2D.Double point, Point2D.Double gPoint) {
-      return false;
-    }
-
-    boolean updateInternalState (Point2D.Double point) {
-      // override in subclass, as needed
       return false;
     }
 
@@ -1684,14 +1823,6 @@ public class LaserCut extends JFrame {
      */
     void movePosition (Point2D.Double delta) {
       setPosition(xLoc + delta.x, yLoc + delta.y);
-    }
-
-    void setSelected (boolean selected) {
-      this.isSelected = selected;
-    }
-
-    boolean isSelected () {
-      return isSelected;
     }
 
     /**
@@ -1812,38 +1943,43 @@ public class LaserCut extends JFrame {
     }
 
     /**
-     * Used reflection to return a string showing shape's current parameters
-     * @return String of comma-separated name/value pairs
+     * Used to return a string showing shape's current parameters
+     * @return String showing shape's current parameters
      */
     String getInfo () {
-      String clsName = getClass().getName();
-      int idx = clsName.lastIndexOf('$');
-      if (idx > 0) {
-        clsName = clsName.substring(idx + 1);
-      }
-      StringBuilder buf = new StringBuilder(clsName + ": ");
-      ArrayList<String> parmNames = new ArrayList<>(Arrays.asList("xLoc|in", "yLoc|in", "rotation|deg", "centered"));
+      StringBuilder buf = new StringBuilder(getName() + ": ");
+      ArrayList<String> parmNames = new ArrayList<>(Arrays.asList("xLoc|in", "yLoc|in", "width|in", "height|in", "rotation|deg", "centered"));
       parmNames.addAll(Arrays.asList(getParameterNames()));
       boolean first = true;
+      Rectangle2D bnds = getShape().getBounds2D();
       for (String name : parmNames) {
         ParameterDialog.ParmItem item = new ParameterDialog.ParmItem(name, null);
         if (!first) {
           buf.append(", ");
         }
         first = false;
-        try {
-          buf.append(item.name);
-          buf.append(": ");
-          Field fld = this.getClass().getField(item.name);
-          Object value = fld.get(this);
-          if (item.valueType != null  && item.valueType instanceof String[]) {
-            String[] labels = ParameterDialog.getLabels((String[]) item.valueType);
-            String[] values = ParameterDialog.getValues((String[]) item.valueType);
-            value = labels[Arrays.asList(values).indexOf(value)];
+        buf.append(item.name);
+        buf.append(": ");
+        if ("width".equals(item.name)) {
+          buf.append(LaserCut.df.format(bnds.getWidth()));
+        } else if ("height".equals(item.name)) {
+          buf.append(LaserCut.df.format(bnds.getHeight()));
+        } else {
+          try {
+            Field fld = this.getClass().getField(item.name);
+            Object value = fld.get(this);
+            if (item.valueType != null && item.valueType instanceof String[]) {
+              String[] labels = ParameterDialog.getLabels((String[]) item.valueType);
+              String[] values = ParameterDialog.getValues((String[]) item.valueType);
+              value = labels[Arrays.asList(values).indexOf(value)];
+            }
+            buf.append(((value instanceof Double) ? LaserCut.df.format(value) : value));
+          } catch (Exception ex) {
+            ex.printStackTrace();
           }
-          buf.append(((value instanceof Double) ? LaserCut.df.format(value) : value) + (item.units.length() > 0 ? " " + item.units : ""));
-        } catch (Exception ex) {
-          ex.printStackTrace();
+          if (item.units.length() > 0) {
+            buf.append(" " + item.units);
+          }
         }
       }
       return buf.toString();
@@ -1866,19 +2002,29 @@ public class LaserCut extends JFrame {
     }
 
     @Override
+    String getName () {
+      return "Reference Point";
+    }
+
+    @Override
     Shape buildShape () {
       return new Rectangle2D.Double(-.1, -.1, .2, .2);
     }
 
     @Override
-    Color getShapeColor (boolean highlight, boolean engrave) {
+    Color getShapeColor (boolean highlight) {
       return new Color(0, 128, 0);
     }
 
     @Override
-    BasicStroke getShapeStroke (boolean highlight, boolean isSelected) {
+    BasicStroke getShapeStroke (float strokeWidth) {
       final float dash1[] = {3.0f};
-      return new BasicStroke(highlight ? isSelected ? 1.8f : 1.4f : 1.0f, BasicStroke.CAP_SQUARE, BasicStroke.JOIN_MITER, 1.0f, dash1, 0.5f);
+      return new BasicStroke(strokeWidth, BasicStroke.CAP_SQUARE, BasicStroke.JOIN_MITER, 1.0f, dash1, 0.5f);
+    }
+
+    @Override
+    boolean isShapeClicked (Point2D.Double point, double zoom) {
+      return super.isShapeClicked(point, zoom) || isPositionClicked(point, zoom);
     }
 
     @Override
@@ -1902,6 +2048,11 @@ public class LaserCut extends JFrame {
 
     CADRasterImage () {
       engrave = true;
+    }
+
+    @Override
+    String getName () {
+      return "Raster Image";
     }
 
     void loadImage (File imgFile) throws IOException {
@@ -2052,14 +2203,14 @@ public class LaserCut extends JFrame {
     }
 
     @Override
-    Color getShapeColor (boolean highlight, boolean engrave) {
+    Color getShapeColor (boolean highlight) {
       return highlight ? Color.blue : Color.lightGray;
     }
 
     @Override
-    BasicStroke getShapeStroke (boolean highlight, boolean isSelected) {
+    BasicStroke getShapeStroke (float strokeWidth) {
       final float dash1[] = {8.0f};
-      return new BasicStroke(highlight ? isSelected ? 1.8f : 1.4f : 1.0f, BasicStroke.CAP_SQUARE, BasicStroke.JOIN_MITER, 1.0f, dash1, 0.5f);
+      return new BasicStroke(strokeWidth, BasicStroke.CAP_SQUARE, BasicStroke.JOIN_MITER, 1.0f, dash1, 0.5f);
     }
 
     static Dimension getImageDPI (File file) throws IOException {
@@ -2114,7 +2265,7 @@ public class LaserCut extends JFrame {
     }
   }
 
-  static class CADMusicStrip extends CADShape implements Serializable {
+  static class CADMusicStrip extends CADShape implements Serializable, Updatable {
     private static final long serialVersionUID = 7398125917619364676L;
     private static String[] symb = {"6E", "6D", "6C", "5B", "5A#", "5A", "5G#", "5G", "5F#", "5F", "5E", "5D#", "5D", "5C#", "5C",
                                     "4B", "4A#", "4A", "4G#", "4G", "4F#", "4F", "4E", "4D", "4C", "3B", "3A", "3G", "3D", "3C"};
@@ -2138,6 +2289,11 @@ public class LaserCut extends JFrame {
     }
 
     CADMusicStrip () {
+    }
+
+    @Override
+    String getName () {
+      return "Music Strip";
     }
 
     void setNotes (String[][] song) {
@@ -2182,12 +2338,12 @@ public class LaserCut extends JFrame {
       g2.setFont(new Font("Arial", Font.PLAIN, (int) (7 * zf)));
       for (int ii = 0; ii <= notes.length; ii++) {
         double sx = mx + mmToInches(ii * xStep * zoom);
-        g2.setColor((ii & 1) == 0 ? Color.black : isSelected() ? Color.black : Color.lightGray);
+        g2.setColor((ii & 1) == 0 ? Color.black : isSelected ? Color.black : Color.lightGray);
         g2.setStroke((ii & 1) == 0 ? thick : thin);
         g2.draw(new Line2D.Double(sx, my, sx, my + mmToInches(29 * yStep * zoom)));
         for (int jj = 0; jj < 30; jj++) {
           double sy = my + mmToInches(jj * yStep * zoom);
-          g2.setColor(jj == 0 || jj == 29 ? Color.black : isSelected() ? Color.black : Color.lightGray);
+          g2.setColor(jj == 0 || jj == 29 ? Color.black : isSelected ? Color.black : Color.lightGray);
           g2.setStroke(jj == 0 || jj == 29 ? thick : thin);
           g2.draw(new Line2D.Double(mx, sy, mx + mmToInches(columns * xStep * zoom), sy));
           if (ii == lastCol ) {
@@ -2200,8 +2356,8 @@ public class LaserCut extends JFrame {
       super.draw(g, zoom);
     }
 
-    @Override
-    boolean updateInternalState (Point2D.Double point) {
+    // Implement Updatable interface
+    public boolean updateInternalState (Point2D.Double point) {
       // See if user clicked on one of the note spots (Note: point in screen inch coords)
       double xx = inchesToMM(point.x - xLoc - xOff);
       double yy = inchesToMM(point.y - yLoc - yOff);
@@ -2301,6 +2457,11 @@ public class LaserCut extends JFrame {
     }
 
     @Override
+    String getName () {
+      return "Rectangle";
+    }
+
+    @Override
     String[] getParameterNames () {
       return new String[]{"width|in", "height|in", "radius|in"};
     }
@@ -2338,6 +2499,11 @@ public class LaserCut extends JFrame {
     }
 
     @Override
+    String getName () {
+      return "Oval";
+    }
+
+    @Override
     String[] getParameterNames () {
       return new String[]{"width|in", "height|in"};
     }
@@ -2368,6 +2534,11 @@ public class LaserCut extends JFrame {
       this.diameter = diameter;
       this.sides = sides;
       setLocationAndOrientation(xLoc, yLoc, rotation, centered);
+    }
+
+    @Override
+    String getName () {
+      return "Polygon";
     }
 
     @Override
@@ -2427,6 +2598,11 @@ public class LaserCut extends JFrame {
       this.slotDepth = slotDepth;
       this.radius = radius;
       setLocationAndOrientation(xLoc, yLoc, rotation, centered);
+    }
+
+    @Override
+    String getName () {
+      return "Bobbin";
     }
 
     @Override
@@ -2510,6 +2686,11 @@ public class LaserCut extends JFrame {
     CADNemaMotor (double xLoc, double yLoc, String type, double rotation, boolean centered) {
       this.type = type;
       setLocationAndOrientation(xLoc, yLoc, rotation, centered);
+    }
+
+    @Override
+    String getName () {
+      return "NEMA Motor";
     }
 
     @Override
@@ -2629,6 +2810,11 @@ public class LaserCut extends JFrame {
       fonts.add("Vector 1");
       fonts.add("Vector 2");
       fonts.add("Vector 3");
+    }
+
+    @Override
+    String getName () {
+      return "Text";
     }
 
     private static void addIfAvailable (Map avail, String font) {
@@ -2754,6 +2940,11 @@ public class LaserCut extends JFrame {
     }
 
     @Override
+    String getName () {
+      return "Scaled Shape";
+    }
+
+    @Override
     // Translate Shape to screen position
     protected Shape getWorkspaceTranslatedShape () {
       AffineTransform at = new AffineTransform();
@@ -2777,7 +2968,7 @@ public class LaserCut extends JFrame {
     }
   }
 
-  static class CADShapeSpline extends CADShape implements Serializable {
+  static class CADShapeSpline extends CADShape implements Serializable, StateMessages {
     private static final long serialVersionUID = 1175193935200692376L;
     private List<Point2D.Double>  points = new ArrayList<>();
     private Point2D.Double        movePoint;
@@ -2789,8 +2980,29 @@ public class LaserCut extends JFrame {
     }
 
     @Override
+    String getName () {
+      return "Spline";
+    }
+
+    // Implement StateMessages interface
+    public String getStateMsg () {
+      if (closePath) {
+        return "Click and drag to move a control point, or click on shape to add new control point";
+      } else {
+        String[] nextPnt = {"first", "second", "third", "additional"};
+        return "Click to add " + (nextPnt[Math.min(nextPnt.length - 1, points.size())]) + " control point" +
+            (points.size() >= (nextPnt.length - 1) ? " (or click 1st control point to complete shape)" : "");
+      }
+    }
+
+    @Override
     protected List<String> getEditFields () {
       return Arrays.asList("xLoc|in", "yLoc|in", "rotation|deg");
+    }
+
+    @Override
+    boolean isShapeClicked (Point2D.Double point, double zoom) {
+      return super.isShapeClicked(point, zoom) || isPositionClicked(point, zoom);
     }
 
     @Override
@@ -2978,6 +3190,11 @@ public class LaserCut extends JFrame {
     }
 
     @Override
+    String getName () {
+      return "Gear";
+    }
+
+    @Override
     String[] getParameterNames () {
       return new String[]{"module{module = diameter / numTeeth}", "numTeeth", "numPoints", "pressAngle|deg", "profileShift",
                           "*diameter|in{diameter = numTeeth * module}", "holeSize|in"};
@@ -3018,6 +3235,11 @@ public class LaserCut extends JFrame {
       baseShape.addChangeListener(this);
     }
 
+    @Override
+    String getName () {
+      return "CNC Path";
+    }
+
     /*
      * Reattach ChangeListener after deserialization
      */
@@ -3036,14 +3258,13 @@ public class LaserCut extends JFrame {
     }
 
     @Override
-    Color getShapeColor (boolean highlight, boolean engrave) {
+    Color getShapeColor (boolean highlight) {
       return new Color(0, 153, 0);
     }
 
     //  @Override
-    //BasicStroke getShapeStroke (boolean highlight, boolean isSelected) {
-    //  return new BasicStroke(highlight ? isSelected ? 1.8f : 1.4f : 1.0f, BasicStroke.CAP_BUTT,
-    //                         BasicStroke.JOIN_MITER,  5.0f, new float[] {5.0f}, 0.0f);
+    //BasicStroke getShapeStroke (float strokeWidth) {
+    //  return new BasicStroke(strokeWidth, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER,  5.0f, new float[] {5.0f}, 0.0f);
     //}
 
     @Override
@@ -3101,6 +3322,9 @@ public class LaserCut extends JFrame {
     }
   }
 
+  /**
+   * Class used to organize CADShape objects into a group
+   */
   static class CADShapeGroup implements Serializable {
     private static final long serialVersionUID = 3210128656295452345L;
     private ArrayList<CADShape> shapesInGroup = new ArrayList<>();
@@ -3116,7 +3340,7 @@ public class LaserCut extends JFrame {
       }
     }
 
-    CADShape removeFromGroup (CADShape shape) {
+    private CADShape removeFromGroup (CADShape shape) {
       shapesInGroup.remove(shape);
       shape.setGroup(null);
       if (shapesInGroup.size() == 1) {
@@ -3139,14 +3363,6 @@ public class LaserCut extends JFrame {
       return shapesInGroup.contains(shape);
     }
 
-    boolean isGroupSelected () {
-      for (CADShape shape : shapesInGroup) {
-        if (shape.isSelected())
-          return true;
-      }
-      return false;
-    }
-
     ArrayList<CADShape> getGroupList () {
       return shapesInGroup;
     }
@@ -3162,6 +3378,10 @@ public class LaserCut extends JFrame {
 
   interface ShapeSelectListener {
     void shapeSelected (CADShape shape, boolean selected);
+  }
+
+  interface ShapeDragSelectListener {
+    void shapeDragSelect (boolean selected);
   }
 
   interface ActionUndoListener {

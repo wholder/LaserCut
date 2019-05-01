@@ -17,7 +17,9 @@ LaserCut uses the Java Language's reflection and object serialization features t
 - Specify position and dimensions in inches (default) or millimeters
 - Enable a grid placement for more precise positioning
 - Create and place cutouts for various sizes of Nema Stepper Motors
-- Group and ungroup shapes (shift and click)
+- Group and ungroup shapes
+- Click and drag to select a set of shapes
+- Shift click and drag to add to set of selected shapes
 - Click and drag to reposition shapes on the cutting surface in order to make the best use of your materials
 - Move (translate) 2D shapes and groups of 2D shapes to precise positions using parametric input
 - Rotate grouped shapes around the location of one of the grouped shapes
@@ -50,6 +52,7 @@ LaserCut uses the Java Language's reflection and object serialization features t
   - **7/19/2018** - Added real time position readout to Jog controls and G-Code Monitor dialog and G-Code Monitor now stays visible until all steps are processed.
   - **7/20/2018** - Moved "Materials" Menu into "Zing Settings" Menu using enhancements to ParameterDialog class.
   - **7/22/2018** - Added "Get GRBL Coordinates" Menu to Mini CNC (used to read and set G54, etc coordinate space values)
+  - **4/23/2019** - Extensive rewrite to implement new click and drag to select set feature
 ## Under Development
 - Support for a user-extendable library of specialized cutout shapes, such as for mounting RC Servos (to replace and extend the current Nema Stepper code)
 - Import vector shapes from EPS (Encapsulated PostScript®) files

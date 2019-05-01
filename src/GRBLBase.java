@@ -10,9 +10,8 @@ import java.util.*;
 import java.util.List;
 
 import static javax.swing.JOptionPane.*;
-import static javax.swing.JOptionPane.showMessageDialog;
 
-  /*
+/*
    *  GRBL 1.1 Pinouts and commands
    *     D2 - Step Pulse X-Axis Output
    *     D3 - Step Pulse Y-Axis Output
@@ -183,7 +182,7 @@ class GRBLBase {
           new ParameterDialog.ParmItem("Y Max travel|mm",               sVals, "$131"),
           new ParameterDialog.ParmItem("Z Max travel|mm",               sVals, "$132"),
         };
-        Properties info = parent.getProperties(parent.getResourceFile("grbl/grblparms.props"));
+        Properties info = parent.getProperties(LaserCut.getResourceFile("grbl/grblparms.props"));
         ParameterDialog dialog = (new ParameterDialog(parmSet, new String[] {"Save", "Cancel"}, false, info));
         dialog.setLocationRelativeTo(parent);
         dialog.setVisible(true);              // Note: this call invokes dialog

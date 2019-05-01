@@ -95,7 +95,7 @@ public class GearGen {
       double yy = module * (-P * Math.sin(theta) + Q * Math.cos(theta));
       points.add(new Point2D.Double(xx, yy));
     }
-    Point2D.Double[] pointArray = points.toArray(new Point2D.Double[points.size()]);
+    Point2D.Double[] pointArray = points.toArray(new Point2D.Double[0]);
     // Generate tooth Shape from left/right outlines
     Path2D.Double tooth = new Path2D.Double();
     tooth.moveTo(pointArray[pointArray.length - 1].x, pointArray[pointArray.length - 1].y);

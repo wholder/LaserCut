@@ -324,12 +324,12 @@ public class SVGParser {
         debugPrintln("End Element: " + qName);
       }
 
-      public void characters (char ch[], int start, int length) {
+      public void characters (char[] ch, int start, int length) {
         debugPrintln("Chars: " + new String(ch, start, length));
       }
     };
     saxParser.parse(file, handler);
-    return shapes.toArray(new Shape[shapes.size()]);
+    return shapes.toArray(new Shape[0]);
   }
 
   /**
@@ -419,16 +419,28 @@ public class SVGParser {
    * @return Array of transformed Shape objects
    */
   static Shape[] removeOffset (Shape[] shapes) {
-    Rectangle2D bounds = null;
-    for (Shape shape : shapes) {
-      bounds = bounds == null ? BetterBoundingBox.getBounds(shape) : bounds.createUnion(BetterBoundingBox.getBounds(shape));
-    }
-    double minX = bounds.getX();
-    double minY = bounds.getY();
-    if (minX != 0 || minY != 0) {
-      AffineTransform atScale = AffineTransform.getTranslateInstance(-minX, -minY);
-      for (int ii = 0; ii < shapes.length; ii++) {
-        shapes[ii] = atScale.createTransformedShape(shapes[ii]);
+    if (shapes.length > 0) {
+      Rectangle2D bounds = null;
+      for (Shape shape : shapes) {
+        if (bounds == null) {
+          bounds = BetterBoundingBox.getBounds(shape);
+        } else {
+          try {
+            bounds = bounds.createUnion(BetterBoundingBox.getBounds(shape));
+          } catch (NullPointerException ex) {
+            ex.printStackTrace();
+          }
+        }
+      }
+      if (bounds != null) {
+        double minX = bounds.getX();
+        double minY = bounds.getY();
+        if (minX != 0 || minY != 0) {
+          AffineTransform atScale = AffineTransform.getTranslateInstance(-minX, -minY);
+          for (int ii = 0; ii < shapes.length; ii++) {
+            shapes[ii] = atScale.createTransformedShape(shapes[ii]);
+          }
+        }
       }
     }
     return shapes;
@@ -473,7 +485,7 @@ public class SVGParser {
     for (int ii = 0; ii < tmp.length; ii += 2) {
       points.add(new Point2D.Double(parseCoord(tmp[ii]), parseCoord(tmp[ii + 1])));
     }
-    return points.toArray(new Point2D.Double[points.size()]);
+    return points.toArray(new Point2D.Double[0]);
   }
 
   private double parseCoord (String val) {
@@ -502,7 +514,7 @@ public class SVGParser {
     while (mat.find()) {
       tmp.add(mat.group());
     }
-    return tmp.toArray(new String[tmp.size()]);
+    return tmp.toArray(new String[0]);
   }
 
   private static String shapeToSVGPath (Shape shape, AffineTransform at) {
@@ -568,9 +580,9 @@ public class SVGParser {
     Document doc = docBuilder.newDocument();
     Element svg = doc.createElement("svg");
     svg.setAttribute("version", "1.0");
-    svg.setAttribute("width", Double.toString(size.width / pxDpi) + "in");
-    svg.setAttribute("height", Double.toString(size.height / pxDpi) + "in");
-    svg.setAttribute("viewBox", "0 0 " + Integer.toString(size.width) + " " + Integer.toString(size.height));
+    svg.setAttribute("width", size.width / pxDpi + "in");
+    svg.setAttribute("height", size.height / pxDpi + "in");
+    svg.setAttribute("viewBox", "0 0 " + size.width + " " + size.height);
     doc.appendChild(svg);
     Element g = doc.createElement("g");
     svg.appendChild(g);

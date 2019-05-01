@@ -154,7 +154,7 @@ class ZingLaser {
     zingMenu.add(sendToZing);
 
     // Build JComboBox List of Materials for "Zing Settings" parameters dialog
-    String[] materials = laserCut.getResourceFile("/materials/zing.materials").split("===");
+    String[] materials = LaserCut.getResourceFile("/materials/zing.materials").split("===");
     JComboBox<Object> matMenu = new JComboBox<>();
     matMenu.addItem("");
     for (String material : materials) {
