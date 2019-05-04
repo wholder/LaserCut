@@ -123,10 +123,10 @@ public class DrawSurface extends JPanel {
               } else {
                 dragList.add(shape);
               }
+              setSelected(null);
               for (LaserCut.ShapeDragSelectListener listener : dragSelectListerners) {
                 listener.shapeDragSelect(dragList.size() > 0);
               }
-              setSelected(null);
               repaint();
               return;
             }
@@ -278,12 +278,10 @@ public class DrawSurface extends JPanel {
             }
           }
           dragBox = null;
-          if (dragList.size() > 0) {
-            for (LaserCut.ShapeDragSelectListener listener : dragSelectListerners) {
-              listener.shapeDragSelect(dragList.size() > 0);
-            }
-            repaint();
+          for (LaserCut.ShapeDragSelectListener listener : dragSelectListerners) {
+            listener.shapeDragSelect(dragList.size() > 0);
           }
+          repaint();
         }
         dragStart = null;
       }
@@ -810,6 +808,7 @@ public class DrawSurface extends JPanel {
     for (LaserCut.ShapeDragSelectListener listener : dragSelectListerners) {
       listener.shapeDragSelect(false);
     }
+    repaint();
   }
 
   void removeSelected () {
@@ -873,27 +872,60 @@ public class DrawSurface extends JPanel {
   }
 
   void duplicateSelected () {
-    if (selected != null) {
+    if (dragList.size() > 0) {
+      pushToUndoStack();
+      List<LaserCut.CADShape> dupList = new ArrayList<>();
+      Map<LaserCut.CADShape,LaserCut.CADShape> alreadyDuped = new HashMap<>();
+      for (LaserCut.CADShape shape : dragList) {
+        LaserCut.CADShapeGroup group = shape.getGroup();
+        if (group != null) {
+          LaserCut.CADShapeGroup newGroup = new LaserCut.CADShapeGroup();
+          for (LaserCut.CADShape gShape : group.getGroupList()) {
+            if (!alreadyDuped.containsKey(gShape)) {
+              alreadyDuped.put(gShape, gShape);
+              LaserCut.CADShape dup = gShape.copy();
+              newGroup.addToGroup(dup);
+              dupList.add(dup);
+              shapes.add(dup);
+            }
+          }
+        } else {
+          if (!alreadyDuped.containsKey(shape)) {
+            alreadyDuped.put(shape, shape);
+            LaserCut.CADShape dup = shape.copy();
+            dupList.add(dup);
+            shapes.add(dup);
+          }
+        }
+      }
+      dragList.clear();
+      if (dupList.size() > 0) {
+        dragList.addAll(dupList);
+        moveSelected();
+      }
+    } else if (selected != null) {
       pushToUndoStack();
       LaserCut.CADShapeGroup group = selected.getGroup();
       if (group != null) {
-        boolean first = true;
         LaserCut.CADShapeGroup newGroup = new LaserCut.CADShapeGroup();
+        List<LaserCut.CADShape> dupList = new ArrayList<>();
         for (LaserCut.CADShape shape : group.getGroupList()) {
           LaserCut.CADShape dup = shape.copy();
-          if (first) {
+          if (shape == selected) {
             setSelected(dup);
-            first = false;
           }
           newGroup.addToGroup(dup);
-          dup.movePosition(new Point2D.Double(0.1, 0.1));
+          dupList.add(dup);
           shapes.add(dup);
+        }
+        if (dupList.size() > 0) {
+          dragList.addAll(dupList);
+          moveSelected();
         }
       } else {
         LaserCut.CADShape dup = selected.copy();
-        dup.movePosition(new Point2D.Double(0.1, 0.1));
-        shapes.add(dup);
         setSelected(dup);
+        placeShape(dup);
       }
       repaint();
     }
@@ -918,9 +950,9 @@ public class DrawSurface extends JPanel {
         LaserCut.CADShapeGroup group = shape.getGroup();
         if (group != null) {
           group.removeAllFromGroup();
-          repaint();
         }
       }
+      repaint();
       dragList.clear();
     } else if (selected != null) {
       pushToUndoStack();

@@ -42,7 +42,12 @@ import static javax.swing.JOptionPane.*;
     https://github.com/Uthayne/3dpBurner-Image2Gcode
     https://www.picengrave.com/Pic%20Programs%20Page/PDF%20Files/misc/Understanding%20Gcode.pdf
 
-  Note: unable to use CMD-A, CMD-C, CMD-H, CMD-Q as shortcut keys
+  Mini Laser Engravers:
+    https://github.com/RBEGamer/K3_LASER_ENGRAVER_PROTOCOL
+    https://github.com/camrein/EzGraver
+    https://github.com/camrein/EzGraver/issues/43
+    https://github.com/AxelTB/nejePrint
+    http://lasergrbl.com/en/ and https://github.com/arkypita/LaserGRBL
   */
 
 public class LaserCut extends JFrame {
@@ -228,6 +233,7 @@ public class LaserCut extends JFrame {
     }
   }
 
+  //   Note: unable to use CMD-A, CMD-C, CMD-H, CMD-Q as shortcut keys
   static class MyMenuItem extends JMenuItem {
     private static Map<String,String> keys = new HashMap<>();
 
@@ -802,6 +808,7 @@ public class LaserCut extends JFrame {
       combineDragSelected.setEnabled(selected);
       groupDragSelected.setEnabled(selected);
       unGroupSelected.setEnabled(selected);
+      dupSelected.setEnabled(selected);
     });
     menuBar.add(editMenu);
     /*
