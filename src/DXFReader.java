@@ -229,25 +229,25 @@ public class DXFReader {
 
   /**
    * Enables drawing og TEXT objects (disabled by default)
-   * @param enable
+   * @param enable true to enable
    */
-  public void setDrawText (boolean enable) {
+  public void enableText (boolean enable) {
     drawText = enable;
   }
 
   /**
    * Enables drawing og MTEXT objects (disabled by default)
-   * @param enable
+   * @param enable true to enable
    */
-  public void setDrawMText (boolean enable) {
+  public void enableMText (boolean enable) {
     drawMText = enable;
   }
 
   /**
    * Enables drawing og DIMENSION objects (disabled by default)
-   * @param enable
+   * @param enable true to enable
    */
-  public void setDrawDimen (boolean enable) {
+  public void enableDimen (boolean enable) {
     drawDimen = enable;
   }
 
@@ -935,7 +935,7 @@ public class DXFReader {
   }
 
   class Line extends DrawItem implements AutoPop {
-    Path2D.Double         path = new Path2D.Double();
+    Line2D.Double         line;
     private double        xStart, yStart, xEnd, yEnd;
 
     Line (String type) {
@@ -962,13 +962,12 @@ public class DXFReader {
 
     @Override
     void close () {
-      path.moveTo(xStart, yStart);
-      path.lineTo(xEnd, yEnd);
+      line = new Line2D.Double(xStart, yStart, xEnd, yEnd);
     }
 
     @Override
     Shape getShape () {
-      return path;
+      return line;
     }
   }
 

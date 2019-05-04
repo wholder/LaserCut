@@ -62,13 +62,15 @@ I'm working on more comprehensive documentation to be built into the code but, i
 - Select a shape from the "**Shapes**" menu, fill in the parameters, as needed, press "**Place**" and then click the mouse point where you want the shape to be located.  Note: select "centered" for the origin of the shape to be its center, otherwise it will the the upper left point.
 - Click the outline of a shape to select it (shape outline turns blue) and display the origin as a small (+)
 - Click and drag the (+) origin to reposition a shape
+- Click and drag around a set of shapes to select them
+- Click with Shift down to add, or remove a shape from a selected set
 - With one shape selected, press and hold down the shift key while you click on the outline of another shape to group the two objects together (both outlines show as blue).  Shift click again to ungroup a shape.
 - Click one shape in a group to display its origin and then reposition the whole group by clicking and dragging its (+) origin.
 - Select a shape and select **Edit->Edit Selected** (or press the **CMD-E** shortcut key) to bring up the shape parameter dialog.
 - Select a shape and select **Edit->Move Selected** (or press the **CMD-M** shortcut key) to reposition a shape, or a group of shapes.
 - Select a shape and select **Edit->Delete Selected** (or press the **CMD-X** shortcut key) to delete a shape, or a group of shapes.
 - Select a shape and select **Edit->Duplicate Selected** (or press the **CMD-D** shortcut key) to create a duplicate shape you can then reposition.
-- Double Click to zoom in on location clicked, Shift-Double Click to zoom out.
+- Double Click with Meta Down to zoom in on location clicked, Shift-Double Click with Meta Down to zoom out.
 - Spline Shapes
   - Select `Spline Curve` from the `Shapes` menu then click to place the origin of the shape (does not create a point on the curve)
   - Click again to place first control point then again to place another (repeat to trace out curve.)

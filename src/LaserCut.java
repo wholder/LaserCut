@@ -45,37 +45,8 @@ import static javax.swing.JOptionPane.*;
   Note: unable to use CMD-A, CMD-C, CMD-H, CMD-Q as shortcut keys
   */
 
-  /*
-      CMD-A - Add Grouped Shapes to Selected
-      CMD-B - Round Corners of Selected Shape
-      CMD-C
-      CMD-D - Duplicate Selected
-      CMD-E - Edit Selected
-      CMD-F
-      CMD-G
-      CMD-H
-      CMD-I
-      CMD-J
-      CMD-K
-      CMD-L - Align Grouped Shapes to Selected Shape
-      CMD-M - Move Selected
-      CMD-N - New
-      CMD-O - Open
-      CMD-P
-      CMD-Q - Quit
-      CMD-R - Rotate Group Around Selected
-      CMD-S - Save
-      CMD-T - Take Away Grouped Shapes from Selected
-      CMD-U - Ungroup Selected Shapes
-      CMD-V
-      CMD-W
-      CMD-X - Delete Selected
-      CMD-Y
-      CMD-Z - Undo (+ Shift is Redo)
-   */
-
 public class LaserCut extends JFrame {
-  static final String           VERSION = "1.0 beta";
+  static final String           VERSION = "1.1 beta";
   static final double           SCREEN_PPI = java.awt.Toolkit.getDefaultToolkit().getScreenResolution();
   static final DecimalFormat    df = new DecimalFormat("#0.0###");
   private static int            cmdMask = Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx();
@@ -257,6 +228,24 @@ public class LaserCut extends JFrame {
     }
   }
 
+  static class MyMenuItem extends JMenuItem {
+    private static Map<String,String> keys = new HashMap<>();
+
+    MyMenuItem (String name, int key, int mask, boolean enabled) {
+      this(name, key, mask);
+      setEnabled(enabled);
+    }
+
+    MyMenuItem (String name, int key, int mask) {
+      super(name);
+      String code = key + ":" + mask;
+      if (keys.containsKey(code)) {
+        throw new IllegalStateException("Duplicate accelerator key for '" + keys.get(code) + "' & '" + name + "'");
+      }
+      keys.put(code, name);
+      setAccelerator(KeyStroke.getKeyStroke(key, mask));
+    }
+  }
 
   private LaserCut () {
     setTitle("LaserCut");
@@ -358,8 +347,7 @@ public class LaserCut extends JFrame {
     //
     // Add "New" Item to File Menu
     //
-    JMenuItem newObj = new JMenuItem("New");
-    newObj.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_N, cmdMask));
+    JMenuItem newObj = new MyMenuItem("New", KeyEvent.VK_N, cmdMask);
     newObj.addActionListener(ev -> {
       if (surface.hasData()) {
         if (!showWarningDialog("Discard current design?"))
@@ -375,8 +363,7 @@ public class LaserCut extends JFrame {
     //
     // Add "Open" Item to File menu
     //
-    JMenuItem loadObj = new JMenuItem("Open");
-    loadObj.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, cmdMask));
+    JMenuItem loadObj = new MyMenuItem("Open", KeyEvent.VK_O, cmdMask);
     loadObj.addActionListener(ev -> {
       if (surface.hasData()) {
         if (!showWarningDialog("Discard current design?"))
@@ -409,8 +396,7 @@ public class LaserCut extends JFrame {
     //
     // Add "Save As" Item to File menu
     //
-    JMenuItem saveAs = new JMenuItem("Save As");
-    saveAs.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, cmdMask));
+    JMenuItem saveAs = new MyMenuItem("Save As", KeyEvent.VK_S, cmdMask);
     saveAs.addActionListener(ev -> {
       JFileChooser fileChooser = new JFileChooser();
       fileChooser.setDialogTitle("Save a LaserCut File");
@@ -483,8 +469,7 @@ public class LaserCut extends JFrame {
     fileMenu.add(saveSelected);
     if (!hasQuitHandler) {
       // Add "Quit" Item to File menu
-      JMenuItem quitObj = new JMenuItem("Quit");
-      quitObj.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Q, cmdMask));
+      JMenuItem quitObj = new MyMenuItem("Quit", KeyEvent.VK_Q, cmdMask);
       quitObj.addActionListener(ev -> {
         if (quitHandler()) {
           System.exit(0);
@@ -619,12 +604,12 @@ public class LaserCut extends JFrame {
     //
     JMenu zoomMenu = new JMenu("Zoom");
     ButtonGroup zoomGroup = new ButtonGroup();
-    for (double zoom : surface.getZoomFactors()) {
-      JRadioButtonMenuItem zItem = new JRadioButtonMenuItem(zoom + " : 1");
-      zItem.setSelected(zoom == surface.getZoomFactor());
+    for (double zoomFactor : surface.getZoomFactors()) {
+      JRadioButtonMenuItem zItem = new JRadioButtonMenuItem(zoomFactor + " : 1");
+      zItem.setSelected(zoomFactor == surface.getZoomFactor());
       zoomMenu.add(zItem);
       zoomGroup.add(zItem);
-      zItem.addActionListener(ev -> surface.setZoomFactor(zoom));
+      zItem.addActionListener(ev -> surface.setZoomFactor(zoomFactor));
     }
     noZoom = zoomGroup.getSelection();
     surface.addZoomListener((index) -> {
@@ -641,43 +626,33 @@ public class LaserCut extends JFrame {
     //
     // Add "Undo" Menu Item
     //
-    JMenuItem undo = new JMenuItem("Undo");
-    undo.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Z, cmdMask));
-    undo.setEnabled(false);
+    JMenuItem undo = new MyMenuItem("Undo", KeyEvent.VK_Z, cmdMask, false);
     undo.addActionListener((ev) -> surface.popFromUndoStack());
     editMenu.add(undo);
     surface.addUndoListener(undo::setEnabled);
     //
     // Add "Redo" Menu Item
     //
-    JMenuItem redo = new JMenuItem("Redo");
-    redo.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Z, cmdMask + InputEvent.SHIFT_DOWN_MASK));
-    redo.setEnabled(false);
+    JMenuItem redo = new MyMenuItem("Redo", KeyEvent.VK_Z, cmdMask + InputEvent.SHIFT_DOWN_MASK, false);
     redo.addActionListener((ev) -> surface.popFromRedoStack());
     editMenu.add(redo);
     surface.addRedoListener(redo::setEnabled);
     //
     // Add "Remove Selected" Menu Item
     //
-    JMenuItem removeSelected = new JMenuItem("Delete Selected");
-    removeSelected.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_X, cmdMask));
-    removeSelected.setEnabled(false);
+    JMenuItem removeSelected = new MyMenuItem("Delete Selected", KeyEvent.VK_X, cmdMask, false);
     removeSelected.addActionListener((ev) -> surface.removeSelected());
     editMenu.add(removeSelected);
     //
     // Add "Duplicate Selected" Menu Item
     //
-    JMenuItem dupSelected = new JMenuItem("Duplicate Selected");
-    dupSelected.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_D, cmdMask));
-    dupSelected.setEnabled(false);
+    JMenuItem dupSelected = new MyMenuItem("Duplicate Selected", KeyEvent.VK_D, cmdMask, false);
     dupSelected.addActionListener((ev) -> surface.duplicateSelected());
     editMenu.add(dupSelected);
     //
     // Add "Edit Selected" Menu Item
     //
-    JMenuItem editSelected = new JMenuItem("Edit Selected");
-    editSelected.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_E, cmdMask));
-    editSelected.setEnabled(false);
+    JMenuItem editSelected = new MyMenuItem("Edit Selected", KeyEvent.VK_E, cmdMask, false);
     editSelected.addActionListener((ev) -> {
       CADShape sel = surface.getSelected();
       boolean centered = sel.centered;
@@ -699,51 +674,40 @@ public class LaserCut extends JFrame {
     //
     // Add "Move Selected" Menu Item
     //
-    JMenuItem moveSelected = new JMenuItem("Move Selected");
-    moveSelected.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_M, cmdMask));
-    moveSelected.setEnabled(false);
+    JMenuItem moveSelected = new MyMenuItem("Move Selected", KeyEvent.VK_M, cmdMask, false);
     moveSelected.addActionListener((ev) -> surface.moveSelected());
     editMenu.add(moveSelected);
     //
     // Add "Group Selected" Menu Item
     //
-    JMenuItem groupDragSelected = new JMenuItem("Group Selected");
-    groupDragSelected.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_G, cmdMask));
-    groupDragSelected.setEnabled(false);
+    JMenuItem groupDragSelected = new MyMenuItem("Group Selected", KeyEvent.VK_G, cmdMask, false);
     groupDragSelected.addActionListener((ev) -> surface.groupDragSelected());
     editMenu.add(groupDragSelected);
     //
-    // Add "Create Shape from Selected" Menu Item
-    //
-    JMenuItem combineDragSelected = new JMenuItem("Create Shape from Selected");
-    combineDragSelected.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_C, cmdMask));
-    combineDragSelected.setEnabled(false);
-    combineDragSelected.addActionListener((ev) -> surface.combineDragSelected());
-    editMenu.add(combineDragSelected);
-    //
     // Add "Ungroup Selected" Menu Item
     //
-    JMenuItem unGroupSelected = new JMenuItem("Ungroup Selected");
-    unGroupSelected.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_U, cmdMask));
-    unGroupSelected.setEnabled(false);
+    JMenuItem unGroupSelected = new MyMenuItem("Ungroup Selected", KeyEvent.VK_U, cmdMask, false);
     unGroupSelected.addActionListener((ev) -> surface.unGroupSelected());
     editMenu.add(unGroupSelected);
     //
     // Add "Add Grouped Shapes" Menu Item
     //
-    JMenuItem addSelected = new JMenuItem("Add Grouped Shape{s) to Selected Shape");
-    addSelected.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_A, cmdMask));
-    addSelected.setEnabled(false);
+    JMenuItem addSelected = new MyMenuItem("Add Grouped Shape{s) to Selected Shape", KeyEvent.VK_A, cmdMask, false);
     addSelected.addActionListener((ev) -> surface.addOrSubtractSelectedShapes(true));
     editMenu.add(addSelected);
     //
     // Add "Subtract Group from Selected" Menu Item
     //
-    JMenuItem subtractSelected = new JMenuItem("Subtract Grouped Shape(s) from Selected Shape");
-    subtractSelected.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_T, cmdMask));
-    subtractSelected.setEnabled(false);
+    JMenuItem subtractSelected = new MyMenuItem("Subtract Grouped Shape(s) from Selected Shape", KeyEvent.VK_T, cmdMask, false);
     subtractSelected.addActionListener((ev) -> surface.addOrSubtractSelectedShapes(false));
     editMenu.add(subtractSelected);
+    //
+    // Add "Combine Selected Paths" Menu Item
+    //
+    JMenuItem combineDragSelected = new MyMenuItem("Combine Selected Paths", KeyEvent.VK_C, cmdMask, false);
+    combineDragSelected.setToolTipText("Experimental Feature");
+    combineDragSelected.addActionListener((ev) -> surface.combineDragSelected());
+    editMenu.add(combineDragSelected);
     //
     // Add "Align Grouped Shape(s) to Selected Shape's" submenu
     //
@@ -771,17 +735,13 @@ public class LaserCut extends JFrame {
     //
     // Add "Rotate Group Around Selected Shape" Menu Item
     //
-    JMenuItem rotateSelected = new JMenuItem("Rotate Group Around Selected Shape");
-    rotateSelected.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_R, cmdMask));
-    rotateSelected.setEnabled(false);
+    JMenuItem rotateSelected = new MyMenuItem("Rotate Group Around Selected Shape", KeyEvent.VK_R, cmdMask, false);
     rotateSelected.addActionListener((ev) ->  surface.rotateGroupAroundSelected());
     editMenu.add(rotateSelected);
     //
     // Add "Round Corners of Selected Shape" Menu Item
     //
-    JMenuItem roundCorners = new JMenuItem("Round Corners of Selected Shape");
-    roundCorners.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_B, cmdMask));
-    roundCorners.setEnabled(false);
+    JMenuItem roundCorners = new MyMenuItem("Round Corners of Selected Shape", KeyEvent.VK_B, cmdMask, false);
     roundCorners.addActionListener((ev) -> {
       ParameterDialog.ParmItem[] rParms = {new ParameterDialog.ParmItem("radius|in", 0d)};
       ParameterDialog rDialog = (new ParameterDialog(rParms, new String[] {"Round", "Cancel"}, useMillimeters));
@@ -841,6 +801,7 @@ public class LaserCut extends JFrame {
       removeSelected.setEnabled(selected);
       combineDragSelected.setEnabled(selected);
       groupDragSelected.setEnabled(selected);
+      unGroupSelected.setEnabled(selected);
     });
     menuBar.add(editMenu);
     /*
@@ -850,8 +811,7 @@ public class LaserCut extends JFrame {
     //
     // Add "Import LaserCut File" Item to File menu
     //
-    JMenuItem importObj = new JMenuItem("Import LaserCut File");
-    importObj.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_I, cmdMask));
+    JMenuItem importObj = new MyMenuItem("Import LaserCut File", KeyEvent.VK_I, cmdMask);
     importObj.addActionListener(ev -> {
       JFileChooser fileChooser = new JFileChooser();
       fileChooser.setDialogTitle("Select a LaserCut File");
@@ -924,13 +884,13 @@ public class LaserCut extends JFrame {
           prefs.put("default.dxf.dir", tFile.getAbsolutePath());
           DXFReader dxf = new DXFReader(useMillimeters);
           if (fileChooser.isSelected("TEXT")) {
-            dxf.setDrawText(true);
+            dxf.enableText(true);
           }
           if (fileChooser.isSelected("MTEXT")) {
-            dxf.setDrawMText(true);
+            dxf.enableMText(true);
           }
           if (fileChooser.isSelected("DIMENSION")) {
-            dxf.setDrawDimen(true);
+            dxf.enableDimen(true);
           }
           Shape[] shapes = dxf.parseFile(tFile, 12, 2);
           shapes = SVGParser.removeOffset(shapes);
@@ -1682,20 +1642,26 @@ public class LaserCut extends JFrame {
       return paths;
     }
 
+    /**
+     * Draw shape to screen
+     * @param g Graphics object
+     * @param zoom Zoom factor (ratio)
+     */
     void draw (Graphics g, double zoom) {
       Graphics2D g2 = (Graphics2D) g.create();
       Shape dShape = getWorkspaceTranslatedShape();
       // Scale Shape to scale and draw it
-      AffineTransform atScale = AffineTransform.getScaleInstance(zoom, zoom);
+      AffineTransform atScale = AffineTransform.getScaleInstance(zoom * SCREEN_PPI, zoom * SCREEN_PPI);
       dShape = atScale.createTransformedShape(dShape);
-      g2.setStroke(getShapeStroke(getStrokeWidth(inGroup)));
-      g2.setColor(getShapeColor(inGroup));
+      g2.setStroke(getShapeStroke(getStrokeWidth()));
+      g2.setColor(getShapeColor());
       g2.draw(dShape);
+      g2.setStroke(new BasicStroke(getStrokeWidth()));
       if (!(this instanceof CNCPath)) {
         if (isSelected || this instanceof CADReference || this instanceof CADShapeSpline) {
-          double mx = xLoc * zoom;
-          double my = yLoc * zoom;
-          double mWid = 3 * zoom / SCREEN_PPI;
+          double mx = xLoc * zoom * SCREEN_PPI;
+          double my = yLoc * zoom * SCREEN_PPI;
+          double mWid = 3 * zoom;
           g2.draw(new Line2D.Double(mx - mWid, my, mx + mWid, my));
           g2.draw(new Line2D.Double(mx, my - mWid, mx, my + mWid));
         }
@@ -1707,7 +1673,7 @@ public class LaserCut extends JFrame {
      * Override in subclass, as needed
      * @return Color used to draw shape in its current state
      */
-    Color getShapeColor (boolean inGroup) {
+    Color getShapeColor () {
       if (dragged) {
         return new Color(238, 54, 199);
       } else {
@@ -1737,7 +1703,7 @@ public class LaserCut extends JFrame {
      * Override in subclass, as needed
      * @return width of stroke used to draw shape in its current state
      */
-    float getStrokeWidth (boolean inGroup) {
+    float getStrokeWidth () {
       if (dragged) {
         return 1.8f;
       } else {
@@ -1828,19 +1794,21 @@ public class LaserCut extends JFrame {
     /**
      * Check if 'point' is close to shape's xLoc/yLoc position
      * @param point Location click on screen in model coordinates (inches)
+     * @param zoomFactor Zoom factor (ratio)
      * @return true if close enough to consider a 'touch'
      */
-    boolean isPositionClicked (Point2D.Double point, double zoom) {
+    boolean isPositionClicked (Point2D.Double point, double zoomFactor) {
       double dist = point.distance(xLoc, yLoc) * SCREEN_PPI;
-      return dist < 5 / zoom;
+      return dist < 5 / zoomFactor;
     }
 
     /**
      * Check if 'point' is close to one of the segments that make up the shape
      * @param point Location click on screen in model coordinates (inches)
+     * @param zoomFactor Zoom factor (ratio)
      * @return true if close enough to consider a 'touch'
      */
-    boolean isShapeClicked (Point2D.Double point, double zoom) {
+    boolean isShapeClicked (Point2D.Double point, double zoomFactor) {
       // Translate Shape to position, Note: point is in screen units (scale)
       Shape lShape = getWorkspaceTranslatedShape();
       // Scale Shape to Screen scale and scan all line segments in the shape
@@ -1848,7 +1816,7 @@ public class LaserCut extends JFrame {
       for (Line2D.Double[] lines : transformShapeToLines(lShape, 1)) {
         for (Line2D.Double line : lines) {
           double dist = line.ptSegDist(point) * SCREEN_PPI;
-          if (dist < 5 / zoom) {
+          if (dist < 5 / zoomFactor) {
             return true;
           }
         }
@@ -2012,7 +1980,7 @@ public class LaserCut extends JFrame {
     }
 
     @Override
-    Color getShapeColor (boolean highlight) {
+    Color getShapeColor () {
       return new Color(0, 128, 0);
     }
 
@@ -2023,8 +1991,8 @@ public class LaserCut extends JFrame {
     }
 
     @Override
-    boolean isShapeClicked (Point2D.Double point, double zoom) {
-      return super.isShapeClicked(point, zoom) || isPositionClicked(point, zoom);
+    boolean isShapeClicked (Point2D.Double point, double zoomFactor) {
+      return super.isShapeClicked(point, zoomFactor) || isPositionClicked(point, zoomFactor);
     }
 
     @Override
@@ -2080,13 +2048,13 @@ public class LaserCut extends JFrame {
       // Transform image for centering, rotation and scale
       AffineTransform at = new AffineTransform();
       if (centered) {
-        at.translate(xLoc * zoom, yLoc * zoom);
-        at.scale(scale / 100 * SCREEN_PPI / ppi.width, scale / 100 * SCREEN_PPI / ppi.height);
+        at.translate(xLoc * zoom * SCREEN_PPI, yLoc * zoom * SCREEN_PPI);
+        at.scale(zoom * scale / 100 * SCREEN_PPI / ppi.width, zoom * scale / 100 * SCREEN_PPI / ppi.height);
         at.rotate(Math.toRadians(rotation));
         at.translate(-bufimg.getWidth() / 2.0, -bufimg.getHeight() / 2.0);
       } else {
-        at.translate(xLoc * zoom, yLoc * zoom);
-        at.scale(scale / 100 * SCREEN_PPI / ppi.width, scale / 100 * SCREEN_PPI / ppi.height);
+        at.translate(xLoc * zoom * SCREEN_PPI, yLoc * zoom * SCREEN_PPI);
+        at.scale(zoom * scale / 100 * SCREEN_PPI / ppi.width, zoom * scale / 100 * SCREEN_PPI / ppi.height);
         at.rotate(Math.toRadians(rotation));
       }
       // Draw with 40% Alpha to make image semi transparent
@@ -2203,8 +2171,8 @@ public class LaserCut extends JFrame {
     }
 
     @Override
-    Color getShapeColor (boolean highlight) {
-      return highlight ? Color.blue : Color.lightGray;
+    Color getShapeColor () {
+      return isSelected ? Color.blue : Color.lightGray;
     }
 
     @Override
@@ -2332,20 +2300,20 @@ public class LaserCut extends JFrame {
       Graphics2D g2 = (Graphics2D) g.create();
       Stroke thick = new BasicStroke(1.0f);
       Stroke thin = new BasicStroke(0.8f);
-      double mx = (xLoc + xOff) * zoom;
-      double my = (yLoc + yOff) * zoom;
+      double mx = (xLoc + xOff) * zoom * SCREEN_PPI;
+      double my = (yLoc + yOff) * zoom * SCREEN_PPI;
       double zf = zoom / SCREEN_PPI;
       g2.setFont(new Font("Arial", Font.PLAIN, (int) (7 * zf)));
       for (int ii = 0; ii <= notes.length; ii++) {
-        double sx = mx + mmToInches(ii * xStep * zoom);
+        double sx = mx + mmToInches(ii * xStep * zoom * SCREEN_PPI);
         g2.setColor((ii & 1) == 0 ? Color.black : isSelected ? Color.black : Color.lightGray);
         g2.setStroke((ii & 1) == 0 ? thick : thin);
-        g2.draw(new Line2D.Double(sx, my, sx, my + mmToInches(29 * yStep * zoom)));
+        g2.draw(new Line2D.Double(sx, my, sx, my + mmToInches(29 * yStep * zoom * SCREEN_PPI)));
         for (int jj = 0; jj < 30; jj++) {
-          double sy = my + mmToInches(jj * yStep * zoom);
+          double sy = my + mmToInches(jj * yStep * zoom * SCREEN_PPI);
           g2.setColor(jj == 0 || jj == 29 ? Color.black : isSelected ? Color.black : Color.lightGray);
           g2.setStroke(jj == 0 || jj == 29 ? thick : thin);
-          g2.draw(new Line2D.Double(mx, sy, mx + mmToInches(columns * xStep * zoom), sy));
+          g2.draw(new Line2D.Double(mx, sy, mx + mmToInches(columns * xStep * zoom * SCREEN_PPI), sy));
           if (ii == lastCol ) {
             g2.setColor(Color.red);
             g2.drawString(symb[jj], (int) (sx - 14 * zf), (int) (sy + 2.5 * zf));
@@ -2386,9 +2354,9 @@ public class LaserCut extends JFrame {
     }
 
     @Override
-    boolean isShapeClicked (Point2D.Double point, double zoom) {
+    boolean isShapeClicked (Point2D.Double point, double zoomFactor) {
       checkClicked = true;
-      boolean clicked = super.isShapeClicked(point, zoom);
+      boolean clicked = super.isShapeClicked(point, zoomFactor);
       checkClicked = false;
       return clicked;
     }
@@ -3001,8 +2969,8 @@ public class LaserCut extends JFrame {
     }
 
     @Override
-    boolean isShapeClicked (Point2D.Double point, double zoom) {
-      return super.isShapeClicked(point, zoom) || isPositionClicked(point, zoom);
+    boolean isShapeClicked (Point2D.Double point, double zoomFactor) {
+      return super.isShapeClicked(point, zoomFactor) || isPositionClicked(point, zoomFactor);
     }
 
     @Override
@@ -3149,9 +3117,9 @@ public class LaserCut extends JFrame {
       g2.setColor(isSelected ? Color.red : closePath ? Color.lightGray : Color.darkGray);
       for (Point2D.Double cp : points) {
         Point2D.Double np = rotatePoint(cp, rotation);
-        double mx = (xLoc + np.x) * zoom;
-        double my = (yLoc + np.y) * zoom;
-        double mWid = 2 * zoom / LaserCut.SCREEN_PPI;
+        double mx = (xLoc + np.x) * zoom * SCREEN_PPI;
+        double my = (yLoc + np.y) * zoom * SCREEN_PPI;
+        double mWid = 2 * zoom;
         g2.fill(new Rectangle.Double(mx - mWid, my - mWid, mWid * 2, mWid * 2));
       }
     }
@@ -3213,11 +3181,12 @@ public class LaserCut extends JFrame {
       g2.setColor(Color.MAGENTA);
       BasicStroke dashed = new BasicStroke(1.0f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 10.0f, new float[] {10.0f}, 0.0f);
       g2.setStroke(dashed);
-      double diameter = module * numTeeth;
+      double diam = module * numTeeth;
+      double scale = zoom * SCREEN_PPI;
       if (centered) {
-        g2.draw(new Ellipse2D.Double((xLoc - diameter / 2) * zoom, (yLoc - diameter / 2) * zoom, diameter * zoom, diameter * zoom));
+        g2.draw(new Ellipse2D.Double((xLoc - diam / 2) * scale, (yLoc - diam / 2) * scale, diam * scale, diam * scale));
       } else {
-        g2.draw(new Ellipse2D.Double(xLoc * zoom, yLoc * zoom, diameter * zoom, diameter * zoom));
+        g2.draw(new Ellipse2D.Double(xLoc * scale, yLoc * scale, diam * scale, diam * scale));
       }
     }
   }
@@ -3258,7 +3227,7 @@ public class LaserCut extends JFrame {
     }
 
     @Override
-    Color getShapeColor (boolean highlight) {
+    Color getShapeColor () {
       return new Color(0, 153, 0);
     }
 
