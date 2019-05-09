@@ -23,7 +23,7 @@ public class GearGen {
     DEBUG = true;
     ShapeWindow sWin = new ShapeWindow();
     if (true) {
-      Shape gear = generateGear(.1, 30, 10, 20, .25, LaserCut.mmToInches(3));
+      Shape gear = generateGear(.45, 30, 10, 20, .25, LaserCut.mmToInches(3));
       sWin.addShape(gear);
     } else {
       Scanner sc = new Scanner(System.in);
@@ -74,6 +74,7 @@ public class GearGen {
         Math.pow(numTeeth * Math.cos(pressAngle), 2)) - (1 + 2 * profileShift / numTeeth) * Math.tan(pressAngle) -
         Math.PI / (2.0 * numTeeth);
     double thetaInc = (thetaMax - thetaMin) / numPoints;
+    double lastY = 0;
     for (int ii = numPoints - 1; ii > 0; ii--) {
       double theta = thetaMin + thetaInc * ii;
       double xx = numTeeth * module / 2.0 * (Math.sin(theta) - ((theta + Math.PI / (2.0 * numTeeth)) * Math.cos(pressAngle) +
@@ -81,6 +82,7 @@ public class GearGen {
       double yy = numTeeth * module / 2.0 * (Math.cos(theta) + ((theta + Math.PI / (2.0 * numTeeth)) * Math.cos(pressAngle) +
           2 * profileShift / numTeeth * Math.sin(pressAngle)) * Math.sin(theta + pressAngle));
       points.add(new Point2D.Double(xx, yy));
+      lastY = yy;
     }
     // Generate Fillet Points
     thetaMin = 2.0 / numTeeth * (U + (V + profileShift) / Math.tan(pressAngle));
@@ -93,7 +95,10 @@ public class GearGen {
       double P = 0.25 / L + (U - numTeeth * theta / 2.0);
       double xx = module *  (P * Math.cos(theta) + Q * Math.sin(theta));
       double yy = module * (-P * Math.sin(theta) + Q * Math.cos(theta));
-      points.add(new Point2D.Double(xx, yy));
+      if (yy < lastY) {
+        // Prevents backtracking line when numTeeth < 8
+        points.add(new Point2D.Double(xx, yy));
+      }
     }
     Point2D.Double[] pointArray = points.toArray(new Point2D.Double[0]);
     // Generate tooth Shape from left/right outlines
@@ -118,8 +123,10 @@ public class GearGen {
       rot.rotate(Math.toRadians(360.0 - 360.0 / numTeeth));
     }
     gear.closePath();
+    Area area = new Area(gear);
     if (holeSize > 0) {
-      gear.append(new Ellipse2D.Double(-holeSize / 2, -holeSize / 2, holeSize, holeSize), false);
+      Ellipse2D.Double hole = new Ellipse2D.Double(-holeSize / 2, -holeSize / 2, holeSize, holeSize);
+      gear.append(hole.getPathIterator(new AffineTransform()), false);
     }
     if (DEBUG) {
       System.out.println("module:                   " + module);
@@ -145,7 +152,7 @@ public class GearGen {
 
     ShapeWindow () {
       setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-      setSize(600, 600);
+      setSize(2000, 2000);
       setVisible(true);
     }
 
