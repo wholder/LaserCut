@@ -1,6 +1,5 @@
 import java.awt.*;
 import java.awt.event.*;
-import java.text.DecimalFormat;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Properties;
@@ -10,8 +9,6 @@ import javax.swing.plaf.basic.BasicComboBoxRenderer;
 import static javax.swing.JOptionPane.showMessageDialog;
 
 class ParameterDialog extends JDialog {
-  private static final DecimalFormat mmf = new DecimalFormat("#0.0##");    // 0.001 mm resolution
-  private static final DecimalFormat inf = new DecimalFormat("#0.0###");   // 0.1 mils
   private boolean   cancelled = true;
   private Point     mouseLoc;
   private double    lblWeight = 0.5;
@@ -31,7 +28,6 @@ class ParameterDialog extends JDialog {
       this(name, map.get(key));
       this.key = key;
     }
-
 
     ParmItem (Object value) {
       this.value = value;
@@ -102,7 +98,7 @@ class ParameterDialog extends JDialog {
     }
 
     // Return true if invalid value
-    private boolean setValueAndValidate (String newValue, boolean mmUnits) {
+    private boolean setValueAndValidate (String newValue, String dUnits) {
       if (valueType instanceof Integer) {
         try {
           this.value = Integer.parseInt(newValue);
@@ -110,16 +106,13 @@ class ParameterDialog extends JDialog {
           return true;
         }
       } else if (valueType instanceof Double) {
-        boolean mmInput = false;
-        boolean inInput = false;
-        boolean inches = "in".equals(units);
-        if (inches) {
-          if (newValue.endsWith("mm")) {
+        newValue = newValue.trim();
+        boolean isLength = "in".equals(units);
+        String eUnits = dUnits;
+        if (isLength) {
+          if (newValue.endsWith("in") || newValue.endsWith("cm") || newValue.endsWith("mm")) {
+            eUnits = newValue.substring(newValue.length() - 2);
             newValue = newValue.substring(0, newValue.length() - 2).trim();
-            mmInput = true;
-          } else if (newValue.endsWith("in")) {
-            newValue = newValue.substring(0, newValue.length() - 2).trim();
-            inInput = true;
           }
         }
         try {
@@ -133,9 +126,11 @@ class ParameterDialog extends JDialog {
           } else {
             val =  Double.parseDouble(newValue);
           }
-          if (inches) {
-            if ((mmInput || mmUnits) && !inInput) {
+          if (isLength) {
+            if ("mm".equals(eUnits)) {
               val = LaserCut.mmToInches(val);
+            } else if ("cm".equals(eUnits)) {
+              val = LaserCut.cmToInches(val);
             }
           }
           this.value = val;
@@ -227,20 +222,20 @@ class ParameterDialog extends JDialog {
    * Constructor for Pop Up Parameters Dialog with error checking
    * @param parms array of ParmItem objects that describe each parameter
    * @param buttons String] array of button names (first name in array is action button)
-   * @param mmUnits true if display units in millimeters, else inches
+   * @param dUnits Selected display units; "in", "cm", or "mm"
    */
-  ParameterDialog (ParmItem[] parms, String[] buttons, boolean mmUnits) {
-    this(parms, buttons, mmUnits, null);
+  ParameterDialog (ParmItem[] parms, String[] buttons, String dUnits) {
+    this(parms, buttons, dUnits, null);
   }
 
   /**
    * Constructor for Pop Up Parameters Dialog with error checking
    * @param parms array of ParmItem objects that describe each parameter
    * @param buttons String] array of button names (first name in array is action button)
-   * @param mmUnits true if display units in millimeters, else inches
+   * @param dUnits Selected display units; "in", "cm", or "mm"
    * @param info Properties object containing ParmItem info displayed in an extra column (see getGRBLSettingsMenu())
    */
-  ParameterDialog (ParmItem[] parms, String[] buttons, boolean mmUnits, Properties info) {
+  ParameterDialog (ParmItem[] parms, String[] buttons, String dUnits, Properties info) {
     super((Frame) null, true);
     setTitle("Edit Parameters");
     JPanel fields = new JPanel();
@@ -262,7 +257,7 @@ class ParameterDialog extends JDialog {
         jj++;
         continue;
       }
-      boolean inches = parm.units.equals("in");
+      boolean isLength = parm.units.equals("in");
       fields.add(new JLabel(parm.name + ": "), getGbc(0, jj));
       if (parm.valueType instanceof Boolean) {
         JCheckBox select = new JCheckBox();
@@ -283,8 +278,10 @@ class ParameterDialog extends JDialog {
       } else {
         String val;
         if (parm.value instanceof Double) {
-          if (inches && mmUnits) {
+          if (isLength && "mm".equals(dUnits)) {
             val = LaserCut.df.format(LaserCut.inchesToMM((Double) parm.value));
+          } else if (isLength && "cm".equals(dUnits)) {
+              val = LaserCut.df.format(LaserCut.inchesToCm((Double) parm.value));
           } else {
             val = LaserCut.df.format(parm.value);
           }
@@ -346,16 +343,10 @@ class ParameterDialog extends JDialog {
         }
       }
       if (parm.units != null) {
-        fields.add(new JLabel(" " + (inches ? (mmUnits ? "mm" : "in") : parm.units)), getGbc(col, jj));
+        fields.add(new JLabel(" " + (isLength ? dUnits : parm.units)), getGbc(col, jj));
       }
       if (parm.hint != null) {
         parm.field.setToolTipText(parm.hint);
-      } else if (inches && parm.value instanceof Double) {
-        if (mmUnits) {
-          parm.field.setToolTipText(inf.format(parm.value) + " in");
-        } else {
-          parm.field.setToolTipText(mmf.format(LaserCut.inchesToMM((Double) parm.value)) + " mm");
-        }
       }
       jj++;
     }
@@ -395,7 +386,7 @@ class ParameterDialog extends JDialog {
               Component comp = parm.field;
               if (comp instanceof JTextField) {
                 JTextField tf = (JTextField) comp;
-                if (parm.setValueAndValidate(tf.getText(), mmUnits)) {
+                if (parm.setValueAndValidate(tf.getText(), dUnits)) {
                   invalid = true;
                   tf.setBackground(Color.pink);
                 } else {
@@ -407,7 +398,7 @@ class ParameterDialog extends JDialog {
                 JComboBox sel = (JComboBox) comp;
                 if (parm.valueType instanceof String[]) {
                   String[] values = getValues((String[]) parm.valueType);
-                  parm.setValueAndValidate(values[sel.getSelectedIndex()], mmUnits);
+                  parm.setValueAndValidate(values[sel.getSelectedIndex()], dUnits);
                 }
               }
             }
@@ -459,7 +450,7 @@ class ParameterDialog extends JDialog {
    * @return true if user pressed "Save"
    */
   static boolean showSaveCancelParameterDialog (ParmItem[] parms, Component parent) {
-    ParameterDialog dialog = (new ParameterDialog(parms, new String[] {"Save", "Cancel"}, false));
+    ParameterDialog dialog = (new ParameterDialog(parms, new String[] {"Save", "Cancel"}, null));
     dialog.setLocationRelativeTo(parent);
     dialog.setVisible(true);              // Note: this call invokes dialog
     return dialog.wasPressed();

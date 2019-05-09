@@ -631,7 +631,7 @@ public class DrawSurface extends JPanel {
   }
 
   // Compute bounds for a set of CADShape objects
-  private Rectangle2D getSetBounds (List<LaserCut.CADShape> shapes) {
+  static Rectangle2D getSetBounds (List<LaserCut.CADShape> shapes) {
     double minX = Double.MAX_VALUE;
     double minY = Double.MAX_VALUE;
     double maxWid = 0;
@@ -640,8 +640,8 @@ public class DrawSurface extends JPanel {
       Rectangle2D bounds = shape.getShapeBounds();
       minX = Math.min(minX, bounds.getX());
       minY = Math.min(minY, bounds.getY());
-      maxWid = Math.max(maxWid, bounds.getWidth());
-      maxHyt = Math.max(maxHyt, bounds.getHeight());
+      maxWid = Math.max(maxWid, bounds.getX() + bounds.getWidth());
+      maxHyt = Math.max(maxHyt, bounds.getY() + bounds.getHeight());
     }
     return new Rectangle2D.Double(minX, minY, maxWid, maxHyt);
   }
@@ -854,7 +854,7 @@ public class DrawSurface extends JPanel {
       }
       List<Shape> opt = PathOptimizer.optimizeShape(path);
       // Group Optimized shapes
-      LaserCut.CADShapeGroup group = new LaserCut.CADShapeGroup();
+      //LaserCut.CADShapeGroup group = new LaserCut.CADShapeGroup();
       for (Shape shape : opt) {
         Rectangle2D bnds = shape.getBounds2D();
         double xLoc = bnds.getX();

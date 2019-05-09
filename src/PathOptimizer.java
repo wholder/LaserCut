@@ -9,8 +9,6 @@ import java.util.List;
 import java.util.Map;
 
 public class PathOptimizer {
-  static boolean  debug;
-
   static class ShapeSeg {
     int       type;
     double    sx, sy, ex, ey;
@@ -23,22 +21,23 @@ public class PathOptimizer {
       this.sy = sy;
       this.coords = coords;
       switch (type) {
-        case PathIterator.SEG_LINETO:   // 1
+        case PathIterator.SEG_LINETO:   // 1 (sx c01)
           ex = coords[0];
           ey = coords[1];
           break;
-        case PathIterator.SEG_QUADTO:   // 2
+        case PathIterator.SEG_QUADTO:   // 2 (sx c01 c02)
           ex = coords[2];
           ey = coords[3];
           break;
-        case PathIterator.SEG_CUBICTO:  // 3
+        case PathIterator.SEG_CUBICTO:  // 3 (sx c01 c02 c03)
           ex = coords[4];
           ey = coords[5];
           break;
       }
     }
 
-    void flip () {
+    // Reverse path order
+    ShapeSeg flip () {
       switch (type) {
         case PathIterator.SEG_LINETO:   // 1
           coords[0] = sx;
@@ -49,10 +48,30 @@ public class PathOptimizer {
           ey = coords[1];
           break;
         case PathIterator.SEG_QUADTO:   // 2
+          coords[2] = sx;
+          coords[3] = sy;
+          sx = ex;
+          sy = ey;
+          ex = coords[2];
+          ey = coords[3];
           break;
         case PathIterator.SEG_CUBICTO:  // 3
+          double tx = coords[0];
+          double ty = coords[1];
+          coords[0] = coords[2];
+          coords[1] = coords[3];
+          coords[2] = tx;
+          coords[3] = ty;
+          //
+          coords[4] = sx;
+          coords[5] = sy;
+          sx = ex;
+          sy = ey;
+          ex = coords[4];
+          ey = coords[5];
           break;
       }
+      return this;
     }
 
     Point2D.Float getStart () {
@@ -61,10 +80,6 @@ public class PathOptimizer {
 
     Point2D.Float getEnd () {
       return new Point2D.Float((float) ex, (float) ey);
-    }
-
-    void print () {
-      System.out.println(getStart() + " -> " + getEnd());
     }
   }
 
@@ -137,13 +152,6 @@ public class PathOptimizer {
       }
       pi.next();
     }
-    if (debug) {
-      // Print out disconnected line segments
-      for (ShapeSeg seg : segs) {
-        seg.print();
-      }
-      System.out.println("- - - - - - - - - - - - - - - - - - -");
-    }
     // Build Map of vertices with a list of segment (key is float precision)
     Map<Point2D.Float,Vert> verts = new HashMap<>();
     for (ShapeSeg seg : segs) {
@@ -162,7 +170,6 @@ public class PathOptimizer {
       }
       vert.segs.add(seg);
     }
-
     // Scan for connected segments and organize into sequences
     List<ShapeSeg> opts = new ArrayList<>();
     for (ShapeSeg seg : segs) {
@@ -186,15 +193,9 @@ public class PathOptimizer {
         }
       }
     }
-    if (debug) {
-      // Print out optimized line segments
-      for (ShapeSeg seg : opts) {
-        seg.print();
-      }
-    }
     segs = opts;
     List<Shape> out = new ArrayList<>();
-    // Combine list of reorganized ShapeSeg objects into a new Shape
+    // Combine list of reorganized ShapeSeg objects into a List of Shape objects
     Path2D.Double path = new Path2D.Double();
     ex = Double.MAX_VALUE; ey = Double.MAX_VALUE;
     for (ShapeSeg seg : segs) {
@@ -205,15 +206,12 @@ public class PathOptimizer {
       }
       switch (seg.type) {
         case PathIterator.SEG_LINETO:   // 1
-          // Draw line from previous point to new point
           path.lineTo(ex = seg.coords[0], ey = seg.coords[1]);
           break;
         case PathIterator.SEG_QUADTO:   // 2
-          // Write 3 point, quadratic bezier curve from previous point to new point using one control point
           path.quadTo(seg.coords[0], seg.coords[1], ex = seg.coords[2], ey = seg.coords[3]);
           break;
         case PathIterator.SEG_CUBICTO:  // 3
-          // Write 4 point, cubic bezier curve from previous point to new point using two control points
           path.curveTo(seg.coords[0], seg.coords[1], seg.coords[2], seg.coords[3], ex = seg.coords[4], ey = seg.coords[5]);
           break;
         case PathIterator.SEG_CLOSE:    // 4
@@ -226,6 +224,7 @@ public class PathOptimizer {
   }
 
   public static void main (String[] args) {
+    // Create square with disconnected and misordered line segments
     Path2D.Double path = new Path2D.Double();
     path.moveTo(1, 1);  // 1,1 -> 2,1 top
     path.lineTo(2, 1);
@@ -235,30 +234,8 @@ public class PathOptimizer {
     path.lineTo(2, 1);
     path.moveTo(1, 1);  // 1,1 -> 1,2 left
     path.lineTo(1, 2);
-    debug = true;
+    // Combine segments into continuous path
     List<Shape> list = optimizeShape(path);
     int dum = 0;
-  }
-}
-
-  /*
-    // Scan for connected segments and organize into sequences
-    List<ShapeSeg> opts = new ArrayList<>();
-    for (ShapeSeg seg : segs) {
-      if (!seg.used) {
-        ShapeSeg con = sPoints.get(seg.getEnd());
-        if (con != null) {
-          opts.add(seg);
-          seg.used = true;
-          while (con != null && !con.used) {
-            con.used = true;
-            opts.add(con);
-            con = sPoints.get(con.getEnd());
-          }
-        } else {
-          opts.add(seg);
-          seg.used = true;
-        }
-      }
     }
- */
+}

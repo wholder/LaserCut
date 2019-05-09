@@ -56,18 +56,24 @@ public class DXFReader {
   private Entity                cEntity = null;
   private Rectangle2D           bounds;
   private double                uScale = 0.039370078740157; // default to millimeters as units
-  private String                units = "unknown";
-  private boolean               scaled, useMillimeters;
+  private String                units = "millimeters";
+  private boolean               scaled;
 
   interface AutoPop {}
 
 
-  public DXFReader() {
-    this(true);
+  DXFReader() {
+    this("mm");
   }
 
-  public DXFReader (boolean useMillimeters) {
-    this.useMillimeters = useMillimeters;
+  DXFReader (String dUnits) {
+    if ("in".equals(dUnits)) {
+      uScale = 1.0;
+      units = "inches";
+    } else if ("cm".equals(dUnits)) {
+      uScale = 0.39370078740157;
+      units = "centimeters";
+    }
   }
 
   class Entity {
@@ -121,9 +127,9 @@ public class DXFReader {
   private void setUnits (String val) {
     if (val != null) {
       switch (Integer.parseInt(val)) {
-      case 0:             // unitless (millimeters, or inches)
-        uScale = useMillimeters ? 0.039370078740157 : 1.0;
-        units = "unitless";
+      case 0:             // unitless (assume millimeters)
+        uScale = 0.039370078740157;
+        units = "millimeters";
         break;
       case 1:             // inches
         uScale = 1.0;
@@ -284,7 +290,7 @@ public class DXFReader {
                 ii++;
               }
               // todo: how to convert value of "code" into special character
-              buf.append("\uFFFD");                 // Insert Unicode unknown character symbol
+              buf.append("\uFFFD");                 // Insert Unicode "unknown character" symbol
               ii--;
             } else {
             switch (cc) {
@@ -431,7 +437,7 @@ public class DXFReader {
    */
   class MText extends DrawItem implements AutoPop {
     private Canvas    canvas = new Canvas();
-    private String    text, textStyle;
+    private String    text;
     private double    ix, iy, textHeight, refWidth, xRot, yRot;
     private int       attachPoint;
 
@@ -507,7 +513,6 @@ public class DXFReader {
         }
         break;
       case 7:                                       // Text style name (STANDARD if not provided) (optional)
-        textStyle = value;
         break;
       case 10:                                      // Insertion X
         ix = Double.parseDouble(value) * uScale;
@@ -606,7 +611,6 @@ public class DXFReader {
   }
 
   class Block extends Entity {
-    private String          name, handle;
     private List<DrawItem>  entities = new ArrayList<>();
     private double          baseX, baseY;
     private int             flags;
@@ -619,11 +623,9 @@ public class DXFReader {
     void addParm (int gCode, String value) {
       switch (gCode) {
       case 2:                                       // Block name
-        name  = value;
-        blockDict.put(name, this);
+        blockDict.put(value, this);
         break;
       case 5:                                       // Block handle
-        handle = value;
         break;
       case 10:                                      // Base Point X
         baseX = Double.parseDouble(value) * uScale;
@@ -788,7 +790,7 @@ public class DXFReader {
 
   class Circle extends DrawItem implements AutoPop {
     Ellipse2D.Double  circle = new Ellipse2D.Double();
-    private double    cx, cy, mx, my, radius;
+    private double    cx, cy, radius;
 
     Circle (String type) {
       super(type);
@@ -822,10 +824,9 @@ public class DXFReader {
 
   /**
    * Crude implementation of ELLIPSE
-   * Note: does not currently handle Start and End Parameters
    */
   class Ellipse extends DrawItem implements AutoPop {
-    Ellipse2D.Double  ellipse = new Ellipse2D.Double();
+    RectangularShape  ellipse;
     private Shape     shape;
     private double    cx, cy, mx, my, ratio, start, end;
 
@@ -879,6 +880,17 @@ public class DXFReader {
 
     @Override
     void close () {
+      if (start != 0 || end != 0) {
+        ellipse = new Arc2D.Double();
+        double startAngle = Math.toDegrees(start);
+        double endAngle = Math.toDegrees(end);
+        // Make angle negative so it runs clockwise when using Arc2D.Double
+        ((Arc2D.Double) ellipse).setAngleStart(-startAngle);
+        double extent = startAngle - (endAngle < startAngle ? endAngle + 360 : endAngle);
+        ((Arc2D.Double) ellipse).setAngleExtent(extent);
+      } else {
+        ellipse = new Ellipse2D.Double();
+      }
       double hoff = Math.abs(Math.sqrt(mx * mx + my * my));
       double voff = Math.abs(hoff * ratio);
       ellipse.setFrame(-hoff, -voff, hoff * 2, voff * 2);
@@ -1061,7 +1073,6 @@ public class DXFReader {
     Path2D.Double         path;
     List<LSegment>        segments = new ArrayList<>();
     LSegment              cSeg;
-    private int           vertices;
     private double        xCp, yCp;
     private boolean       hasXcp, hasYcp;
     private boolean       close;
@@ -1096,12 +1107,9 @@ public class DXFReader {
         break;
       case 42:                                      // Bulge factor  (positive = right, negative = left)
         cSeg.bulge = Double.parseDouble(value);
-        if ((1 - Math.abs(cSeg.bulge)) < .001) {
-          int dum = 0;
-        }
         break;
       case 90:                                      // Number of Vertices
-        vertices = Integer.parseInt(value);
+        int vertices = Integer.parseInt(value);
         break;
       }
       if (hasXcp && hasYcp) {
@@ -1150,8 +1158,8 @@ public class DXFReader {
     private double        xCp, yCp;
     private boolean       hasXcp, hasYcp;
     private boolean       closed;
-    private int           numCPs, flags;
-    private boolean       hasMoveTo;
+    private int           numCPs;
+    private int           degree;
 
     Spline (String type) {
       super(type);
@@ -1168,57 +1176,37 @@ public class DXFReader {
         yCp = Double.parseDouble(value) * uScale;
         hasYcp = true;
         break;
-      case 70:                                    // Flags
-        flags = Integer.parseInt(value);
+      case 70:                                    // Flags (bitfield)
+        // bit 0: Closed spline, bit 1:  Periodic spline, bit 2: Rational spline, bit 3: Planar, bit 4: Linear (planar bit is also set)
+        // Examples:
+        //    10 = Closed, Periodic, Planar Spline
+        //
+        int flags = Integer.parseInt(value);
         closed = (flags & 0x01) != 0;
+        break;
+      case 71:                                    // Degree of the spline curve
+        degree = Integer.parseInt(value);
         break;
       case 73:                                    // Number of Control Points
         numCPs = Integer.parseInt(value);
-        break;
-      default:
-        //System.out.println("Spline.addParm() unimplemented gCode: " + gCode + ", val: " + value);
         break;
       }
       if (hasXcp && hasYcp) {
         cPoints.add(new Point2D.Double(xCp, yCp));
         hasXcp = hasYcp = false;
         if (cPoints.size() == numCPs) {
-          // Convert Catmull-Rom Spline into Cubic Bezier Curve in a Path2D object
-          Point2D.Double[] points = cPoints.toArray(new Point2D.Double[0]);
-          if (!hasMoveTo) {
+          if (degree == 3) {
+            Point2D.Double[] points = cPoints.toArray(new Point2D.Double[0]);
             path.moveTo(points[0].x, points[0].y);
-            hasMoveTo = true;
-          }
-          int end = closed ? points.length + 1 : points.length;
-          for (int ii = 0;  ii < end - 1; ii++) {
-            Point2D.Double p0, p1, p2, p3;
-            if (closed) {
-              int idx0 = Math.floorMod(ii - 1, points.length);
-              int idx1 = Math.floorMod(idx0 + 1, points.length);
-              int idx2 = Math.floorMod(idx1 + 1, points.length);
-              int idx3 = Math.floorMod(idx2 + 1, points.length);
-              p0 = new Point2D.Double(points[idx0].x, points[idx0].y);
-              p1 = new Point2D.Double(points[idx1].x, points[idx1].y);
-              p2 = new Point2D.Double(points[idx2].x, points[idx2].y);
-              p3 = new Point2D.Double(points[idx3].x, points[idx3].y);
-            } else {
-              p0 = new Point2D.Double(points[Math.max(ii - 1, 0)].x, points[Math.max(ii - 1, 0)].y);
-              p1 = new Point2D.Double(points[ii].x, points[ii].y);
-              p2 = new Point2D.Double(points[ii + 1].x, points[ii + 1].y);
-              p3 = new Point2D.Double(points[Math.min(ii + 2, points.length - 1)].x, points[Math.min(ii + 2, points.length - 1)].y);
+            for (int ii = 1; ii < points.length; ii += 3) {
+              path.curveTo(points[ii].x, points[ii].y, points[ii + 1].x, points[ii + 1].y, points[ii + 2].x, points[ii + 2].y);
             }
-            // Catmull-Rom to Cubic Bezier conversion matrix
-            //    0       1       0       0
-            //  -1/6      1      1/6      0
-            //    0      1/6      1     -1/6
-            //    0       0       1       0
-            double x1 = (-p0.x + 6 * p1.x + p2.x) / 6;  // First control point
-            double y1 = (-p0.y + 6 * p1.y + p2.y) / 6;
-            double x2 = ( p1.x + 6 * p2.x - p3.x) / 6;  // Second control point
-            double y2 = ( p1.y + 6 * p2.y - p3.y) / 6;
-            double x3 = p2.x;                           // End point
-            double y3 = p2.y;
-            path.curveTo(x1, y1, x2, y2, x3, y3);
+          }
+        } else if (degree == 2) {
+          Point2D.Double[] points = cPoints.toArray(new Point2D.Double[0]);
+          path.moveTo(points[0].x, points[0].y);
+          for (int ii = 1; ii < points.length; ii += 2) {
+            path.quadTo(points[ii].x, points[ii].y, points[ii + 1].x, points[ii + 1].y);
           }
         }
       }
@@ -1318,8 +1306,7 @@ public class DXFReader {
       String line = lines.nextLine().trim();
       String value = lines.nextLine().trim();
       int gCode = Integer.parseInt(line);
-      switch (gCode) {
-      case 0:                             // Entity type
+      if (gCode == 0) {                             // Entity type
         if (cEntity instanceof AutoPop) {
           pop();
         }
@@ -1327,102 +1314,100 @@ public class DXFReader {
           debugPrint(value);
         }
         switch (value) {
-        case "SECTION":
-          cEntity = new Section(value);
-          break;
-        case "ENDSEC":
-          if (cEntity instanceof Section) {
-            Section section = (Section) cEntity;
-            if ("HEADER".equals(section.sType)) {
-              Map<Integer,String> attrs = section.attributes.get("$INSUNITS");
-              if (attrs != null) {
-                String units = attrs.get(70);
-                setUnits(units);
-              }
-              attrs = section.attributes.get("$LUNITS");
-              if (attrs != null) {
-                String units = attrs.get(70);
-                setUnits(units);
+          case "SECTION":
+            cEntity = new Section(value);
+            break;
+          case "ENDSEC":
+            if (cEntity instanceof Section) {
+              Section section = (Section) cEntity;
+              if ("HEADER".equals(section.sType)) {
+                Map<Integer, String> attrs = section.attributes.get("$INSUNITS");
+                if (attrs != null) {
+                  String units = attrs.get(70);
+                  setUnits(units);
+                }
+                attrs = section.attributes.get("$LUNITS");
+                if (attrs != null) {
+                  String units = attrs.get(70);
+                  setUnits(units);
+                }
               }
             }
-          }
-          cEntity = null;
-          stack.clear();
-          break;
-        case "TABLE":
-          push();
-          cEntity = new Entity(value);
-          break;
-        case "ENDTAB":
-          pop();
-          break;
-        case "BLOCK":
-          push();
-          cEntity = new Block(value);
-          break;
-        case "ENDBLK":
-          pop();
-          while ("BLOCK".equals(cEntity.type)) {
-            pop();
-          }
-          break;
-        case "SPLINE":
-          addEntity(new Spline(value));
-          break;
-        case "INSERT":
-          addEntity(new Insert(value));
-          break;
-        case "TEXT":
-          addEntity(new Text(value));
-          break;
-        case "MTEXT":
-          addEntity(new MText(value));
-          break;
-        case "HATCH":
-          addEntity(new Hatch(value));
-          break;
-        case "CIRCLE":
-          addEntity(new Circle(value));
-          break;
-        case "ELLIPSE":
-          addEntity(new Ellipse(value));
-          break;
-        case "ARC":
-          addEntity(new Arc(value));
-          break;
-        case "LINE":
-          addEntity(new Line(value));
-          break;
-        case "DIMENSION":
-          addEntity(new Dimen(value));
-          break;
-        case "POLYLINE":
-          addEntity(new Polyline(value));
-          break;
-        case "LWPOLYLINE":
-          addEntity( new LwPolyline(value));
-          break;
-        case "VERTEX":
-          if (cEntity != null && !"VERTEX".equals(cEntity.type)) {
+            cEntity = null;
+            stack.clear();
+            break;
+          case "TABLE":
             push();
-          }
-          addChildToTop(cEntity = new Vertex(value));
-          break;
-        case "SEQEND":
-          while (stack.size() > 0 && !"BLOCK".equals(cEntity.type)) {
+            cEntity = new Entity(value);
+            break;
+          case "ENDTAB":
             pop();
-          }
-          break;
+            break;
+          case "BLOCK":
+            push();
+            cEntity = new Block(value);
+            break;
+          case "ENDBLK":
+            pop();
+            while ("BLOCK".equals(cEntity.type)) {
+              pop();
+            }
+            break;
+          case "SPLINE":
+            addEntity(new Spline(value));
+            break;
+          case "INSERT":
+            addEntity(new Insert(value));
+            break;
+          case "TEXT":
+            addEntity(new Text(value));
+            break;
+          case "MTEXT":
+            addEntity(new MText(value));
+            break;
+          case "HATCH":
+            addEntity(new Hatch(value));
+            break;
+          case "CIRCLE":
+            addEntity(new Circle(value));
+            break;
+          case "ELLIPSE":
+            addEntity(new Ellipse(value));
+            break;
+          case "ARC":
+            addEntity(new Arc(value));
+            break;
+          case "LINE":
+            addEntity(new Line(value));
+            break;
+          case "DIMENSION":
+            addEntity(new Dimen(value));
+            break;
+          case "POLYLINE":
+            addEntity(new Polyline(value));
+            break;
+          case "LWPOLYLINE":
+            addEntity(new LwPolyline(value));
+            break;
+          case "VERTEX":
+            if (cEntity != null && !"VERTEX".equals(cEntity.type)) {
+              push();
+            }
+            addChildToTop(cEntity = new Vertex(value));
+            break;
+          case "SEQEND":
+            while (stack.size() > 0 && !"BLOCK".equals(cEntity.type)) {
+              pop();
+            }
+            break;
         }
-        break;
-      default:
+      } else {
         if (cEntity != null) {
           if (DEBUG) {
             debugPrint(gCode + ": " + value);
           }
           cEntity.addParm(gCode, value);
         }
-        break;
       }
     }
     ArrayList<Shape> shapes = new ArrayList<>();
@@ -1546,6 +1531,8 @@ public class DXFReader {
         int yOff = 30;
         g2.setFont(new Font("Monaco", Font.PLAIN, 12));
         g2.drawString("Paths:      " + shapes.length, 20, yOff);
+        yOff += 15;
+        g2.drawString("Location:   " + df.format(dxf.bounds.getX()) + " x " + df.format(dxf.bounds.getY()), 20, yOff);
         yOff += 15;
         g2.drawString("Original:   " + df.format(dxf.bounds.getWidth()) + " x " + df.format(dxf.bounds.getHeight()) + " inches", 20, yOff);
         yOff += 15;

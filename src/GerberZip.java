@@ -86,55 +86,80 @@ public class GerberZip {
   }
 
   public List<List<Point2D.Double>> parseOutlines () {
+    double lineWid = 0;
+    Map<Integer,Double> apertures = new HashMap<>();
+    StringTokenizer tok = new StringTokenizer(outline, "\n\r");
     List<List<Point2D.Double>> outlines = new ArrayList<>();
     List<Point2D.Double> points = new ArrayList<>();
-    outline = outline.replaceAll("[\\n\\r]", "");
-    String[] items = outline.split("\\*");
-    double lastX = 0, lastY = 0;
-    for (String item : items) {
-      if (item.startsWith("G01")) {
-        item = item.substring(3);
-      }
-      if (item.startsWith("X")  &&  item.contains("Y")  &&  item.contains("D")) {
-        int yIdx = item.indexOf("Y");
-        int dIdx = item.indexOf("D");
-        double xVal = parseExcellonValue(item.substring(1, yIdx));
-        double yVal = parseExcellonValue(item.substring(yIdx + 1, dIdx));
-        int dNum = Integer.parseInt(item.substring(dIdx + 1));
-        if (dNum == 2) {
-          points = new ArrayList<>();
-          outlines.add(points);
+    while (tok.hasMoreElements()) {
+      String line = tok.nextToken();
+      if (line.startsWith("%")) {
+        line = line.substring(1);
+        if (line.startsWith("ADD")) {
+          line = line.substring(3);
+          int idx = line.indexOf("C");
+          int aNum = Integer.parseInt(line.substring(0, idx));
+          int idx2 = line.indexOf(",");
+          int idx3 = line.indexOf("*");
+          if (idx2 > 0 && idx3 > idx2) {
+            double aSize = Double.parseDouble(line.substring(idx2 + 1, idx3));
+            apertures.put(aNum, aSize);
+          }
         }
-        points.add(new Point2D.Double(lastX = xVal, lastY = yVal));
-      } else if (item.startsWith("X")  &&  item.contains("Y")) {
-          int yIdx = item.indexOf("Y");
-          double xVal = parseExcellonValue(item.substring(1, yIdx));
-          double yVal = parseExcellonValue(item.substring(yIdx + 1));
-          points.add(new Point2D.Double(lastX = xVal, lastY = yVal));
-      } else if (item.startsWith("X")  &&  item.contains("D")) {
-        int dIdx = item.indexOf("D");
-        double xVal = parseExcellonValue(item.substring(1, dIdx));
-        int dNum = Integer.parseInt(item.substring(dIdx + 1));
-        if (dNum == 2) {
-          points = new ArrayList<>();
-          outlines.add(points);
+      } else {
+        String[] items = line.split("\\*");
+        double lastX = 0, lastY = 0;
+        for (String item : items) {
+          if (item.startsWith("G01")) {
+            item = item.substring(3);
+          }
+          if (item.startsWith("D")) {
+            int aNum = Integer.parseInt(item.substring(1));
+            lineWid = apertures.get(aNum);
+            // Hmmm... Omsond has a fixed x/y offset of 1 mil and lineWid has no effect on the outline
+          }
+          if (item.startsWith("X")  &&  item.contains("Y")  &&  item.contains("D")) {
+            int yIdx = item.indexOf("Y");
+            int dIdx = item.indexOf("D");
+            double xVal = parseExcellonValue(item.substring(1, yIdx)) - lineWid;
+            double yVal = parseExcellonValue(item.substring(yIdx + 1, dIdx));
+            int dNum = Integer.parseInt(item.substring(dIdx + 1));
+            if (dNum == 2) {
+              points = new ArrayList<>();
+              outlines.add(points);
+            }
+            points.add(new Point2D.Double(lastX = xVal, lastY = yVal));
+          } else if (item.startsWith("X")  &&  item.contains("Y")) {
+            int yIdx = item.indexOf("Y");
+            double xVal = parseExcellonValue(item.substring(1, yIdx));
+            double yVal = parseExcellonValue(item.substring(yIdx + 1));
+            points.add(new Point2D.Double(lastX = xVal, lastY = yVal));
+          } else if (item.startsWith("X")  &&  item.contains("D")) {
+            int dIdx = item.indexOf("D");
+            double xVal = parseExcellonValue(item.substring(1, dIdx));
+            int dNum = Integer.parseInt(item.substring(dIdx + 1));
+            if (dNum == 2) {
+              points = new ArrayList<>();
+              outlines.add(points);
+            }
+            points.add(new Point2D.Double(lastX = xVal, lastY));
+          } else if (item.startsWith("X")) {
+            double xVal = parseExcellonValue(item.substring(1));
+            points.add(new Point2D.Double(lastX = xVal, lastY));
+          } else if (item.startsWith("Y")  &&  item.contains("D")) {
+            int dIdx = item.indexOf("D");
+            double yVal = parseExcellonValue(item.substring(1, dIdx));
+            int dNum = Integer.parseInt(item.substring(dIdx + 1));
+            if (dNum == 2) {
+              points = new ArrayList<>();
+              outlines.add(points);
+            }
+            points.add(new Point2D.Double(lastX, lastY = yVal));
+          } else if (item.startsWith("Y")) {
+            double yVal = parseExcellonValue(item.substring(1));
+            points.add(new Point2D.Double(lastX, lastY = yVal));
+          }
         }
-        points.add(new Point2D.Double(lastX = xVal, lastY));
-      } else if (item.startsWith("X")) {
-        double xVal = parseExcellonValue(item.substring(1));
-        points.add(new Point2D.Double(lastX = xVal, lastY));
-      } else if (item.startsWith("Y")  &&  item.contains("D")) {
-        int dIdx = item.indexOf("D");
-        double yVal = parseExcellonValue(item.substring(1, dIdx));
-        int dNum = Integer.parseInt(item.substring(dIdx + 1));
-        if (dNum == 2) {
-          points = new ArrayList<>();
-          outlines.add(points);
-        }
-        points.add(new Point2D.Double(lastX, lastY = yVal));
-      } else if (item.startsWith("Y")) {
-        double yVal = parseExcellonValue(item.substring(1));
-        points.add(new Point2D.Double(lastX, lastY = yVal));
       }
     }
     return outlines;

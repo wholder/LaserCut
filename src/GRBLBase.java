@@ -183,7 +183,7 @@ class GRBLBase {
           new ParameterDialog.ParmItem("Z Max travel|mm",               sVals, "$132"),
         };
         Properties info = parent.getProperties(LaserCut.getResourceFile("grbl/grblparms.props"));
-        ParameterDialog dialog = (new ParameterDialog(parmSet, new String[] {"Save", "Cancel"}, false, info));
+        ParameterDialog dialog = (new ParameterDialog(parmSet, new String[] {"Save", "Cancel"}, null, info));
         dialog.setLocationRelativeTo(parent);
         dialog.setVisible(true);              // Note: this call invokes dialog
         if (dialog.wasPressed()) {
@@ -324,7 +324,7 @@ class GRBLBase {
           }
         }
         ParameterDialog.ParmItem[] parmSet = list.toArray(new ParameterDialog.ParmItem[0]);
-        ParameterDialog dialog = (new ParameterDialog(parmSet, new String[] {"Save", "Cancel"}, false));
+        ParameterDialog dialog = (new ParameterDialog(parmSet, new String[] {"Save", "Cancel"}, null));
         dialog.setLocationRelativeTo(parent);
         dialog.setTitle("Workspace Coordinates");
         dialog.setVisible(true);                                                    // Note: this call invokes dialog

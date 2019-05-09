@@ -1,3 +1,5 @@
+import com.jsevy.jdxf.DXFDocument;
+import com.jsevy.jdxf.DXFGraphics;
 import jssc.SerialNativeInterface;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -42,6 +44,10 @@ import static javax.swing.JOptionPane.*;
     https://github.com/Uthayne/3dpBurner-Image2Gcode
     https://www.picengrave.com/Pic%20Programs%20Page/PDF%20Files/misc/Understanding%20Gcode.pdf
 
+  Import/Export to/from DXF
+    https://jsevy.com/wordpress/index.php/java-and-android/jdxf-java-dxf-library/
+    https://www.codeproject.com/Articles/3398/CadLib-for-creating-DXF-Drawing-Interchange-Format
+
   Mini Laser Engravers:
     https://github.com/RBEGamer/K3_LASER_ENGRAVER_PROTOCOL
     https://github.com/camrein/EzGraver
@@ -63,7 +69,7 @@ public class LaserCut extends JFrame {
   private ButtonModel           noZoom;
   private int                   pxDpi = prefs.getInt("svg.pxDpi", 96);
   private long                  savedCrc;
-  private boolean               useMillimeters = prefs.getBoolean("useMillimeters", false);
+  private String                displayUnits = prefs.get("displayUnits", "in");
   private boolean               useMouseWheel = prefs.getBoolean("useMouseWheel", false);
   private boolean               miniDynamicLaser = prefs.getBoolean("mini.dynamicLaser", true);
   private boolean               snapToGrid = prefs.getBoolean("snapToGrid", true);
@@ -133,7 +139,7 @@ public class LaserCut extends JFrame {
     items.put("enableGerber", new ParameterDialog.ParmItem("Enable Gerber ZIP Import", prefs.getBoolean("gerber.import", false)));
     items.put("pxDpi", new ParameterDialog.ParmItem("px per Inch (SVG Import/Export)", prefs.getInt("svg.pxDpi", 96)));
     ParameterDialog.ParmItem[] parmSet = items.values().toArray(new ParameterDialog.ParmItem[items.size()]);
-    ParameterDialog dialog = (new ParameterDialog(parmSet, new String[] {"Save", "Cancel"}, useMillimeters));
+    ParameterDialog dialog = (new ParameterDialog(parmSet, new String[] {"Save", "Cancel"}, displayUnits));
     dialog.setLocationRelativeTo(this);
     dialog.setVisible(true);              // Note: this call invokes dialog
     if (dialog.wasPressed() ) {
@@ -173,60 +179,74 @@ public class LaserCut extends JFrame {
   }
 
   /**
-   * Custom file choose for DXF files that allows selective importf of TEXT, MTEXT and DIMENSION elements
+   * Custom file choose for DXF files that allows selective import of TEXT, MTEXT and DIMENSION elements
    */
-  public class DxfFileChooser extends JFileChooser {
-    private DefaultListModel<JCheckBox> model = new DefaultListModel<>();
 
-    public DxfFileChooser () {
-      setDialogTitle("Import DXF File");
-      setDialogType(JFileChooser.OPEN_DIALOG);
+  public class DxfFileChooser extends JFileChooser {
+    private List<JCheckBox> checkboxes = new ArrayList<>();
+    private String          selected;
+
+    public DxfFileChooser (String dUnits, boolean export) {
+      setDialogTitle(export ? "Export DXF File" : "Import DXF File");
+      setDialogType(export ? JFileChooser.SAVE_DIALOG : JFileChooser.OPEN_DIALOG);
       FileNameExtensionFilter nameFilter = new FileNameExtensionFilter("AutoCad DXF files (*.dxf)", "dxf");
       addChoosableFileFilter(nameFilter);
+      Dimension dim = getPreferredSize();
+      // Widen JChooser by 25%
+      setPreferredSize(new Dimension((int) (dim.width * 1.25), dim.height));
       setFileFilter(nameFilter);
-      String[] elements = {"TEXT", "MTEXT", "DIMENSION"};
-      for (String element : elements) {
-        model.addElement(new JCheckBox(element));
+      setAcceptAllFileFilterUsed(true);
+      String[] units = {"Inches:in", "Centimeters:cm", "Millimeters:mm"};
+      JPanel unitsPanel = new JPanel(new GridLayout(0, 1));
+      ButtonGroup group = new ButtonGroup();
+      for (String unit : units) {
+        String[] parts = unit.split(":");
+        JRadioButton button = new JRadioButton(parts[0]);
+        if (parts[1].equals(dUnits)){
+          button.setSelected(true);
+          selected = parts[1];
+        }
+        group.add(button);
+        unitsPanel.add(button);
+        button.addActionListener(ev -> {
+          selected = parts[1];
+        });
       }
-      JPanel panel = new JPanel(new BorderLayout());
-      panel.setBackground(Color.WHITE);
-      panel.setBorder(BorderFactory.createLineBorder(Color.BLACK));
-      panel.add(new JLabel("Include:", JLabel.CENTER), BorderLayout.NORTH);
-      JScrollPane scroll = new JScrollPane(new CheckBoxList(model));
-      panel.add(scroll, BorderLayout.CENTER);
+      JPanel panel = new JPanel(new GridLayout(0, 1));
+      panel.add(getPanel(export ? "File Units:" : "Default Units:", unitsPanel));
+      if (export) {
+        panel.add(new JPanel());
+      } else {
+        String[] options = {"TEXT", "MTEXT", "DIMENSION"};
+        JPanel importPanel = new JPanel(new GridLayout(0, 1));
+        for (String option : options) {
+          JCheckBox checkbox = new JCheckBox(option);
+          importPanel.add(checkbox);
+          checkboxes.add(checkbox);
+        }
+        panel.add(getPanel("Include:", importPanel));
+      }
       setAccessory(panel);
     }
 
-    class CheckBoxList extends JList<JCheckBox> {
-      CheckBoxList (ListModel<JCheckBox> model) {
-        setModel(model);
-        setCellRenderer((list, value, index, isSelected, cellHasFocus) -> {
-          value.setBackground(getBackground());
-          value.setForeground(getForeground());
-          value.setEnabled(isEnabled());
-          value.setFont(getFont());
-          value.setFocusPainted(false);
-          value.setBorderPainted(true);
-          return value;
-        });
-        addMouseListener(new MouseAdapter() {
-          public void mousePressed (MouseEvent e) {
-            int index = locationToIndex(e.getPoint());
-            if (index != -1) {
-              JCheckBox checkbox = getModel().getElementAt(index);
-              checkbox.setSelected(!checkbox.isSelected());
-              repaint();
-            }
-          }
-        });
-      }
+    private JPanel getPanel (String heading, JComponent guts) {
+      JPanel panel = new JPanel(new BorderLayout());
+      panel.setBackground(Color.WHITE);
+      JLabel label = new JLabel(heading, JLabel.CENTER);
+      label.setBorder(BorderFactory.createLineBorder(Color.BLACK));
+      panel.add(label, BorderLayout.NORTH);
+      panel.add(guts, BorderLayout.CENTER);
+      return panel;
     }
 
-    public boolean isSelected (String name) {
-      for (int ii = 0; ii < model.getSize(); ii++) {
-        JCheckBox cBox = model.get(ii);
-        if (model.get(ii).getText().equals(name)) {
-          return cBox.isSelected();
+    String getSelectedUnits () {
+      return selected;
+    }
+
+    boolean isOptionSelected (String name) {
+      for (JCheckBox checkbox : checkboxes) {
+        if (checkbox.getText().equals(name)) {
+          return checkbox.isSelected();
         }
       }
       return false;
@@ -525,7 +545,7 @@ public class LaserCut extends JFrame {
                 File iFile = fileChooser.getSelectedFile();
                 prefs.put("image.dir", iFile.getAbsolutePath());
                 ((CADRasterImage) shp).loadImage(iFile);
-                if (shp.placeParameterDialog(surface, useMillimeters)) {
+                if (shp.placeParameterDialog(surface, displayUnits)) {
                   surface.placeShape(shp);
                 }
               } catch (Exception ex) {
@@ -533,7 +553,7 @@ public class LaserCut extends JFrame {
                 ex.printStackTrace(System.out);
               }
             }
-          } else if (shp.placeParameterDialog(surface, useMillimeters)) {
+          } else if (shp.placeParameterDialog(surface, displayUnits)) {
             surface.placeShape(shp);
           }
         } catch (Exception ex) {
@@ -662,7 +682,7 @@ public class LaserCut extends JFrame {
     editSelected.addActionListener((ev) -> {
       CADShape sel = surface.getSelected();
       boolean centered = sel.centered;
-      if (sel != null && sel.editParameterDialog(surface, useMillimeters)) {
+      if (sel != null && sel.editParameterDialog(surface, displayUnits)) {
         // User clicked dialog's OK button
         if (centered != sel.centered) {
           Rectangle2D bounds = sel.getShape().getBounds2D();
@@ -750,7 +770,7 @@ public class LaserCut extends JFrame {
     JMenuItem roundCorners = new MyMenuItem("Round Corners of Selected Shape", KeyEvent.VK_B, cmdMask, false);
     roundCorners.addActionListener((ev) -> {
       ParameterDialog.ParmItem[] rParms = {new ParameterDialog.ParmItem("radius|in", 0d)};
-      ParameterDialog rDialog = (new ParameterDialog(rParms, new String[] {"Round", "Cancel"}, useMillimeters));
+      ParameterDialog rDialog = (new ParameterDialog(rParms, new String[] {"Round", "Cancel"}, displayUnits));
       rDialog.setLocationRelativeTo(surface.getParent());
       rDialog.setVisible(true);              // Note: this call invokes dialog
       if (rDialog.wasPressed()) {
@@ -770,7 +790,7 @@ public class LaserCut extends JFrame {
       ParameterDialog.ParmItem[] rParms = {new ParameterDialog.ParmItem("radius|in{radius of tool}", 0d),
           new ParameterDialog.ParmItem("inset{If checked, toolpath routes interior" +
               " of shape, else outside}", true)};
-      ParameterDialog rDialog = (new ParameterDialog(rParms, new String[] {"OK", "Cancel"}, useMillimeters));
+      ParameterDialog rDialog = (new ParameterDialog(rParms, new String[] {"OK", "Cancel"}, displayUnits));
       rDialog.setLocationRelativeTo(surface.getParent());
       rDialog.setVisible(true);              // Note: this call invokes dialog
       if (rDialog.wasPressed()) {
@@ -868,7 +888,7 @@ public class LaserCut extends JFrame {
           AffineTransform at = AffineTransform.getTranslateInstance(-offX, -offY);
           shape = at.createTransformedShape(shape);
           CADShape shp = new CADScaledShape(shape, offX, offY, 0, false, 100.0);
-          if (shp.placeParameterDialog(surface, useMillimeters)) {
+          if (shp.placeParameterDialog(surface, displayUnits)) {
             surface.placeShape(shp);
           }
         } catch (Exception ex) {
@@ -883,23 +903,24 @@ public class LaserCut extends JFrame {
     //
     JMenuItem dxfRead = new JMenuItem("Import DXF File");
     dxfRead.addActionListener(ev -> {
-      DxfFileChooser fileChooser = new DxfFileChooser();
+      DxfFileChooser fileChooser = new DxfFileChooser(displayUnits, false);
       fileChooser.setSelectedFile(new File(prefs.get("default.dxf.dir", "/")));
       if (fileChooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
         try {
           File tFile = fileChooser.getSelectedFile();
           prefs.put("default.dxf.dir", tFile.getAbsolutePath());
-          DXFReader dxf = new DXFReader(useMillimeters);
-          if (fileChooser.isSelected("TEXT")) {
+          String importUnits = fileChooser.getSelectedUnits();
+          DXFReader dxf = new DXFReader(importUnits);
+          if (fileChooser.isOptionSelected("TEXT")) {
             dxf.enableText(true);
           }
-          if (fileChooser.isSelected("MTEXT")) {
+          if (fileChooser.isOptionSelected("MTEXT")) {
             dxf.enableMText(true);
           }
-          if (fileChooser.isSelected("DIMENSION")) {
+          if (fileChooser.isOptionSelected("DIMENSION")) {
             dxf.enableDimen(true);
           }
-          Shape[] shapes = dxf.parseFile(tFile, 12, 2);
+          Shape[] shapes = dxf.parseFile(tFile, 12, 0);
           shapes = SVGParser.removeOffset(shapes);
           CADShapeGroup group = new CADShapeGroup();
           List<CADShape> gShapes = new ArrayList<>();
@@ -946,38 +967,30 @@ public class LaserCut extends JFrame {
           Rectangle2D.Double bounds = GerberZip.getBounds(outlines);
           // System.out.println("PCB Size: " + bounds.getWidth() + " inches, " + bounds.getHeight() + " inches");
           double yBase = bounds.getHeight();
-          double xOff = .125, yOff = .125;
-          CADShapeGroup group = new CADShapeGroup();
           List<CADShape> gShapes = new ArrayList<>();
           for (GerberZip.ExcellonHole hole : holes) {
-            CADShape circle = new CADOval(hole.xLoc + xOff, yBase - hole.yLoc + yOff, hole.diameter, hole.diameter, 0, true);
-            group.addToGroup(circle);
-            gShapes.add(circle);
+            gShapes.add(new CADOval(hole.xLoc, yBase - hole.yLoc, hole.diameter, hole.diameter, 0, true));
           }
-          if (false) {
-            CADRectangle rect = new CADRectangle(xOff, yOff, bounds.getWidth(), bounds.getHeight(), .050, 0, false);
-            group.addToGroup(rect);
-            gShapes.add(rect);
-          } else {
-            // Build shapes for all outlines
-            for (List<Point2D.Double> points : outlines) {
-              Path2D.Double path = new Path2D.Double();
-              boolean first = true;
-              for (Point2D.Double point : points) {
-                if (first) {
-                  path.moveTo(point.getX(), yBase - point.getY());
-                  first = false;
-                } else {
-                  path.lineTo(point.getX(), yBase - point.getY());
-                }
+          // Build shapes for all outlines
+          for (List<Point2D.Double> points : outlines) {
+            Path2D.Double path = new Path2D.Double();
+            boolean first = true;
+            for (Point2D.Double point : points) {
+              if (first) {
+                path.moveTo(point.getX() - bounds.width / 2, yBase - point.getY() - bounds.height / 2);
+                first = false;
+              } else {
+                path.lineTo(point.getX() - bounds.width / 2, yBase - point.getY() - bounds.height / 2);
               }
-              CADShape outline = new CADShape(path, xOff, yOff, 0, true);
-              group.addToGroup(outline);
-              gShapes.add(outline);
             }
+            CADShape outline = new CADShape(path, 0, 0, 0, false);
+            gShapes.add(outline);
+          }
+          CADShapeGroup group = new CADShapeGroup();
+          for (CADShape cShape : gShapes) {
+            group.addToGroup(cShape);
           }
           surface.placeShapes(gShapes);
-          repaint();
         } catch (Exception ex) {
           showErrorDialog("Unable to load Gerber file");
           ex.printStackTrace(System.out);
@@ -1023,7 +1036,7 @@ public class LaserCut extends JFrame {
           String[][] song = cols.toArray(new String[cols.size()][0]);
           CADMusicStrip mStrip = new CADMusicStrip();
           mStrip.setNotes(song);
-          if (mStrip.placeParameterDialog(surface, useMillimeters)) {
+          if (mStrip.placeParameterDialog(surface, displayUnits)) {
             surface.placeShape(mStrip);
           }
         } catch (Exception ex) {
@@ -1100,7 +1113,7 @@ public class LaserCut extends JFrame {
       JFileChooser fileChooser = new JFileChooser();
       fileChooser.setDialogTitle("Export to PDF File");
       fileChooser.setDialogType(JFileChooser.SAVE_DIALOG);
-      FileNameExtensionFilter nameFilter = new FileNameExtensionFilter("LaserCut files (*.pdf)", "pdf");
+      FileNameExtensionFilter nameFilter = new FileNameExtensionFilter("PDF files (*.pdf)", "pdf");
       fileChooser.addChoosableFileFilter(nameFilter);
       fileChooser.setFileFilter(nameFilter);
       fileChooser.setSelectedFile(new File(prefs.get("default.pdf", "/")));
@@ -1130,7 +1143,7 @@ public class LaserCut extends JFrame {
       JFileChooser fileChooser = new JFileChooser();
       fileChooser.setDialogTitle("Export to SVG File");
       fileChooser.setDialogType(JFileChooser.SAVE_DIALOG);
-      FileNameExtensionFilter nameFilter = new FileNameExtensionFilter("LaserCut files (*.svg)", "svg");
+      FileNameExtensionFilter nameFilter = new FileNameExtensionFilter("SVG files (*.svg)", "svg");
       fileChooser.addChoosableFileFilter(nameFilter);
       fileChooser.setFileFilter(nameFilter);
       fileChooser.setSelectedFile(new File(prefs.get("default.svg", "/")));
@@ -1163,20 +1176,76 @@ public class LaserCut extends JFrame {
       }
     });
     exportMenu.add(svgOutput);
+    //
+    // Add "Export to DXF File"" Menu Item
+    // Based on: https://jsevy.com/wordpress/index.php/java-and-android/jdxf-java-dxf-library/
+    //  by Jonathan Sevy (released under the MIT License; https://choosealicense.com/licenses/mit/)
+    //
+    JMenuItem dxfOutput = new JMenuItem("Export to DXF File");
+    dxfOutput.addActionListener(ev -> {
+      DxfFileChooser fileChooser = new DxfFileChooser(displayUnits, true);
+      fileChooser.setSelectedFile(new File(prefs.get("default.dxf", "/")));
+      if (fileChooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
+        File sFile = fileChooser.getSelectedFile();
+        String fPath = sFile.getPath();
+        if (!fPath.contains(".")) {
+          sFile = new File(fPath + ".dxf");
+        }
+        String units = fileChooser.getSelectedUnits();
+        AffineTransform atExport = null;
+        if ("cm".equals(units)) {
+          atExport = AffineTransform.getScaleInstance(2.54, 2.54);
+        } else if ("mm".equals(units)) {
+          atExport = AffineTransform.getScaleInstance(25.4, 25.4);
+        }
+        try {
+          if (!sFile.exists() || showWarningDialog("Overwrite Existing file?")) {
+            List<Shape> sList = new ArrayList<>();
+            for (CADShape item : surface.getDesign()) {
+              if (item instanceof CADReference)
+                continue;
+              Shape shape = item.getWorkspaceTranslatedShape();
+              if (atExport != null) {
+                shape = atExport.createTransformedShape(shape);
+              }
+              sList.add(shape);
+            }
+            DXFDocument dxfDocument = new DXFDocument("Exported from LaserCut " + VERSION);
+            DXFGraphics dxfGraphics = dxfDocument.getGraphics();
+            for (Shape shape : sList) {
+              dxfGraphics.draw(shape);
+            }
+            String dxfText = dxfDocument.toDXFString();
+            FileWriter fileWriter = new FileWriter(sFile);
+            fileWriter.write(dxfText);
+            fileWriter.flush();
+            fileWriter.close();
+          }
+        } catch (Exception ex) {
+          showErrorDialog("Unable to save file");
+          ex.printStackTrace();
+        }
+        prefs.put("default.dxf", sFile.getAbsolutePath());
+      }
+    });
+    exportMenu.add(dxfOutput);
     menuBar.add(exportMenu);
     /*
      *  Add "Units" Menu
+     *  todo: add centimeters (cm)
      */
     JMenu unitsMenu = new JMenu("Units");
     ButtonGroup unitGroup = new ButtonGroup();
-    String[] unitSet = {"Inches", "Millimeters"};
+    String[] unitSet = {"Inches:in", "Centimeters:cm", "Millimeters:mm"};
+    displayUnits = prefs.get("displayUnits", "in");
     for (String unit : unitSet) {
-      boolean select = ( useMillimeters && unit.equals("Millimeters")) | ( !useMillimeters && unit.equals("Inches"));
-      JMenuItem uItem = new JRadioButtonMenuItem(unit, select);
+      String[] parts = unit.split(":");
+      boolean select = parts[1].equals(displayUnits);
+      JMenuItem uItem = new JRadioButtonMenuItem(parts[0], select);
       unitGroup.add(uItem);
       unitsMenu.add(uItem);
       uItem.addActionListener(ev -> {
-        prefs.putBoolean("useMillimeters", useMillimeters = unit.equals("Millimeters"));
+        prefs.put("displayUnits", displayUnits = parts[1]);
       });
     }
     menuBar.add(unitsMenu);
@@ -1290,6 +1359,14 @@ public class LaserCut extends JFrame {
 
   static double inchesToMM (double inches) {
     return inches * 25.4;
+  }
+
+  static double cmToInches (double cm) {
+    return cm / 2.54;
+  }
+
+  static double inchesToCm (double inches) {
+    return inches * 2.54;
   }
 
   public static String getResourceFile (String file) {
@@ -1859,8 +1936,8 @@ public class LaserCut extends JFrame {
      * parameter values before clicking the mouse to place the shape.
      * @return true if used clicked OK to save
      */
-    boolean placeParameterDialog (DrawSurface surface, boolean mmUnits) {
-      return displayShapeParameterDialog(surface, new ArrayList<>(getPlaceFields()), "Place", mmUnits);
+    boolean placeParameterDialog (DrawSurface surface, String dUnits) {
+      return displayShapeParameterDialog(surface, new ArrayList<>(getPlaceFields()), "Place", dUnits);
     }
 
     /**
@@ -1868,8 +1945,8 @@ public class LaserCut extends JFrame {
      * parameter values.
      * @return true if used clicked OK to save
      */
-    boolean editParameterDialog (DrawSurface surface, boolean mmUnits) {
-      return displayShapeParameterDialog(surface, new ArrayList<>(getEditFields()), "Save", mmUnits);
+    boolean editParameterDialog (DrawSurface surface, String dUnits) {
+      return displayShapeParameterDialog(surface, new ArrayList<>(getEditFields()), "Save", dUnits);
     }
 
     /**
@@ -1879,7 +1956,7 @@ public class LaserCut extends JFrame {
      * @param actionButton Text for action button, such as "Save" or "Place"
      * @return true if used clicked action button, else false if they clicked cancel.
      */
-    boolean displayShapeParameterDialog (DrawSurface surface, ArrayList<String> parmNames, String actionButton, boolean mmUnits) {
+    boolean displayShapeParameterDialog (DrawSurface surface, ArrayList<String> parmNames, String actionButton, String dUnits) {
       parmNames.addAll(Arrays.asList(getParameterNames()));
       ParameterDialog.ParmItem[] parmSet = new ParameterDialog.ParmItem[parmNames.size()];
       for (int ii = 0; ii < parmSet.length; ii++) {
@@ -1891,7 +1968,7 @@ public class LaserCut extends JFrame {
           ex.printStackTrace();
         }
       }
-      ParameterDialog dialog = (new ParameterDialog(parmSet, new String[] {actionButton, "Cancel"}, mmUnits));
+      ParameterDialog dialog = (new ParameterDialog(parmSet, new String[] {actionButton, "Cancel"}, dUnits));
       dialog.setLocationRelativeTo(surface.getParent());
       dialog.setVisible(true);              // Note: this call invokes dialog
       if (dialog.wasPressed()) {

@@ -14,7 +14,7 @@ LaserCut uses the Java Language's reflection and object serialization features t
 ## Basic Features
 - Create and place simple 2D vector shapes such as rectangles, rounded rectangles, ovals, circles, n-sided polygons and text outlines
 - Create and place Reference Point objects which are display-only objects you can use as reference points or group with other shapes to provide a common origin point.
-- Specify position and dimensions in inches (default) or millimeters
+- Specify position and dimensions in inches (default), centimeters or millimeters
 - Enable a grid placement for more precise positioning
 - Create and place cutouts for various sizes of Nema Stepper Motors
 - Group and ungroup shapes
@@ -37,7 +37,8 @@ LaserCut uses the Java Language's reflection and object serialization features t
 - Import vector outlines from a DXF files (beta)
 - Import drill holes and outlines from a Gerber file (experimental)
 - Export designs to SVG vector files (beta)
-- Export vector designs to a PDF file (experimental)
+- Export vector designs to PDF files (experimental)
+- Export vector designs to DXF files
 - Freeform drawing of shapes (Beta) using [Catmull-Rom Splines](https://en.wikipedia.org/wiki/Centripetal_Catmull–Rom_spline) and then automatically convert them into [Bézier Curve](https://en.wikipedia.org/wiki/Bézier_curve)-based shapes.
 - Raster images which can be engraved on Zing or used as tracing templates for spline shapes
 ## Jog Controls
@@ -53,6 +54,7 @@ LaserCut uses the Java Language's reflection and object serialization features t
   - **7/20/2018** - Moved "Materials" Menu into "Zing Settings" Menu using enhancements to ParameterDialog class.
   - **7/22/2018** - Added "Get GRBL Coordinates" Menu to Mini CNC (used to read and set G54, etc coordinate space values)
   - **4/23/2019** - Extensive rewrite to implement new click and drag to select set feature
+  - **5/7/2019** - Added "Export to DXF" using the [JDXF](https://jsevy.com/wordpress/index.php/java-and-android/jdxf-java-dxf-library/) library by Jonathan Sevy and fixed some errors in "Import DXF" when reading files with SPLINE entities.
 ## Under Development
 - Support for a user-extendable library of specialized cutout shapes, such as for mounting RC Servos (to replace and extend the current Nema Stepper code)
 - Import vector shapes from EPS (Encapsulated PostScript®) files
@@ -84,4 +86,5 @@ LaserCut uses the following Java code to perform some of its functions:
 - [Apache PDFBox® 2.0.11](https://pdfbox.apache.org) (used by the "Export PDF" feature)
 - [Apache commons-logging 1.2](https://commons.apache.org/proper/commons-logging/) (needed by Apache PDFBox)
 - [Gear Shapes based on "Java Gear Generator: Involute and Fillet"](http://printobjects.me/catalogue/ujava-gear-generator-involute-and-fillet_520801/) by brush701
+- [JDXF](https://jsevy.com/wordpress/index.php/java-and-android/jdxf-java-dxf-library/) by Jonathan Sevy (used to implement the "Export DXF" feature)
 - [IntelliJ IDEA from JetBrains](https://www.jetbrains.com/idea/) (my favorite development environment for Java coding. Thanks JetBrains!)
