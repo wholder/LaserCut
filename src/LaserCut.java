@@ -1229,10 +1229,53 @@ public class LaserCut extends JFrame {
       }
     });
     exportMenu.add(dxfOutput);
+    //
+    // Add "Export to EPS File"" Menu Item
+    //
+    JMenuItem epsOutput = new JMenuItem("Export to EPS File");
+    epsOutput.addActionListener(ev -> {
+      JFileChooser fileChooser = new JFileChooser();
+      fileChooser.setDialogTitle("Export to EPS File");
+      fileChooser.setDialogType(JFileChooser.SAVE_DIALOG);
+      FileNameExtensionFilter nameFilter = new FileNameExtensionFilter("EPS files (*.eps)", "eps");
+      fileChooser.addChoosableFileFilter(nameFilter);
+      fileChooser.setFileFilter(nameFilter);
+      fileChooser.setSelectedFile(new File(prefs.get("default.eps", "/")));
+      if (fileChooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
+        File sFile = fileChooser.getSelectedFile();
+        String fPath = sFile.getPath();
+        if (!fPath.contains(".")) {
+          sFile = new File(fPath + ".svg");
+        }
+        try {
+          if (!sFile.exists() || showWarningDialog("Overwrite Existing file?")) {
+            List<Shape> sList = new ArrayList<>();
+            AffineTransform scale = AffineTransform.getScaleInstance(72.0, 72.0);
+            Dimension workArea = surface.getWorkSize();
+            int width = (int) (workArea.width / SCREEN_PPI * 72);
+            int height = (int) (workArea.height / SCREEN_PPI * 72);
+            EPSWriter eps = new EPSWriter("LaserCut: " + sFile.getName(), width, height);
+            for (CADShape item : surface.getDesign()) {
+              if (item instanceof CADReference)
+                continue;
+              Shape shape = item.getWorkspaceTranslatedShape();
+              shape = scale.createTransformedShape(shape);
+              eps.draw(shape);
+            }
+            eps.writeEPS(sFile);
+          }
+        } catch (Exception ex) {
+          showErrorDialog("Unable to save file");
+          ex.printStackTrace();
+        }
+        prefs.put("default.eps", sFile.getAbsolutePath());
+      }
+    });
+    exportMenu.add(epsOutput);
+
     menuBar.add(exportMenu);
     /*
      *  Add "Units" Menu
-     *  todo: add centimeters (cm)
      */
     JMenu unitsMenu = new JMenu("Units");
     ButtonGroup unitGroup = new ButtonGroup();

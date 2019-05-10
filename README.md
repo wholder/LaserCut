@@ -39,6 +39,7 @@ LaserCut uses the Java Language's reflection and object serialization features t
 - Export designs to SVG vector files (beta)
 - Export vector designs to PDF files (experimental)
 - Export vector designs to DXF files
+- Export vector designs to EPS files
 - Freeform drawing of shapes (Beta) using [Catmull-Rom Splines](https://en.wikipedia.org/wiki/Centripetal_Catmull–Rom_spline) and then automatically convert them into [Bézier Curve](https://en.wikipedia.org/wiki/Bézier_curve)-based shapes.
 - Raster images which can be engraved on Zing or used as tracing templates for spline shapes
 ## Jog Controls
@@ -55,6 +56,7 @@ LaserCut uses the Java Language's reflection and object serialization features t
   - **7/22/2018** - Added "Get GRBL Coordinates" Menu to Mini CNC (used to read and set G54, etc coordinate space values)
   - **4/23/2019** - Extensive rewrite to implement new click and drag to select set feature
   - **5/7/2019** - Added "Export to DXF" using the [JDXF](https://jsevy.com/wordpress/index.php/java-and-android/jdxf-java-dxf-library/) library by Jonathan Sevy and fixed some errors in "Import DXF" when reading files with SPLINE entities.
+  - **5/10/2019** - Added "Export to EPS" using new EPSWriter class.
 ## Under Development
 - Support for a user-extendable library of specialized cutout shapes, such as for mounting RC Servos (to replace and extend the current Nema Stepper code)
 - Import vector shapes from EPS (Encapsulated PostScript®) files
