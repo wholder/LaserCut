@@ -13,7 +13,7 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
-import java.awt.desktop.*;
+//import java.awt.desktop.*;
 import java.awt.event.*;
 import java.awt.font.GlyphVector;
 import java.awt.font.TextAttribute;
@@ -60,7 +60,7 @@ public class LaserCut extends JFrame {
   static final String           VERSION = "1.1 beta";
   static final double           SCREEN_PPI = java.awt.Toolkit.getDefaultToolkit().getScreenResolution();
   static final DecimalFormat    df = new DecimalFormat("#0.0###");
-  private static int            cmdMask = Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx();
+  private static int            cmdMask = Toolkit.getDefaultToolkit().getMenuShortcutKeyMask();
   transient Preferences         prefs = Preferences.userRoot().node(this.getClass().getName());
   DrawSurface                   surface;
   private JScrollPane           scrollPane;
@@ -119,7 +119,7 @@ public class LaserCut extends JFrame {
     }
     showMessageDialog(this,
         "By: Wayne Holder\n" +
-            "  Java Runtime  " + Runtime.version() + "\n" +
+            "Java Version: " + System.getProperty("java.version") + "\n" +
             "  LibLaserCut " + com.t_oster.liblasercut.LibInfo.getVersion() + "\n" +
             (jsscInfo != null ? jsscInfo : "") +
             "  Apache PDFBox " + org.apache.pdfbox.util.Version.getVersion() + "\n" +
@@ -292,6 +292,7 @@ public class LaserCut extends JFrame {
     boolean hasAboutHandler = false;
     boolean hasPreferencesHandler = false;
     boolean hasQuitHandler = false;
+    /*
     if (Taskbar.isTaskbarSupported()) {
       Taskbar taskbar = Taskbar.getTaskbar();
       if (taskbar.isSupported(Taskbar.Feature.ICON_IMAGE)) {
@@ -331,7 +332,7 @@ public class LaserCut extends JFrame {
           }
         });
       }
-    }
+    }*/
     addWindowListener(new WindowAdapter() {
       @Override
       public void windowClosing (WindowEvent e) {
