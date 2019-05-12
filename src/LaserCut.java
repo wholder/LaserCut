@@ -1360,9 +1360,39 @@ public class LaserCut extends JFrame {
     }
   }
 
+  /**
+   * This class attempts to fix loading of serialized CADScaledShape objects that did not have
+   * the proper serialVersionUID value assigned
+   */
+  public class FixInputStream extends ObjectInputStream {
+    public FixInputStream (InputStream in) throws IOException {
+      super(in);
+    }
+
+    protected ObjectStreamClass readClassDescriptor() throws IOException, ClassNotFoundException {
+      ObjectStreamClass resultClassDescriptor = super.readClassDescriptor(); // initially streams descriptor
+      Class localClass; // the class in the local JVM that this descriptor represents.
+      try {
+        localClass = Class.forName(resultClassDescriptor.getName());
+      } catch (ClassNotFoundException e) {
+        return resultClassDescriptor;
+      }
+      ObjectStreamClass localClassDescriptor = ObjectStreamClass.lookup(localClass);
+      if (localClassDescriptor != null) {
+        final long localSUID = localClassDescriptor.getSerialVersionUID();
+        final long streamSUID = resultClassDescriptor.getSerialVersionUID();
+        if (streamSUID != localSUID && "LaserCut$CADScaledShape".equals(resultClassDescriptor.getName())) {
+          // If mismatch, use local class descriptor for deserialization
+          resultClassDescriptor = localClassDescriptor;
+        }
+      }
+      return resultClassDescriptor;
+    }
+  }
+
   private List<CADShape> loadDesign (File fName) throws IOException, ClassNotFoundException {
     FileInputStream fileIn = new FileInputStream(fName);
-    ObjectInputStream in = new ObjectInputStream(fileIn);
+    ObjectInputStream in = new FixInputStream(fileIn);
     ArrayList<CADShape> design = (ArrayList<CADShape>) in.readObject();
     in.close();
     fileIn.close();
