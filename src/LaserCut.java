@@ -3032,6 +3032,7 @@ public class LaserCut extends JFrame {
   }
 
   static class CADScaledShape extends CADShape implements Serializable {
+    private static final long serialVersionUID = -8732521357598212914L;
     public double   scale = 100.0;
 
     CADScaledShape (Shape shape, double xLoc, double yLoc, double rotation, boolean centered, double scale) {
