@@ -1193,10 +1193,13 @@ public class LaserCut extends JFrame {
         }
         String units = fileChooser.getSelectedUnits();
         AffineTransform atExport = null;
+        int dxfUnitCode = 1;
         if ("cm".equals(units)) {
           atExport = AffineTransform.getScaleInstance(2.54, 2.54);
+          dxfUnitCode = 5;
         } else if ("mm".equals(units)) {
           atExport = AffineTransform.getScaleInstance(25.4, 25.4);
+          dxfUnitCode = 4;
         }
         try {
           if (!sFile.exists() || showWarningDialog("Overwrite Existing file?")) {
@@ -1211,6 +1214,7 @@ public class LaserCut extends JFrame {
               sList.add(shape);
             }
             DXFDocument dxfDocument = new DXFDocument("Exported from LaserCut " + VERSION);
+            dxfDocument.setUnits(dxfUnitCode);
             DXFGraphics dxfGraphics = dxfDocument.getGraphics();
             for (Shape shape : sList) {
               dxfGraphics.draw(shape);
