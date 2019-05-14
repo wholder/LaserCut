@@ -13,9 +13,11 @@ class MiniLaser extends GRBLBase {
   private static Dimension      miniSize = new Dimension((int) (7 * LaserCut.SCREEN_PPI), (int) (8 * LaserCut.SCREEN_PPI));
   private JSSCPort              jPort;
   private LaserCut              laserCut;
+  private String                dUnits;
 
   MiniLaser (LaserCut laserCut) {
     this.laserCut = laserCut;
+    this.dUnits = laserCut.displayUnits;
   }
 
   JMenu getMiniLaserMenu () throws Exception {
@@ -109,7 +111,7 @@ class MiniLaser extends GRBLBase {
           new ParameterDialog.ParmItem("Power|%", laserCut.prefs.getInt("mini.laser.power", MINI_POWER_DEFAULT)),
           new ParameterDialog.ParmItem("Speed{inches/minute}", laserCut.prefs.getInt("mini.laser.speed", MINI_SPEED_DEFAULT))
       };
-      if (ParameterDialog.showSaveCancelParameterDialog(parmSet, laserCut)) {
+      if (ParameterDialog.showSaveCancelParameterDialog(parmSet, dUnits, laserCut)) {
         int ii = 0;
         laserCut.prefs.putBoolean("mini.laser.dynamic", (Boolean) parmSet[ii++].value);
         laserCut.prefs.putInt("mini.laser.power", (Integer) parmSet[ii++].value);

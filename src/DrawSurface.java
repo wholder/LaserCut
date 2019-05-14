@@ -31,6 +31,7 @@ public class DrawSurface extends JPanel {
   private LinkedList<byte[]>                  undoStack = new LinkedList<>();
   private LinkedList<byte[]>                  redoStack = new LinkedList<>();
   private boolean                             pushedToStack, showMeasure, doSnap, showGrid;
+  private String                              dUnits;
 
   static class Placer {
     private List<LaserCut.CADShape> shapes;
@@ -420,6 +421,10 @@ public class DrawSurface extends JPanel {
     }
   }
 
+  void setUnits (String dUnits) {
+    this.dUnits = dUnits;
+  }
+
   double getZoomFactor () {
     return zoomFactor;
   }
@@ -724,7 +729,7 @@ public class DrawSurface extends JPanel {
     ParameterDialog.ParmItem[] parmSet = new ParameterDialog.ParmItem[2];
     parmSet[0] = new ParameterDialog.ParmItem("xOff|in", 0d);
     parmSet[1] = new ParameterDialog.ParmItem("yOff|in", 0d);
-    if (ParameterDialog.showSaveCancelParameterDialog(parmSet, getParent())) {
+    if (ParameterDialog.showSaveCancelParameterDialog(parmSet, dUnits, getParent())) {
       double xOff = 0;
       double yOff = 0;
       for (ParameterDialog.ParmItem parm : parmSet) {
@@ -762,7 +767,7 @@ public class DrawSurface extends JPanel {
   void rotateGroupAroundSelected () {
     ParameterDialog.ParmItem[] parmSet = {new ParameterDialog.ParmItem("angle|deg", 0d),
                                           new ParameterDialog.ParmItem("rotateSelected", true)};
-    if (ParameterDialog.showSaveCancelParameterDialog(parmSet, getParent())) {
+    if (ParameterDialog.showSaveCancelParameterDialog(parmSet, dUnits, getParent())) {
       double angle = 0;
       boolean rotateSelected = true;
       for (ParameterDialog.ParmItem parm : parmSet) {

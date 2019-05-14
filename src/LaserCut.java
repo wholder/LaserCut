@@ -38,6 +38,8 @@ import static javax.swing.JOptionPane.*;
   Zoom & Pan: https://community.oracle.com/thread/1263955
   https://developer.apple.com/library/content/documentation/Java/Conceptual/Java14Development/07-NativePlatformIntegration/NativePlatformIntegration.html
 
+  Marlin Renderer: https://github.com/bourgesl/marlin-renderer
+
   Engraving with G-Code:
     https://github.com/nebarnix/img2gco/
     https://github.com/magdesign/Raster2Gcode
@@ -69,7 +71,7 @@ public class LaserCut extends JFrame {
   private ButtonModel           noZoom;
   private int                   pxDpi = prefs.getInt("svg.pxDpi", 96);
   private long                  savedCrc;
-  private String                displayUnits = prefs.get("displayUnits", "in");
+  String                        displayUnits = prefs.get("displayUnits", "in");
   private boolean               useMouseWheel = prefs.getBoolean("useMouseWheel", false);
   private boolean               miniDynamicLaser = prefs.getBoolean("mini.dynamicLaser", true);
   private boolean               snapToGrid = prefs.getBoolean("snapToGrid", true);
@@ -1055,7 +1057,7 @@ public class LaserCut extends JFrame {
     //
     // Add "Zing Laser" Menu to Export Menu
     //
-    exportMenu.add(ZingLaser.getZingMenu(this));
+    exportMenu.add(new ZingLaser(this).getZingMenu());
     //
     // Add "Mini Laser" Menu to Export Menu
     //
@@ -1257,9 +1259,7 @@ public class LaserCut extends JFrame {
             List<Shape> sList = new ArrayList<>();
             AffineTransform scale = AffineTransform.getScaleInstance(72.0, 72.0);
             Dimension workArea = surface.getWorkSize();
-            int width = (int) (workArea.width / SCREEN_PPI * 72);
-            int height = (int) (workArea.height / SCREEN_PPI * 72);
-            EPSWriter eps = new EPSWriter("LaserCut: " + sFile.getName(), width, height);
+            EPSWriter eps = new EPSWriter("LaserCut: " + sFile.getName());
             for (CADShape item : surface.getDesign()) {
               if (item instanceof CADReference)
                 continue;
@@ -1286,6 +1286,7 @@ public class LaserCut extends JFrame {
     ButtonGroup unitGroup = new ButtonGroup();
     String[] unitSet = {"Inches:in", "Centimeters:cm", "Millimeters:mm"};
     displayUnits = prefs.get("displayUnits", "in");
+    surface.setUnits(displayUnits);
     for (String unit : unitSet) {
       String[] parts = unit.split(":");
       boolean select = parts[1].equals(displayUnits);
@@ -1294,6 +1295,7 @@ public class LaserCut extends JFrame {
       unitsMenu.add(uItem);
       uItem.addActionListener(ev -> {
         prefs.put("displayUnits", displayUnits = parts[1]);
+        surface.setUnits(displayUnits);
       });
     }
     menuBar.add(unitsMenu);

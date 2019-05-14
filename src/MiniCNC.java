@@ -54,9 +54,11 @@
     private static Dimension      miniCncSize = new Dimension((int) (6 * LaserCut.SCREEN_PPI), (int) (5 * LaserCut.SCREEN_PPI));
     private JSSCPort              jPort;
     private LaserCut              laserCut;
+    private String                dUnits;
 
     MiniCNC (LaserCut laserCut) {
       this.laserCut = laserCut;
+      this.dUnits = laserCut.displayUnits;
     }
 
     JMenu getMiniCncMenu () throws Exception {
@@ -121,7 +123,7 @@
           new ParameterDialog.ParmItem("Speed|RPM", laserCut.prefs.getInt("mini.cnc.rpm", MINI_CNC_FEED_DEFAULT)),
           new ParameterDialog.ParmItem("Feed|inches/minute", laserCut.prefs.getInt("mini.cnc.feed", MINI_CNC_RPM_DEFAULT))
         };
-        if (ParameterDialog.showSaveCancelParameterDialog(parmSet, laserCut)) {
+        if (ParameterDialog.showSaveCancelParameterDialog(parmSet, dUnits, laserCut)) {
           int ii = 0;
           laserCut.prefs.putInt("mini.cnc.rpm", (Integer) parmSet[ii++].value);
           laserCut.prefs.putInt("mini.cnc.feed", (Integer) parmSet[ii].value);

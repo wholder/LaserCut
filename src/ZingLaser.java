@@ -23,8 +23,15 @@ class ZingLaser {
   private static final int      ZING_RASTER_POWER_DEFAUlT = 50;
   static final Dimension        zingFullSize = new Dimension((int) (16 * LaserCut.SCREEN_PPI), (int) (12 * LaserCut.SCREEN_PPI));
   static final Dimension        zing12x12Size = new Dimension((int) (12 * LaserCut.SCREEN_PPI), (int) (12 * LaserCut.SCREEN_PPI));
+  private LaserCut              laserCut;
+  private String                dUnits;
 
-  static JMenu getZingMenu (LaserCut laserCut) {
+  ZingLaser (LaserCut laserCut) {
+    this.laserCut = laserCut;
+    this.dUnits = laserCut.displayUnits;
+  }
+
+  JMenu getZingMenu () {
     JMenu zingMenu = new JMenu("Zing Laser");
     // Add "Send to Zing" Submenu Item
     JMenuItem sendToZing = new JMenuItem("Send Job to Zing");
@@ -203,7 +210,7 @@ class ZingLaser {
           }
         }
       });
-      if (ParameterDialog.showSaveCancelParameterDialog(parmSet, laserCut)) {
+      if (ParameterDialog.showSaveCancelParameterDialog(parmSet, dUnits, laserCut)) {
         laserCut.prefs.put("zing.ip", (String) parmSet[0].value);
         laserCut.prefs.putInt("zing.power", (Integer) parmSet[4].value);
         laserCut.prefs.putInt("zing.speed", (Integer) parmSet[5].value);

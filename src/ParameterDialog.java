@@ -449,8 +449,8 @@ class ParameterDialog extends JDialog {
    * @param parent parent Component (needed to set position on screen)
    * @return true if user pressed "Save"
    */
-  static boolean showSaveCancelParameterDialog (ParmItem[] parms, Component parent) {
-    ParameterDialog dialog = (new ParameterDialog(parms, new String[] {"Save", "Cancel"}, null));
+  static boolean showSaveCancelParameterDialog (ParmItem[] parms, String dUnits, Component parent) {
+    ParameterDialog dialog = (new ParameterDialog(parms, new String[] {"Save", "Cancel"}, dUnits));
     dialog.setLocationRelativeTo(parent);
     dialog.setVisible(true);              // Note: this call invokes dialog
     return dialog.wasPressed();
@@ -458,9 +458,11 @@ class ParameterDialog extends JDialog {
 
   public static void main (String... args) {
     ParmItem[] parmSet = {
+        new ParmItem("X Offset|in", 2.0),
+        new ParmItem("Y Offset|in", 3.0),
         new ParmItem("Ready|boolean", "1"),
         new ParmItem(new JSeparator()),
-        new ParmItem("Enabled"),
+        new ParmItem("Enabled|boolean", "1"),
         new ParmItem("*Power|%{tool tip}", 80),
         new ParmItem("Motor:Nema 8|0:Nema 11|1:Nema 14|2:Nema 17|3:Nema 23|4", "2"),
         new ParmItem("Font:plain:bold:italic", "bold"),
@@ -469,7 +471,7 @@ class ParameterDialog extends JDialog {
         new ParmItem("Speed", 60),
         new ParmItem("Bit Field", new BField(new String[] {"X", "Y", "Z"}, 5)),
         new ParmItem("@Freq|Hz", 500.123456)};
-    if (showSaveCancelParameterDialog(parmSet, null)) {
+    if (showSaveCancelParameterDialog(parmSet, "mm", null)) {
       for (ParmItem parm : parmSet) {
         System.out.println(parm.name + ": " + parm.value);
       }
