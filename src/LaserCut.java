@@ -40,6 +40,9 @@ import static javax.swing.JOptionPane.*;
 
   Marlin Renderer: https://github.com/bourgesl/marlin-renderer
 
+  Bézier Curves:
+    https://pomax.github.io/bezierinfo/
+
   Engraving with G-Code:
     https://github.com/nebarnix/img2gco/
     https://github.com/magdesign/Raster2Gcode
@@ -1702,8 +1705,8 @@ public class LaserCut extends JFrame {
     }
 
     /**
-     * Uses Shape.pathIterator() to convert the Shape into List of arrays of lines.  The size input Shape is
-     * assumed to be defined in inches, but the AffineTransform parameter can be used to scale up to the
+     * Uses FlatteningPathIterator to convert the Shape into List of arrays of lines.  The size input Shape
+     * is assumed to be defined in inches, but the AffineTransform parameter can be used to scale up to the
      * final render resolution.  Note: cubic and quadratic bezier curves calculate an approximaiton of the
      * arc length of the curve to determine the number of line segments used to approximate the curve.
      * @param shape Shape path to render
@@ -1711,99 +1714,55 @@ public class LaserCut extends JFrame {
      * @return List of array of lines
      */
     static List<Line2D.Double[]> transformShapeToLines (Shape shape, double scale) {
-      // Use PathIterator to convert Shape into a series of lines defining a path
+      // Convert Shape into a series of lines defining a path
       List<Line2D.Double[]> paths = new ArrayList<>();
-      AffineTransform at = scale != 0 ? AffineTransform.getScaleInstance(scale, scale) : null;
-      double maxSegSize = .01;                                                  // Max size of a bezier segment, in inches
+      AffineTransform at = scale != 1.0 ? AffineTransform.getScaleInstance(scale, scale) : null;
       ArrayList<Line2D.Double> lines = new ArrayList<>();
+      // Use FlatteningPathIterator to convert to line segments
       PathIterator pi = shape.getPathIterator(at);
-      double xx = 0, yy = 0;
-      double mX = 0, mY = 0;
-      while (!pi.isDone()) {
-        double[] coords = new double[6];
-        int type = pi.currentSegment(coords);
+      FlatteningPathIterator fpi = new FlatteningPathIterator(pi, 1 / scale, 8);
+      double[] coords = new double[4];
+      double lastX = 0, lastY = 0, firstX = 0, firstY = 0;
+      while (!fpi.isDone()) {
+        int type = fpi.currentSegment(coords);
         switch (type) {
-          case PathIterator.SEG_CLOSE:
-            if (xx != mX || yy != mY) {
-              lines.add(new Line2D.Double(xx, yy, mX, mY));
-            }
-            break;
-          case PathIterator.SEG_MOVETO:
+          case FlatteningPathIterator.SEG_MOVETO:
             if (lines.size() > 0) {
               paths.add(lines.toArray(new Line2D.Double[lines.size()]));
               lines = new ArrayList<>();
             }
-            mX = xx = coords[0];
-            mY = yy = coords[1];
+            firstX = lastX = coords[0];
+            firstY = lastY = coords[1];
+            lines = new ArrayList<>();
             break;
-          case PathIterator.SEG_LINETO:
-            if (xx != coords[0] || yy != coords[1]) {
-              lines.add(new Line2D.Double(xx, yy, xx = coords[0], yy = coords[1]));
-            }
+          case FlatteningPathIterator.SEG_LINETO:
+            lines.add(new Line2D.Double(lastX, lastY, coords[0], coords[1]));
+            lastX = coords[0];
+            lastY = coords[1];
             break;
-          case PathIterator.SEG_CUBICTO:
-            // Decompose 4 point, cubic bezier curve into line segments
-            Point2D.Double c1 = new Point2D.Double(xx, yy);                     // Start point
-            Point2D.Double c2 = new Point2D.Double(coords[0], coords[1]);       // Control point 1
-            Point2D.Double c3 = new Point2D.Double(coords[2], coords[3]);       // Control point 2
-            Point2D.Double c4 = new Point2D.Double(coords[4], coords[5]);       // End point
-            Point2D.Double[] cControl = {c1, c2, c3, c4};
-            Point2D.Double[] tmp = new Point2D.Double[4];
-            // number of segments used in line approximaiton of the curve is based on an approximation of arc length
-            double cubicArcLength = (c1.distance(c2) + c2.distance(c3) + c3.distance(c4) + c1.distance(c4)) / (2 * scale);
-            int segments = Math.max(3, (int) Math.round(cubicArcLength / maxSegSize));
-            for (int ii = 0; ii < segments; ii++) {
-              double t = ((double) ii) / (segments - 1);
-              for (int jj = 0; jj < cControl.length; jj++)
-                tmp[jj] = new Point2D.Double(cControl[jj].x, cControl[jj].y);
-              for (int qq = 0; qq < cControl.length - 1; qq++) {
-                for (int jj = 0; jj < cControl.length - 1; jj++) {
-                  // Subdivide points
-                  tmp[jj].x -= (tmp[jj].x - tmp[jj + 1].x) * t;
-                  tmp[jj].y -= (tmp[jj].y - tmp[jj + 1].y) * t;
-                }
-              }
-              if (xx != tmp[0].x || yy != tmp[0].y) {
-                lines.add(new Line2D.Double(xx, yy, xx = tmp[0].x, yy = tmp[0].y));
-              }
+          case FlatteningPathIterator.SEG_CLOSE:
+            if (lastX != firstX || lastY != firstY) {
+              lines.add(new Line2D.Double(lastX, lastY, firstX, firstY));
             }
-            break;
-          case PathIterator.SEG_QUADTO:
-            // Decompose 3 point, quadratic bezier curve into line segments
-            Point2D.Double q1 = new Point2D.Double(xx, yy);                     // Start point
-            Point2D.Double q2 = new Point2D.Double(coords[0], coords[1]);       // Control point
-            Point2D.Double q3 = new Point2D.Double(coords[2], coords[3]);       // End point
-            double xLast = q1.x;
-            double yLast = q1.y;
-            // number of segments used in line approximaiton of the curve is based on an approximation of arc length
-            double quadArcLength = (q1.distance(q2) + q2.distance(q3) + q1.distance(q3)) / (2 * scale);
-            segments = Math.max(3, (int) Math.round(quadArcLength / maxSegSize));
-            for (int ii = 1; ii < segments; ii++) {
-              // Use step as a ratio to subdivide lines
-              double step = (double) ii / segments;
-              double x = (1 - step) * (1 - step) * q1.x + 2 * (1 - step) * step * q2.x + step * step * q3.x;
-              double y = (1 - step) * (1 - step) * q1.y + 2 * (1 - step) * step * q2.y + step * step * q3.y;
-              if (xLast != x || yLast != y) {
-                lines.add(new Line2D.Double(xLast, yLast, x, y));
-                xLast = x;
-                yLast = y;
-              }
-            }
-            if (xLast != q3.x || yLast != q3.y) {
-              lines.add(new Line2D.Double(xLast, yLast, xx = q3.x, yy = q3.y));
-            }
-            break;
-          default:
-            System.out.println("Error, Unknown PathIterator Type: " + type);
             break;
         }
-        pi.next();
+        fpi.next();
       }
       if (lines.size() > 0) {
         paths.add(lines.toArray(new Line2D.Double[lines.size()]));
         lines = new ArrayList<>();
       }
       return paths;
+    }
+
+    /**
+     * Transform shape to workspace and return as list of arrays of line segments where each array
+     * in the list is the set of lines for a closed shape.
+     * @param scale scale factor
+     * @return list of arrays of line segments
+     */
+    List<Line2D.Double[]> getListOfScaledLines (double scale) {
+      return transformShapeToLines(getWorkspaceTranslatedShape(), scale);
     }
 
     /**
@@ -1890,16 +1849,6 @@ public class LaserCut extends JFrame {
     }
 
     /**
-     * Transform shape to workspace and return as list of arrays of line segments where each array
-     * in the list is the set of lines for a closed shape.
-     * @param scale scale factor
-     * @return list of arrays of line segments
-     */
-    List<Line2D.Double[]> getListOfScaledLines (double scale) {
-      return transformShapeToLines(getWorkspaceTranslatedShape(), scale);
-    }
-
-    /**
      * Override in subclass to let mouse drag move internal control points
      * @return true if an internal point is was dragged, else false
      */
@@ -1973,15 +1922,21 @@ public class LaserCut extends JFrame {
      * @return true if close enough to consider a 'touch'
      */
     boolean isShapeClicked (Point2D.Double point, double zoomFactor) {
-      // Translate Shape to position, Note: point is in screen units (scale)
-      Shape lShape = getWorkspaceTranslatedShape();
       // Scale Shape to Screen scale and scan all line segments in the shape
-      // return true if any is closer than 4 pixels to point
-      for (Line2D.Double[] lines : transformShapeToLines(lShape, 1)) {
-        for (Line2D.Double line : lines) {
-          double dist = line.ptSegDist(point) * SCREEN_PPI;
-          if (dist < 5 / zoomFactor) {
-            return true;
+      Shape lShape = getWorkspaceTranslatedShape();
+      // Compute slightly expanded bounding rectangle for shape
+      Rectangle2D bnds = lShape.getBounds2D();
+      bnds = new Rectangle2D.Double(bnds.getX() - .1, bnds.getY() - .1, bnds.getWidth() + .2, bnds.getHeight() + .2);
+      // Check if point clicked is within  bounding rectangle of shape
+      if (bnds.contains(point)) {
+        Point2D.Double sPoint = new Point2D.Double(point.x * zoomFactor * SCREEN_PPI, point.y * zoomFactor * SCREEN_PPI);
+        for (Line2D.Double[] lines : transformShapeToLines(lShape, zoomFactor * SCREEN_PPI)) {
+          for (Line2D.Double line : lines) {
+            double dist = line.ptSegDist(sPoint);
+            // return true if any is closer than 5 pixels to point
+            if (dist < 5) {
+              return true;
+            }
           }
         }
       }

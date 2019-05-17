@@ -1050,7 +1050,19 @@ public class DrawSurface extends JPanel {
       shape.isSelected = shape == selected;
       shape.inGroup = selected != null && selected.getGroup() != null && selected.getGroup().contains(shape);
       shape.dragged = dragList != null && dragList.contains(shape);
-      shape.draw(g2, zoomFactor);
+      if (false) {
+        // Test code to view FlatteningPathIterator-generated lines
+        g2.setStroke(shape.getShapeStroke(shape.getStrokeWidth()));
+        g2.setColor(shape.getShapeColor());
+        List<Line2D.Double[]> sets = shape.getListOfScaledLines(zoomFactor * LaserCut.SCREEN_PPI);
+        for (Line2D.Double[] lines : sets) {
+          for (Line2D.Double line : lines) {
+            g2.draw(line);
+          }
+        }
+      } else {
+        shape.draw(g2, zoomFactor);
+      }
     }
     if (showMeasure) {
       g2.setColor(Color.gray);
