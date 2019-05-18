@@ -21,6 +21,7 @@ import java.awt.geom.*;
 import java.awt.image.*;
 import java.io.*;
 import java.lang.reflect.Field;
+import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
 import java.util.*;
 import java.util.List;
@@ -37,6 +38,7 @@ import static javax.swing.JOptionPane.*;
   Export to EPS, SVG, PDF: https://github.com/eseifert/vectorgraphics2d
   Zoom & Pan: https://community.oracle.com/thread/1263955
   https://developer.apple.com/library/content/documentation/Java/Conceptual/Java14Development/07-NativePlatformIntegration/NativePlatformIntegration.html
+  http://www.ntu.edu.sg/home/ehchua/programming/java/j4a_gui_2.html
 
   Marlin Renderer: https://github.com/bourgesl/marlin-renderer
 
@@ -69,7 +71,6 @@ public class LaserCut extends JFrame {
   transient Preferences         prefs = Preferences.userRoot().node(this.getClass().getName());
   DrawSurface                   surface;
   private JScrollPane           scrollPane;
-  private JTextField            itemInfo = new JTextField();
   private JMenuItem             gerberZip;
   private ButtonModel           noZoom;
   private int                   pxDpi = prefs.getInt("svg.pxDpi", 96);
@@ -143,7 +144,7 @@ public class LaserCut extends JFrame {
         prefs.getBoolean("useDblClkZoom", false)));
     items.put("enableGerber", new ParameterDialog.ParmItem("Enable Gerber ZIP Import", prefs.getBoolean("gerber.import", false)));
     items.put("pxDpi", new ParameterDialog.ParmItem("px per Inch (SVG Import/Export)", prefs.getInt("svg.pxDpi", 96)));
-    ParameterDialog.ParmItem[] parmSet = items.values().toArray(new ParameterDialog.ParmItem[items.size()]);
+    ParameterDialog.ParmItem[] parmSet = items.values().toArray(new ParameterDialog.ParmItem[0]);
     ParameterDialog dialog = (new ParameterDialog(parmSet, new String[] {"Save", "Cancel"}, displayUnits));
     dialog.setLocationRelativeTo(this);
     dialog.setVisible(true);              // Note: this call invokes dialog
@@ -213,9 +214,7 @@ public class LaserCut extends JFrame {
         }
         group.add(button);
         unitsPanel.add(button);
-        button.addActionListener(ev -> {
-          selected = parts[1];
-        });
+        button.addActionListener(ev -> selected = parts[1]);
       }
       JPanel panel = new JPanel(new GridLayout(0, 1));
       panel.add(getPanel(export ? "File Units:" : "Default Units:", unitsPanel));
@@ -282,6 +281,7 @@ public class LaserCut extends JFrame {
     setTitle("LaserCut");
     surface = new DrawSurface(prefs, scrollPane = new JScrollPane(), ZingLaser.zingFullSize);
     scrollPane.setViewportView(surface);
+    JTextField itemInfo = new JTextField();
     surface.registerInfoJTextField(itemInfo);
     configureMouseWheel();
     add(scrollPane, BorderLayout.CENTER);
@@ -358,9 +358,7 @@ public class LaserCut extends JFrame {
       // Add "About" Item to File Menu
       //
       JMenuItem aboutBox = new JMenuItem("About " + getClass().getSimpleName());
-      aboutBox.addActionListener(ev -> {
-        showAboutBox();
-      });
+      aboutBox.addActionListener(ev -> showAboutBox());
       fileMenu.add(aboutBox);
     }
     if (!hasPreferencesHandler) {
@@ -532,36 +530,9 @@ public class LaserCut extends JFrame {
       JMenuItem mItem = new JMenuItem(parts[0]);
       mItem.addActionListener(ev -> {
         try {
-          Class ref = Class.forName(LaserCut.class.getSimpleName() + '$' + parts[1]);
+          Class<?> ref = Class.forName(LaserCut.class.getSimpleName() + '$' + parts[1]);
           CADShape shp = (CADShape) ref.getDeclaredConstructor().newInstance();
-          if (shp instanceof CADShapeSpline) {
-            surface.placeShape(shp);
-          } else if (shp instanceof CADRasterImage) {
-            // Prompt for Image file
-            JFileChooser fileChooser = new JFileChooser();
-            fileChooser.setDialogTitle("Select an Image File");
-            fileChooser.setDialogType(JFileChooser.OPEN_DIALOG);
-            FileNameExtensionFilter nameFilter = new FileNameExtensionFilter("Image files (jpg, jpeg, png, gif, bmp)",
-                                                                              "jpg", "jpeg", "png", "gif", "bmp");
-            fileChooser.addChoosableFileFilter(nameFilter);
-            fileChooser.setFileFilter(nameFilter);
-            fileChooser.setSelectedFile(new File(prefs.get("image.dir", "/")));
-            if (fileChooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
-              try {
-                File iFile = fileChooser.getSelectedFile();
-                prefs.put("image.dir", iFile.getAbsolutePath());
-                ((CADRasterImage) shp).loadImage(iFile);
-                if (shp.placeParameterDialog(surface, displayUnits)) {
-                  surface.placeShape(shp);
-                }
-              } catch (Exception ex) {
-                showErrorDialog("Unable to load file");
-                ex.printStackTrace(System.out);
-              }
-            }
-          } else if (shp.placeParameterDialog(surface, displayUnits)) {
-            surface.placeShape(shp);
-          }
+          shp.createAndPlace(surface, this);
         } catch (Exception ex) {
           ex.printStackTrace();
         }
@@ -1081,7 +1052,9 @@ public class LaserCut extends JFrame {
         try {
           pout.close();
           bout.close();
-        } catch (Exception ex2) {}
+        } catch (Exception ex2) {
+          ex.printStackTrace();
+        }
         errorMsg = "Mini Laser Error:\n" + bout.toString();
         ex.printStackTrace();
       }
@@ -1106,7 +1079,9 @@ public class LaserCut extends JFrame {
         try {
           pout.close();
           bout.close();
-        } catch (Exception ex2) {}
+        } catch (Exception ex2) {
+          ex.printStackTrace();
+        }
         errorMsg = (errorMsg != null ? errorMsg + "\n" : "") + "Mini CNC Error:\n" + bout.toString();
         ex.printStackTrace();
       }
@@ -1168,10 +1143,10 @@ public class LaserCut extends JFrame {
               Shape shape = item.getWorkspaceTranslatedShape();
               sList.add(shape);
             }
-            Shape[] shapes = sList.toArray(new Shape[sList.size()]);
+            Shape[] shapes = sList.toArray(new Shape[0]);
             String xml = SVGParser.shapesToSVG(shapes, surface.getWorkSize(), pxDpi);
             FileOutputStream out = new FileOutputStream(sFile);
-            out.write(xml.getBytes("UTF8"));
+            out.write(xml.getBytes(StandardCharsets.UTF_8));
             out.close();
           }
         } catch (Exception ex) {
@@ -1307,9 +1282,7 @@ public class LaserCut extends JFrame {
       JMenu errorMenu = new JMenu("Errors");
       JMenuItem eItem = new JMenuItem("Error Stacktrace");
       errorMenu.add(eItem);
-      eItem.addActionListener(ev -> {
-        showScrollingDialog(errorMsg);
-      });
+      eItem.addActionListener(ev -> showScrollingDialog(errorMsg));
       menuBar.add(errorMenu);
     }
     // Track window move events and save in prefs
@@ -1461,7 +1434,9 @@ public class LaserCut extends JFrame {
         fis.close();
         return new String(data);
       }
-    } catch (Exception ex) {}
+    } catch (Exception ex) {
+      ex.printStackTrace();
+    }
     return "";
   }
 
@@ -1469,7 +1444,9 @@ public class LaserCut extends JFrame {
     Properties props = new Properties();
     try {
       props.load(new StringReader(content));
-    } catch (Exception ex) {}
+    } catch (Exception ex) {
+      ex.printStackTrace();
+    }
     return props;
   }
 
@@ -1537,14 +1514,14 @@ public class LaserCut extends JFrame {
    * to the stream during serialization.
    */
   static class CADShape implements Serializable {
-    private static final long serialVersionUID = 3716741066289930874L;
-    public double     xLoc, yLoc, rotation;   // Note: must be public for reflection
-    public boolean    centered, engrave;      // Note: must be public for reflection
-    CADShapeGroup     group;
-    Shape             shape;
-    transient Shape   builtShape;
-    transient boolean isSelected, inGroup, dragged;
-    transient List<ChangeListener> changeSubscribers;
+    private static final long       serialVersionUID = 3716741066289930874L;
+    public double                   xLoc, yLoc, rotation;   // Note: must be public for reflection
+    public boolean                  centered, engrave;      // Note: must be public for reflection
+    CADShapeGroup                   group;
+    Shape                           shape;
+    transient Shape                 builtShape;
+    transient boolean isSelected,   inGroup, dragged;
+    transient List<ChangeListener>  changeSubscribers;
 
     /**
      * Default constructor is used to instantiate subclasses in "Shapes" Menu
@@ -1568,6 +1545,13 @@ public class LaserCut extends JFrame {
         this.shape = shape;
       }
       setLocationAndOrientation(xLoc, yLoc, rotation, centered);
+    }
+
+    // Overriddne in subclasses such as CADRasterImage and CADShapeSpline
+    void createAndPlace (DrawSurface surface, LaserCut laserCut) {
+      if (placeParameterDialog(surface, laserCut.displayUnits)) {
+        surface.placeShape(this);
+      }
     }
 
     // Override in subclasses
@@ -1606,26 +1590,12 @@ public class LaserCut extends JFrame {
      * @return absolute bounding rectangle
      */
     Rectangle2D getShapeBounds () {
-      Rectangle2D bounds = getShape().getBounds2D();
+      Rectangle2D bnds = getShape().getBounds2D();
       if (centered) {
-        return new Rectangle2D.Double(xLoc - bounds.getWidth() / 2, yLoc - bounds.getHeight() / 2, bounds.getWidth(), bounds.getHeight());
+        return new Rectangle2D.Double(xLoc - bnds.getWidth() / 2, yLoc - bnds.getHeight() / 2, bnds.getWidth(), bnds.getHeight());
       } else {
-        return new Rectangle2D.Double(xLoc, yLoc, bounds.getWidth(), bounds.getHeight());
+        return new Rectangle2D.Double(xLoc, yLoc, bnds.getWidth(), bnds.getHeight());
       }
-    }
-
-    /**
-     * Return the distance from point cx/cy to the upper-left corner of shape's bounding box.
-     * Note: used only by DrawSurface.selectLaserItems() to optimize cutting sequence
-     * @param cx x coord
-     * @param cy y coord
-     * @return distance from upper-left corner of shape's bounding box to cx/cy
-     */
-    public double distanceToUpperLeftPoint (double cx, double cy) {
-      Rectangle2D bounds = getShapeBounds();
-      double dx = cx - bounds.getX();
-      double dy = cy - bounds.getY();
-      return Math.sqrt(dx * dx + dy * dy);
     }
 
     /**
@@ -1711,16 +1681,17 @@ public class LaserCut extends JFrame {
      * arc length of the curve to determine the number of line segments used to approximate the curve.
      * @param shape Shape path to render
      * @param scale used to scale from inches to the render resolution, such as Screen or Laser DPI.
+     * @param flatten controls how closely the line segments follow the curve (smaller is closer)
      * @return List of array of lines
      */
-    static List<Line2D.Double[]> transformShapeToLines (Shape shape, double scale) {
+    static List<Line2D.Double[]> transformShapeToLines (Shape shape, double scale, double flatten) {
       // Convert Shape into a series of lines defining a path
       List<Line2D.Double[]> paths = new ArrayList<>();
       AffineTransform at = scale != 1.0 ? AffineTransform.getScaleInstance(scale, scale) : null;
       ArrayList<Line2D.Double> lines = new ArrayList<>();
       // Use FlatteningPathIterator to convert to line segments
       PathIterator pi = shape.getPathIterator(at);
-      FlatteningPathIterator fpi = new FlatteningPathIterator(pi, 1 / scale, 8);
+      FlatteningPathIterator fpi = new FlatteningPathIterator(pi, flatten, 8);
       double[] coords = new double[4];
       double lastX = 0, lastY = 0, firstX = 0, firstY = 0;
       while (!fpi.isDone()) {
@@ -1728,7 +1699,7 @@ public class LaserCut extends JFrame {
         switch (type) {
           case FlatteningPathIterator.SEG_MOVETO:
             if (lines.size() > 0) {
-              paths.add(lines.toArray(new Line2D.Double[lines.size()]));
+              paths.add(lines.toArray(new Line2D.Double[0]));
               lines = new ArrayList<>();
             }
             firstX = lastX = coords[0];
@@ -1749,7 +1720,7 @@ public class LaserCut extends JFrame {
         fpi.next();
       }
       if (lines.size() > 0) {
-        paths.add(lines.toArray(new Line2D.Double[lines.size()]));
+        paths.add(lines.toArray(new Line2D.Double[0]));
         lines = new ArrayList<>();
       }
       return paths;
@@ -1761,8 +1732,8 @@ public class LaserCut extends JFrame {
      * @param scale scale factor
      * @return list of arrays of line segments
      */
-    List<Line2D.Double[]> getListOfScaledLines (double scale) {
-      return transformShapeToLines(getWorkspaceTranslatedShape(), scale);
+    List<Line2D.Double[]> getListOfScaledLines (double scale, double flatten) {
+      return transformShapeToLines(getWorkspaceTranslatedShape(), scale, flatten);
     }
 
     /**
@@ -1857,7 +1828,7 @@ public class LaserCut extends JFrame {
     }
 
     /**
-     * Override in sunclass to check if a moveable internal point was clicked
+     * Override in subclass to check if a moveable internal point was clicked
      * @return true if a moveable internal point is was clicked, else false
      */
     boolean selectMovePoint (DrawSurface surface, Point2D.Double point, Point2D.Double gPoint) {
@@ -1930,7 +1901,7 @@ public class LaserCut extends JFrame {
       // Check if point clicked is within  bounding rectangle of shape
       if (bnds.contains(point)) {
         Point2D.Double sPoint = new Point2D.Double(point.x * zoomFactor * SCREEN_PPI, point.y * zoomFactor * SCREEN_PPI);
-        for (Line2D.Double[] lines : transformShapeToLines(lShape, zoomFactor * SCREEN_PPI)) {
+        for (Line2D.Double[] lines : transformShapeToLines(lShape, zoomFactor * SCREEN_PPI, .01)) {
           for (Line2D.Double line : lines) {
             double dist = line.ptSegDist(sPoint);
             // return true if any is closer than 5 pixels to point
@@ -1991,7 +1962,7 @@ public class LaserCut extends JFrame {
      * @param actionButton Text for action button, such as "Save" or "Place"
      * @return true if used clicked action button, else false if they clicked cancel.
      */
-    boolean displayShapeParameterDialog (DrawSurface surface, ArrayList<String> parmNames, String actionButton, String dUnits) {
+    boolean displayShapeParameterDialog (DrawSurface surface, List<String> parmNames, String actionButton, String dUnits) {
       parmNames.addAll(Arrays.asList(getParameterNames()));
       ParameterDialog.ParmItem[] parmSet = new ParameterDialog.ParmItem[parmNames.size()];
       for (int ii = 0; ii < parmSet.length; ii++) {
@@ -2005,6 +1976,9 @@ public class LaserCut extends JFrame {
       }
       ParameterDialog dialog = (new ParameterDialog(parmSet, new String[] {actionButton, "Cancel"}, dUnits));
       dialog.setLocationRelativeTo(surface.getParent());
+      boolean wasCentered = centered;
+      double priorXLoc = xLoc;
+      double priorYLoc = yLoc;
       dialog.setVisible(true);              // Note: this call invokes dialog
       if (dialog.wasPressed()) {
         surface.pushToUndoStack();
@@ -2018,11 +1992,14 @@ public class LaserCut extends JFrame {
         }
         // Update shape's internal state after parameter edit
         updateStateAfterParameterEdit();
-        // Position shape where user clicked on the "Place" butto
-        Point dLoc = surface.getLocationOnScreen();
-        Point mLoc = dialog.getMouseLoc();
-        if ("Place".equals(actionButton) && dLoc != null && mLoc != null) {
-          setPosition((mLoc.x - dLoc.x) / surface.getScreenScale(), (mLoc.y - dLoc.y) / surface.getScreenScale());
+        if ("Place".equals(actionButton)) {
+          Point dLoc = surface.getLocationOnScreen();
+          Point mLoc = dialog.getMouseLoc();
+          if (dLoc != null && mLoc != null) {
+            double xLoc = (mLoc.x - dLoc.x) / surface.getScreenScale();
+            double yLoc = (mLoc.y - dLoc.y) / surface.getScreenScale();
+            setPosition(xLoc, yLoc);
+          }
         }
         return true;
       }
@@ -2035,7 +2012,8 @@ public class LaserCut extends JFrame {
      */
     String getInfo () {
       StringBuilder buf = new StringBuilder(getName() + ": ");
-      ArrayList<String> parmNames = new ArrayList<>(Arrays.asList("xLoc|in", "yLoc|in", "width|in", "height|in", "rotation|deg", "centered"));
+      List<String> parmNames = new ArrayList<>(Arrays.asList("xLoc|in", "yLoc|in", "width|in", "height|in",
+                                                              "rotation|deg", "centered"));
       parmNames.addAll(Arrays.asList(getParameterNames()));
       boolean first = true;
       Rectangle2D bnds = getShape().getBounds2D();
@@ -2055,7 +2033,7 @@ public class LaserCut extends JFrame {
           try {
             Field fld = this.getClass().getField(item.name);
             Object value = fld.get(this);
-            if (item.valueType != null && item.valueType instanceof String[]) {
+            if (item.valueType instanceof String[]) {
               String[] labels = ParameterDialog.getLabels((String[]) item.valueType);
               String[] values = ParameterDialog.getValues((String[]) item.valueType);
               value = labels[Arrays.asList(values).indexOf(value)];
@@ -2065,7 +2043,7 @@ public class LaserCut extends JFrame {
             ex.printStackTrace();
           }
           if (item.units.length() > 0) {
-            buf.append(" " + item.units);
+            buf.append(" ").append(item.units);
           }
         }
       }
@@ -2089,6 +2067,11 @@ public class LaserCut extends JFrame {
     }
 
     @Override
+    void createAndPlace (DrawSurface surface, LaserCut laserCut) {
+      surface.placeShape(this);
+    }
+
+    @Override
     String getName () {
       return "Reference Point";
     }
@@ -2105,7 +2088,7 @@ public class LaserCut extends JFrame {
 
     @Override
     BasicStroke getShapeStroke (float strokeWidth) {
-      final float dash1[] = {3.0f};
+      final float[] dash1 = {3.0f};
       return new BasicStroke(strokeWidth, BasicStroke.CAP_SQUARE, BasicStroke.JOIN_MITER, 1.0f, dash1, 0.5f);
     }
 
@@ -2138,17 +2121,52 @@ public class LaserCut extends JFrame {
     }
 
     @Override
-    String getName () {
-      return "Raster Image";
+    void createAndPlace (DrawSurface surface, LaserCut laserCut) {
+      // Prompt for Image file
+      JFileChooser fileChooser = new JFileChooser();
+      fileChooser.setDialogTitle("Select an Image File");
+      fileChooser.setDialogType(JFileChooser.OPEN_DIALOG);
+      FileNameExtensionFilter nameFilter = new FileNameExtensionFilter("Image files (jpg, jpeg, png, gif, bmp)",
+                                                                       "jpg", "jpeg", "png", "gif", "bmp");
+      fileChooser.addChoosableFileFilter(nameFilter);
+      fileChooser.setFileFilter(nameFilter);
+      fileChooser.setSelectedFile(new File(laserCut.prefs.get("image.dir", "/")));
+      if (fileChooser.showOpenDialog(laserCut) == JFileChooser.APPROVE_OPTION) {
+        try {
+          File imgFile = fileChooser.getSelectedFile();
+          laserCut.prefs.put("image.dir", imgFile.getAbsolutePath());
+          ppi = getImageDPI(imgFile);
+          imagePpi = ppi.width + "x" + ppi.height;
+          img = ImageIO.read(imgFile);
+          //ColorModel cm = img.getColorModel();
+          width = (double) img.getWidth() / ppi.width;
+          height = (double) img.getHeight() / ppi.height;
+          if (placeParameterDialog(surface, laserCut.displayUnits)) {
+            surface.placeShape(this);
+          }
+        } catch (Exception ex) {
+          laserCut.showErrorDialog("Unable to load file");
+          ex.printStackTrace(System.out);
+        }
+      }
     }
 
-    void loadImage (File imgFile) throws IOException {
-      ppi = getImageDPI(imgFile);
-      imagePpi = ppi.width + "x" + ppi.height;
-      img = ImageIO.read(imgFile);
-      ColorModel cm = img.getColorModel();
-      width = (double) img.getWidth() / ppi.width;
-      height = (double) img.getHeight() / ppi.height;
+    @Override
+    protected List<String> getEditFields () {
+      width = (double) img.getWidth() / ppi.width * (scale / 100);
+      height = (double) img.getHeight() / ppi.height * (scale / 100);
+      return Arrays.asList("xLoc|in", "yLoc|in", "*width|in", "*height|in", "*imagePpi", "rotation|deg",
+                           "scale|%", "centered", "engrave", "engrave3D");
+    }
+
+    @Override
+    protected List<String> getPlaceFields () {
+      return Arrays.asList("*imagePpi", "rotation|deg", "scale|%", "centered", "engrave", "engrave3D");
+    }
+
+    @Override
+    String getName () {
+      return "Raster Image";
     }
 
     @Override
@@ -2266,17 +2284,6 @@ public class LaserCut extends JFrame {
       return at.createTransformedShape(new Rectangle2D.Double(-width / 2, -height / 2, width, height));
     }
 
-    @Override
-    protected List<String> getEditFields () {
-      return Arrays.asList("xLoc|in", "yLoc|in", "*width|in", "*height|in", "*imagePpi", "rotation|deg",
-                            "scale|%", "centered", "engrave", "engrave3D");
-    }
-
-    @Override
-    protected List<String> getPlaceFields () {
-      return Arrays.asList("*imagePpi", "rotation|deg", "scale|%", "centered", "engrave", "engrave3D");
-    }
-
     // Custom write serializer for BufferedImage
     private void writeObject(ObjectOutputStream out) throws IOException {
       out.defaultWriteObject();
@@ -2296,7 +2303,7 @@ public class LaserCut extends JFrame {
 
     @Override
     BasicStroke getShapeStroke (float strokeWidth) {
-      final float dash1[] = {8.0f};
+      final float[] dash1 = {8.0f};
       return new BasicStroke(strokeWidth, BasicStroke.CAP_SQUARE, BasicStroke.JOIN_MITER, 1.0f, dash1, 0.5f);
     }
 
@@ -2319,12 +2326,12 @@ public class LaserCut extends JFrame {
               int dpiV = Integer.parseInt(jfif.getAttribute("Ydensity"));
               return new Dimension(dpiH, dpiV);
             } else if ((nodes = tree.getElementsByTagName("pHYs")).getLength() > 0) {
-              // Read DPI for PNG File (if it's contained needed Metadata)
+              // Read DPI for PNG File (if it contains Metadata pixelsPerUnitXAxis and pixelsPerUnitYAxis)
               Element jfif = (Element) nodes.item(0);
               long dpiH = Math.round(Double.parseDouble(jfif.getAttribute("pixelsPerUnitXAxis")) / 39.3701);
               long dpiV = Math.round(Double.parseDouble(jfif.getAttribute("pixelsPerUnitYAxis")) / 39.3701);
               return new Dimension((int) dpiH, (int) dpiV);
-            } else if ((nodes = tree.getElementsByTagName("BMPVersion")).getLength() > 0) {
+            } else if (tree.getElementsByTagName("BMPVersion").getLength() > 0) {
               // Note: there must be a more efficient way to do this...
               NodeList bmp = tree.getElementsByTagName("PixelsPerMeter");
               Map<String, Double> map = new HashMap<>();
@@ -2461,7 +2468,7 @@ public class LaserCut extends JFrame {
         updateShape();
         return true;
       }
-      return gridX >= 0 && gridX < notes.length && gridY >= 0 && gridY < 30 ? true : false;
+      return gridX >= 0 && gridX < notes.length && gridY >= 0 && gridY < 30;
     }
 
     @Override
@@ -2802,7 +2809,7 @@ public class LaserCut extends JFrame {
   }
 
   static class VectorFont {
-    private static Map<String,VectorFont> vFonts = new HashMap();
+    private static Map<String,VectorFont> vFonts = new HashMap<>();
     int[][][] font;
     int       height;
 
@@ -2955,25 +2962,23 @@ public class LaserCut extends JFrame {
         for (int ii = 0; ii < text.length(); ii++) {
           char cc = text.charAt(ii);
           cc = cc >= 32 & cc <= 127 ? cc : '_';   // Substitute '_' for codes outside printable ASCII range
-          if (cc >= 32 && cc <= 127) {
-            int[][] glyph = stroke[cc - 32];
-            int left = glyph[0][0];
-            int right = glyph[0][1];
-            for (int jj = 1; jj < glyph.length; jj++) {
-              int x1 = glyph[jj][0] - left;
-              int y1 = glyph[jj][1];
-              int x2 = glyph[jj][2] - left;
-              int y2 = glyph[jj][3];
+          int[][] glyph = stroke[cc - 32];
+          int left = glyph[0][0];
+          int right = glyph[0][1];
+          for (int jj = 1; jj < glyph.length; jj++) {
+            int x1 = glyph[jj][0] - left;
+            int y1 = glyph[jj][1];
+            int x2 = glyph[jj][2] - left;
+            int y2 = glyph[jj][3];
 
-              if (x1 != lastX || y1 != lastY) {
-                path.moveTo(x1 + xOff, y1);
-              }
-              path.lineTo(x2 + xOff, lastY = y2);
-              lastX = x2;
+            if (x1 != lastX || y1 != lastY) {
+              path.moveTo(x1 + xOff, y1);
             }
-            int step = right - left;
-            xOff += step;
+            path.lineTo(x2 + xOff, lastY = y2);
+            lastX = x2;
           }
+          int step = right - left;
+          xOff += step;
         }
         AffineTransform at = new AffineTransform();
         double scale = fontSize / (72.0 * font.height);
@@ -3018,6 +3023,10 @@ public class LaserCut extends JFrame {
     }
   }
 
+  /*
+   * CADScaledShape is a container for a resizable Shape.  Currently used to encapsulate designed loaded
+   * by the "Import from SVG" feature.
+   */
   static class CADScaledShape extends CADShape implements Serializable {
     private static final long serialVersionUID = -8732521357598212914L;
     public double   scale = 100.0;
@@ -3068,6 +3077,11 @@ public class LaserCut extends JFrame {
     }
 
     @Override
+    void createAndPlace (DrawSurface surface, LaserCut laserCut) {
+      surface.placeShape(this);
+    }
+
+    @Override
     String getName () {
       return "Spline";
     }
@@ -3093,14 +3107,19 @@ public class LaserCut extends JFrame {
       return super.isShapeClicked(point, zoomFactor) || isPositionClicked(point, zoomFactor);
     }
 
+    /**
+     * See if we clicked on an existing Catmull-Rom Control Point other than origin
+     * @param surface Reference to DrawSurface
+     * @param point Point clicked in Workspace coordinates
+     * @param gPoint Closest grid point clicked in Workspace coordinates
+     * @return true if clicked
+     */
     @Override
     boolean selectMovePoint (DrawSurface surface, Point2D.Double point, Point2D.Double gPoint) {
-      // See if we clicked on an existing Catmull-Rom Control Point other than origin
-      Point2D.Double mse = new Point2D.Double(point.x - xLoc, point.y - yLoc);
+      Point2D.Double mse = rotatePoint(new Point2D.Double(point.x - xLoc, point.y - yLoc), -rotation);
       for (int ii = 0; ii < points.size(); ii++) {
         Point2D.Double cp = points.get(ii);
-        Point2D.Double np = rotatePoint(cp, rotation);
-        double dist = mse.distance(np.x, np.y) * LaserCut.SCREEN_PPI;
+        double dist = mse.distance(cp.x, cp.y) * SCREEN_PPI;
         if (dist < 5) {
           if (ii == 0 && !closePath) {
             surface.pushToUndoStack();
@@ -3128,21 +3147,31 @@ public class LaserCut extends JFrame {
       return false;
     }
 
+    /**
+     * See if we clicked on spline shape to add new control point
+     * @param point Point clicked in Workspace coordinates
+     * @return index into points List where we need to add new point
+     */
     int getInsertionPoint (Point2D.Double point) {
       Point2D.Double mse = rotatePoint(new Point2D.Double(point.x - xLoc, point.y - yLoc), -rotation);
       int idx = 1;
       Point2D.Double chk = points.get(idx);
-      for (Line2D.Double[] lines : transformShapeToLines(getShape(), 1)) {
+      double min = Double.MAX_VALUE;
+      for (Line2D.Double[] lines : transformShapeToLines(getShape(), 1, .01)) {
         for (Line2D.Double line : lines) {
-          double dist = line.ptSegDist(mse);
-          if (dist < 5 / SCREEN_PPI) {
+          double dist = line.ptSegDist(mse) * SCREEN_PPI;
+          if (dist < 5) {
+            System.out.println(dist);
             return idx - 1;
           }
+          min = Math.min(min, dist);
+          // Advance idx as we pass control points
           if (idx < points.size() && chk.distance(line.getP2()) < .000001) {
             chk = points.get(Math.min(points.size() - 1, ++idx));
           }
         }
       }
+      System.out.println((int) min);
       return -1;
     }
 
@@ -3172,7 +3201,7 @@ public class LaserCut extends JFrame {
 
     private void updatePath () {
       if (closePath) {
-        path = convert(points.toArray(new Point2D.Double[points.size()]), true);
+        path = convert(points.toArray(new Point2D.Double[0]), true);
       } else {
         Point2D.Double[] pnts = points.toArray(new Point2D.Double[points.size() + 1]);
         // Duplicate last point so we can draw a curve through all points in the path
@@ -3263,6 +3292,7 @@ public class LaserCut extends JFrame {
       profileShift = .25;
       holeSize = .125;
       diameter = numTeeth * module;
+      centered = true;
     }
 
     CADGear (double xLoc, double yLoc, double module, int numTeeth, int numPoints, double pressAngle, double profileShift,
@@ -3297,7 +3327,7 @@ public class LaserCut extends JFrame {
     void draw (Graphics g, double zoom) {
       super.draw(g, zoom);
       Graphics2D g2 = (Graphics2D) g;
-      // Draw dashed line in magenta to show gear diameter
+      // Draw dashed line in magenta to show effective gear diameter
       g2.setColor(Color.MAGENTA);
       BasicStroke dashed = new BasicStroke(1.0f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 10.0f, new float[] {10.0f}, 0.0f);
       g2.setStroke(dashed);
@@ -3306,7 +3336,10 @@ public class LaserCut extends JFrame {
       if (centered) {
         g2.draw(new Ellipse2D.Double((xLoc - diam / 2) * scale, (yLoc - diam / 2) * scale, diam * scale, diam * scale));
       } else {
-        g2.draw(new Ellipse2D.Double(xLoc * scale, yLoc * scale, diam * scale, diam * scale));
+        Rectangle2D bnds = getShapeBounds();
+        double cX = xLoc + bnds.getWidth() / 2;
+        double cY = yLoc + bnds.getHeight() / 2;
+        g2.draw(new Ellipse2D.Double((cX - diam / 2) * scale, (cY - diam / 2) * scale, diam * scale, diam * scale));
       }
     }
   }
@@ -3378,7 +3411,7 @@ public class LaserCut extends JFrame {
       rotation = baseShape.rotation;
       Path2D.Double path = new Path2D.Double();
       boolean first = true;
-      for (Line2D.Double[] lines : transformShapeToLines(baseShape.getShape(), 1.0)) {
+      for (Line2D.Double[] lines : transformShapeToLines(baseShape.getShape(), 1.0, .01)) {
         if (false) {
           DecimalFormat df = new DecimalFormat("#.###");
           for (Line2D.Double line : lines) {

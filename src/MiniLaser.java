@@ -50,7 +50,7 @@ class MiniLaser extends GRBLBase {
             for (int ii = 0; ii < iterations; ii++) {
               boolean laserOn = false;
               for (LaserCut.CADShape shape : laserCut.surface.selectLaserItems(true)) {
-                for (Line2D.Double[] lines : shape.getListOfScaledLines(1)) {
+                for (Line2D.Double[] lines : shape.getListOfScaledLines(1, .001)) {
                   boolean first = true;
                   for (Line2D.Double line : lines) {
                     String x1 = LaserCut.df.format(line.x1);

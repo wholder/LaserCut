@@ -111,9 +111,9 @@ class GRBLBase {
       if (jPort.hasSerial()) {
       String receive = sendGrbl(jPort, "$I");
       String[] rsps = receive.split("\n");
-      String grblBuild = null;
-      String grblVersion = null;
-      String grblOptions = null;
+      String grblBuild = "unknown";
+      String grblVersion = "unknown";
+      String grblOptions = "unknown";
       for (String rsp : rsps ) {
         int idx1 = rsp.indexOf("[VER:");
         int idx2 = rsp.indexOf("]");
@@ -143,9 +143,9 @@ class GRBLBase {
       JPanel sPanel;
       if (grblVersion != null) {
         ParameterDialog.ParmItem[] parmSet = {
-          new ParameterDialog.ParmItem("@Grbl Version",  grblVersion),
-          new ParameterDialog.ParmItem("@Grbl Build", grblBuild != null ? grblBuild : "unknown"),
-          new ParameterDialog.ParmItem("@Grbl Options", grblOptions != null ? grblOptions : "unknown"),
+          new ParameterDialog.ParmItem("@Grbl Version",                 grblVersion),
+          new ParameterDialog.ParmItem("@Grbl Build",                   grblBuild),
+          new ParameterDialog.ParmItem("@Grbl Options",                 grblOptions),
           new ParameterDialog.ParmItem(new JSeparator()),
           new ParameterDialog.ParmItem("Step pulse|usec",               sVals, "$0"),
           new ParameterDialog.ParmItem("Step idle delay|msec",          sVals, "$1"),
@@ -239,7 +239,6 @@ class GRBLBase {
 
   static class DroPanel extends JPanel {
     static DecimalFormat  fmt = new DecimalFormat("#0.000");
-    private String[]      lblTxt = {"X", "Y", "Z"};
     private String[]      vals;
     private JTextField[]  lbl = new JTextField[3];
 
@@ -252,6 +251,7 @@ class GRBLBase {
       setLayout(new GridLayout(1, 3));
       for (int ii = 0; ii < 3; ii++) {
         JPanel axis = new JPanel();
+        String[] lblTxt = {"X", "Y", "Z"};
         axis.add(new JLabel(lblTxt[ii]));
         axis.add(lbl[ii] = new JTextField(vals[ii], 6));
         lbl[ii].setEditable(canEdit);
@@ -343,8 +343,9 @@ class GRBLBase {
                   //System.out.println(cmd);
                   sendGrbl(jPort, cmd);
                 } else if ("G28".equals(parm.name)) {
-
-                } else if ("30".equals(parm.name)) {
+                  // Placeholder
+                } else if ("G30".equals(parm.name)) {
+                  // Placeholder
                 }
               }
             } else {
@@ -504,10 +505,9 @@ class GRBLBase {
 
   static class Arrow extends ImageIcon {
     Rectangle bounds = new Rectangle(26, 26);
-    private Polygon arrow;
 
     Arrow (double rotation) {
-      arrow = new Polygon();
+      Polygon arrow = new Polygon();
       arrow.addPoint(0, 11);
       arrow.addPoint(10, -7);
       arrow.addPoint(-10, -7);

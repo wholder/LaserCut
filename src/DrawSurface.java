@@ -63,7 +63,6 @@ public class DrawSurface extends JPanel {
     }
   }
 
-
   DrawSurface (Preferences prefs, JScrollPane scrollPane, Dimension workSize) {
     super(true);
     this.prefs = prefs;
@@ -160,7 +159,7 @@ public class DrawSurface extends JPanel {
               return;
             }
             // Check for click on anchor point (used to drag shape to new location)
-            if (selected.selectMovePoint(DrawSurface.this,newLoc, toGrid(newLoc))) {
+            if (selected.selectMovePoint(DrawSurface.this, newLoc, toGrid(newLoc))) {
               dragged = selected;
               if (selected instanceof LaserCut.StateMessages) {
                 setInfoText(((LaserCut.StateMessages) selected).getStateMsg());
@@ -612,10 +611,13 @@ public class DrawSurface extends JPanel {
   }
 
   void placeShape (LaserCut.CADShape shape) {
-    shape.setPosition(0, 0);
     List<LaserCut.CADShape> items = new ArrayList<>();
     items.add(shape);
+    // Copy location of shape to Placer object, then zero shape's location
+    Point2D.Double newLoc = new Point2D.Double(shape.xLoc, shape.yLoc);
+    shape.setPosition(0, 0);
     placer = new Placer(items);
+    placer.setPosition(newLoc);
     requestFocus();
     setInfoText("Click to place " + shape.getName());
     repaint();
@@ -972,11 +974,9 @@ public class DrawSurface extends JPanel {
   /**
    * Called by "Send to Zing" and "Send to Mini Laser" menu options.  Culls out shapes that are not processed, such as
    * shapes that implement CADNoDraw interface and, if cutItems is true, also culls shapes with engrave set to true; or,
-   * if cutItems is false, culls shapes where engrave is set to false.  Then, code reorders shapes in list using a crude
-   * type of "travelling salesman" algorithm that tries to minimize laser head seek by successively finding the next
-   * closest shape.
+   * if cutItems is false, culls shapes where engrave is set to false.
    * @param cutItems if true, only process shapes with 'engrave' set to false.
-   * @return List of culled and reordered shapes CADShape objects cut
+   * @return List of CADShape objects minus culled items
    */
   ArrayList<LaserCut.CADShape> selectLaserItems (boolean cutItems) {
     // Cull out items that will not be cut or that don't match cutItems
@@ -986,31 +986,15 @@ public class DrawSurface extends JPanel {
         cullShapes.add(shape);
       }
     }
-    // Reorder shapes by successively finding the next closest point starting from upper left
-    ArrayList<LaserCut.CADShape> newShapes = new ArrayList<>();
-    double lastX = 0, lastY = 0;
-    while (cullShapes.size() > 0) {
-      double dist = Double.MAX_VALUE;
-      LaserCut.CADShape sel = null;
-      for (LaserCut.CADShape shape : cullShapes) {
-        double tDist = shape.distanceToUpperLeftPoint(lastX, lastY);
-        if (tDist < dist) {
-          sel = shape;
-          dist = tDist;
-        }
-      }
-      if (sel != null) {
-        lastX = sel.xLoc;
-        lastY = sel.yLoc;
-        newShapes.add(sel);
-        cullShapes.remove(sel);
-      }
-    }
-    return newShapes;
+    return cullShapes;
   }
 
+  /**
+   * Called by MiniCNC code to cull out items that cannot be cut via CNC
+   * @return List of CADShape objects minus culled items
+   */
   ArrayList<LaserCut.CADShape> selectCncItems () {
-    // Cull out items that will not CNC Itemd
+    // Cull out items that will not CNC
     ArrayList<LaserCut.CADShape> cullShapes = new ArrayList<>();
     for (LaserCut.CADShape shape : getDesign()) {
       if (shape instanceof LaserCut.CNCPath) {
@@ -1019,7 +1003,6 @@ public class DrawSurface extends JPanel {
     }
     return cullShapes;
   }
-
 
   public void paint (Graphics g) {
     Dimension d = getSize();

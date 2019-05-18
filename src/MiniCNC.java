@@ -85,7 +85,7 @@
               int feed = laserCut.prefs.getInt("mini.cnc.feed", MINI_CNC_FEED_DEFAULT);
               feed = Math.max(1, feed);                                       // Min feed = 1 inches/min
               for (LaserCut.CADShape shape : laserCut.surface.selectCncItems()) {
-                for (Line2D.Double[] lines : shape.getListOfScaledLines(1)) {
+                for (Line2D.Double[] lines : shape.getListOfScaledLines(1, .001)) {
                   String x1 = LaserCut.df.format(lines[0].x1);
                   String y1 = LaserCut.df.format(lines[0].y1);
                   String z1 = LaserCut.df.format(zDepth);

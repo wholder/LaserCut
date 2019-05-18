@@ -127,87 +127,84 @@ public class DXFReader {
   private void setUnits (String val) {
     if (val != null) {
       switch (Integer.parseInt(val)) {
-      case 0:             // unitless (assume millimeters)
-        uScale = 0.039370078740157;
-        units = "millimeters";
-        break;
-      case 1:             // inches
+      case 1:                       // inches
         uScale = 1.0;
         units = "inches";
         break;
-      case 2:             // feet
+      case 2:                       // feet
         uScale = 1.0/12;
         units = "feet";
         break;
-      case 3:             // miles
+      case 3:                       // miles
         uScale = 63360.0;
         units = "miles";
         break;
-      case 4:             // millimeters
+      case 0:                       // unitless (assume millimeters)
+      case 4:                       // millimeters
         uScale = 0.039370078740157;
         units = "millimeters";
         break;
-      case 5:             // centimeters
+      case 5:                       // centimeters
         uScale = 0.39370078740157;
         units = "centimeters";
         break;
-      case 6:             // meters
+      case 6:                       // meters
         uScale = 39.370078740157;
         units = "meters";
         break;
-      case 7:             // kilometers
+      case 7:                       // kilometers
         uScale = 39370.078740157;
         units = "kilometers";
         break;
-      case 8:             // microinches
+      case 8:                       // microinches
         uScale = 0.000001;
         units = "microinches";
         break;
-      case 9:             // mils
+      case 9:                       // mils
         uScale = 0.001;
         units = "mils";
         break;
-      case 10:            // yards
+      case 10:                      // yards
         uScale = 36.0;
         units = "yards";
         break;
-      case 11:            // angstroms
+      case 11:                      // angstroms
         uScale = 3.9370078740157e-9;
         units = "angstroms";
         break;
-      case 12:            // nanometers
+      case 12:                      // nanometers
         uScale = 3.9370078740157e-8;
         units = "nanometers";
         break;
-      case 13:            // microns
+      case 13:                      // microns
         uScale = 3.9370078740157e-5;
         units = "microns";
         break;
-      case 14:            // decimeters
+      case 14:                      // decimeters
         uScale = 3.9370078740157;
         units = "decimeters";
         break;
-      case 15:            // decameters
+      case 15:                      // decameters
         uScale = 393.70078740157;
         units = "decameters";
         break;
-      case 16:            // hectometers
+      case 16:                      // hectometers
         uScale = 3937.007878740157;
         units = "hectometers";
         break;
-      case 17:            // gigameters
+      case 17:                      // gigameters
         uScale = 39370078740.157;
         units = "gigameters";
         break;
-      case 18:            // astronomical units
+      case 18:                      // astronomical units
         uScale = 5.89e+12;
         units = "astronomical units";
         break;
-      case 19:            // light years
+      case 19:                      // light years
         uScale = 3.725e+17;
         units = "light years";
         break;
-      case 20:            // parsecs
+      case 20:                      // parsecs
         uScale = 1.215e+18;
         units = "parsecs";
         break;
@@ -225,12 +222,9 @@ public class DXFReader {
 
   // Provides a way to disable drawing of certain types
   private boolean doDraw (DrawItem entity) {
-    if ((entity instanceof Text && !drawText) ||
-        (entity instanceof MText && !drawMText) ||
-        (entity instanceof Dimen && !drawDimen)) {
-      return false;
-    }
-    return true;
+    return (!(entity instanceof Text)  || drawText) &&
+           (!(entity instanceof MText) || drawMText) &&
+           (!(entity instanceof Dimen) || drawDimen);
   }
 
   /**

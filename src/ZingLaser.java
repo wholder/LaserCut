@@ -65,10 +65,10 @@ class ZingLaser {
           if (shape instanceof LaserCut.CADRasterImage && shape.engrave) {
             LaserCut.CADRasterImage raster = (LaserCut.CADRasterImage) shape;
             double[] scale = raster.getScale(ZING_PPI);
-            Rectangle2D bb = raster.getScaledRotatedBounds(scale);
-            AffineTransform at = raster.getScaledRotatedTransform(bb, scale);
-            BufferedImage scaledImg = raster.getScaledRotatedImage(at, bb, scale);
-            Point2D.Double offset = raster.getScaledRotatedOrigin(at, bb);
+            Rectangle2D bnds = raster.getScaledRotatedBounds(scale);
+            AffineTransform at = raster.getScaledRotatedTransform(bnds, scale);
+            BufferedImage scaledImg = raster.getScaledRotatedImage(at, bnds, scale);
+            Point2D.Double offset = raster.getScaledRotatedOrigin(at, bnds);
             int xLoc = (int) Math.round(shape.xLoc * ZING_PPI - offset.x);
             int yLoc = (int) Math.round(shape.yLoc * ZING_PPI - offset.y);
             com.t_oster.liblasercut.platform.Point loc = new com.t_oster.liblasercut.platform.Point(xLoc, yLoc);
@@ -92,7 +92,7 @@ class ZingLaser {
           // Loop detects pen up/pen down based on start and end points of line segments
           boolean hasVector = false;
           for (LaserCut.CADShape shape : laserCut.surface.selectLaserItems(doCut)) {
-            for (Line2D.Double[] lines : shape.getListOfScaledLines(ZING_PPI)) {
+            for (Line2D.Double[] lines : shape.getListOfScaledLines(ZING_PPI, .001)) {
               if (lines.length > 0) {
                 hasVector = true;
                 boolean first = true;
@@ -196,7 +196,7 @@ class ZingLaser {
           for (int ii = 0; ii <= materials.length; ii++) {
             boolean none = ii == materials.length;
             Properties props = none ? new Properties() : laserCut.getProperties( materials[ii]);
-            if (name.equals(props.getProperty("name")) || none) {
+            if ((name != null && name.equals(props.getProperty("name"))) || none) {
               parmSet[4].setField(props.getProperty("power"));
               parmSet[5].setField(props.getProperty("speed"));
               parmSet[6].setField(props.getProperty("freq"));

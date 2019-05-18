@@ -20,12 +20,12 @@ public class CornerFinder {
     shape = SVGParser.removeOffset(new Shape[] {shape})[0];
     ArrayList<Shape> shapes = new ArrayList<>();
     shapes.add(roundCorners(shape, .125));
-    new ShapeWindow(shapes.toArray(new Shape[shapes.size()]), .25);
+    new ShapeWindow(shapes.toArray(new Shape[0]), .25);
   }
 
   static Shape roundCorners (Shape shape, double radius) {
     ArrayList<Point2D.Double> points = getPoints(shape);
-    Point2D.Double[] pnts = points.toArray(new Point2D.Double[points.size()]);
+    Point2D.Double[] pnts = points.toArray(new Point2D.Double[0]);
     Area a1 = new Area(shape);
     for (int ii = 0; ii < pnts.length; ii++) {
       Point2D.Double p1 = pnts[ii % pnts.length];
@@ -98,8 +98,6 @@ public class CornerFinder {
       double[] coords = new double[6];
       int type = pi.currentSegment(coords);
       switch (type) {
-        case PathIterator.SEG_CLOSE:
-          break;
         case PathIterator.SEG_MOVETO:
           points.add(new Point2D.Double(coords[0], coords[1]));
           if (start == null) {
@@ -118,7 +116,7 @@ public class CornerFinder {
         case PathIterator.SEG_QUADTO:
           points.add(new Point2D.Double(coords[4], coords[5]));
           break;
-        default:
+        case PathIterator.SEG_CLOSE:
           break;
       }
       pi.next();
@@ -134,11 +132,8 @@ public class CornerFinder {
     double s12 = dx12 < dy12 ? dx12 / dy12 : dy12 / dx12;
     double s23 = dy23 < dx23 ? dy23 / dx23 : dx23 / dy23;
     double dif = Math.abs(s12 - s23);
-    if (dif < .0001) {
-      //System.out.println("corner at: " + df.format(p2.x) + ", " + df.format(p2.y));
-      return true;
-    }
-    return false;
+    //System.out.println("corner at: " + df.format(p2.x) + ", " + df.format(p2.y));
+    return dif < .0001;
   }
 
   /**

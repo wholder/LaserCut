@@ -9,7 +9,8 @@ import java.awt.geom.Line2D;
 import java.awt.geom.Path2D;
 
 public class LineWithArrow extends JPanel {
-  private double  cx = 200, cy = 200, mx = 100, my = 100;
+  private double mx = 100;
+  private double my = 100;
 
   LineWithArrow () {
     addMouseMotionListener(new MouseMotionAdapter() {
@@ -109,6 +110,7 @@ public class LineWithArrow extends JPanel {
     Graphics2D g2 = (Graphics2D) g;
     g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
     g2.setPaint(Color.blue);
+    double cx = 200;
     if (false) {
       g2.draw(lineWithArrow(cx, cx, mx, my));
     } else {

@@ -37,7 +37,7 @@ public class PathOptimizer {
     }
 
     // Reverse path order
-    ShapeSeg flip () {
+    void flip () {
       switch (type) {
         case PathIterator.SEG_LINETO:   // 1
           coords[0] = sx;
@@ -71,7 +71,6 @@ public class PathOptimizer {
           ey = coords[5];
           break;
       }
-      return this;
     }
 
     Point2D.Float getStart () {
