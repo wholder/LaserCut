@@ -1454,7 +1454,12 @@ public class LaserCut extends JFrame {
    * CADShape interfaces
    */
 
-  interface CADNoDraw {}  // Marker Interface
+  interface CADNoDraw {}  // Marker Interface (implented by CADRasterImage and CADReference to exclude them from cutting)
+
+  interface Resizable {   //  Implemented by CADShape subclasses that support resizing
+    void resizeShape (Point2D.Double newLoc, Dimension workSize);
+    boolean isResizeClicked (Point2D.Double point, double zoomFactor);
+  }
 
   interface ChangeListener {
     void shapeChanged (CADShape cadShape);
@@ -1753,6 +1758,7 @@ public class LaserCut extends JFrame {
       g2.setStroke(new BasicStroke(getStrokeWidth()));
       if (!(this instanceof CNCPath)) {
         if (isSelected || this instanceof CADReference || this instanceof CADShapeSpline) {
+          // Draw move anchor point
           double mx = xLoc * zoom * SCREEN_PPI;
           double my = yLoc * zoom * SCREEN_PPI;
           double mWid = 3 * zoom;
@@ -1857,6 +1863,7 @@ public class LaserCut extends JFrame {
     /**
      * Set position of shape to a new location, but keep anchor inside working area
      * @param newLoc new x/y position (in shape coordinates, inches)
+     * @param workSize size of workspace in screen units
      * @return delta position change in a Point2D.Double object
      */
     Point2D.Double dragPosition (Point2D.Double newLoc, Dimension workSize) {
@@ -2108,7 +2115,7 @@ public class LaserCut extends JFrame {
     }
   }
 
-  static class CADRasterImage extends CADShape implements Serializable, CADNoDraw {
+  static class CADRasterImage extends CADShape implements Serializable, CADNoDraw, Resizable {
     private static final long serialVersionUID = 2309856254388651139L;
     public double             width, height, scale = 100.0;
     public boolean            engrave3D;
@@ -2138,7 +2145,6 @@ public class LaserCut extends JFrame {
           ppi = getImageDPI(imgFile);
           imagePpi = ppi.width + "x" + ppi.height;
           img = ImageIO.read(imgFile);
-          //ColorModel cm = img.getColorModel();
           width = (double) img.getWidth() / ppi.width;
           height = (double) img.getHeight() / ppi.height;
           if (placeParameterDialog(surface, laserCut.displayUnits)) {
@@ -2167,6 +2173,46 @@ public class LaserCut extends JFrame {
     @Override
     String getName () {
       return "Raster Image";
+    }
+
+    /**
+     * Implement Resizeble to check if 'point' is close to shape's resize handle
+     * @param point Location click on screen in model coordinates (inches)
+     * @param zoomFactor Zoom factor (ratio)
+     * @return true if close enough to consider a 'touch'
+     */
+    public boolean isResizeClicked (Point2D.Double point, double zoomFactor) {
+      double mx, my;
+      if (centered) {
+        mx = (xLoc + width / 2);
+        my = (yLoc + height / 2);
+      } else {
+        mx = (xLoc + width);
+        my = (yLoc + height);
+      }
+      double dist = point.distance(mx, my) * SCREEN_PPI;
+      return dist < 5;
+    }
+
+    /**
+     * Implement Resizeble to resize shape using newLoc to compute change
+     * @param newLoc new x/y position (in shape coordinates, inches)
+     * @param workSize size of workspace in screen units
+     */
+    public void resizeShape (Point2D.Double newLoc, Dimension workSize) {
+      double x = Math.max(Math.min(newLoc.x, workSize.width / SCREEN_PPI), 0);
+      double y = Math.max(Math.min(newLoc.y, workSize.height / SCREEN_PPI), 0);
+      double newWid = x - xLoc;
+      double newHyt = y - yLoc;
+      double rawWid = (double) img.getWidth() / ppi.width;
+      double rawHyt = (double) img.getHeight() / ppi.height;
+      double ratioX = newWid / rawWid;
+      double ratioY = newHyt / rawHyt;
+      double ratio = Math.min(ratioX, ratioY);
+      width = rawWid * ratio;
+      height = rawHyt * ratio;
+      scale = ratio * 100;
+      updateShape();
     }
 
     @Override
@@ -2199,6 +2245,23 @@ public class LaserCut extends JFrame {
       g2.drawImage(bufimg, at, null);
       g2.dispose();
       super.draw(g, zoom);
+      if (isSelected) {
+        // Draw resize anchor point
+        g2 =  (Graphics2D) g.create();
+        double mx, my;
+        if (centered) {
+          mx = (xLoc + width / 2) * zoom * SCREEN_PPI;
+          my = (yLoc + height / 2) * zoom * SCREEN_PPI;
+        } else {
+          mx = (xLoc + width) * zoom * SCREEN_PPI;
+          my = (yLoc + height) * zoom * SCREEN_PPI;
+        }
+        double mWid = 4 * zoom;
+        g2.setStroke(new BasicStroke(1.8f));
+        g2.setColor(Color.red);
+        g2.draw(new Ellipse2D.Double(mx - mWid, my - mWid, mWid * 2 - 1, mWid * 2 - 1));
+        g2.dispose();
+      }
     }
 
     /**
@@ -2280,7 +2343,6 @@ public class LaserCut extends JFrame {
     @Override
     Shape buildShape () {
       AffineTransform at = new AffineTransform();
-      at.scale(scale / 100, scale / 100);
       return at.createTransformedShape(new Rectangle2D.Double(-width / 2, -height / 2, width, height));
     }
 
@@ -3156,22 +3218,18 @@ public class LaserCut extends JFrame {
       Point2D.Double mse = rotatePoint(new Point2D.Double(point.x - xLoc, point.y - yLoc), -rotation);
       int idx = 1;
       Point2D.Double chk = points.get(idx);
-      double min = Double.MAX_VALUE;
       for (Line2D.Double[] lines : transformShapeToLines(getShape(), 1, .01)) {
         for (Line2D.Double line : lines) {
           double dist = line.ptSegDist(mse) * SCREEN_PPI;
           if (dist < 5) {
-            System.out.println(dist);
             return idx - 1;
           }
-          min = Math.min(min, dist);
           // Advance idx as we pass control points
           if (idx < points.size() && chk.distance(line.getP2()) < .000001) {
             chk = points.get(Math.min(points.size() - 1, ++idx));
           }
         }
       }
-      System.out.println((int) min);
       return -1;
     }
 

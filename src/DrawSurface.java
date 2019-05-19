@@ -13,7 +13,7 @@ public class DrawSurface extends JPanel {
   private Dimension                           workSize;
   private JTextField                          infoText;
   private List<LaserCut.CADShape>             shapes = new ArrayList<>();
-  private LaserCut.CADShape                   selected, dragged;
+  private LaserCut.CADShape                   selected, dragged, resize;
   private Placer                              placer;
   private double                              gridSpacing;
   private int                                 gridMajor;
@@ -167,6 +167,17 @@ public class DrawSurface extends JPanel {
               repaint();
               return;
             }
+            if (selected instanceof LaserCut.Resizable) {
+              // Check for click on resize point (used to drag shape to new size)
+              if (((LaserCut.Resizable) selected).isResizeClicked(newLoc, zoomFactor)) {
+                resize = selected;
+                if (selected instanceof LaserCut.StateMessages) {
+                  setInfoText(((LaserCut.StateMessages) selected).getStateMsg());
+                }
+                repaint();
+                return;
+              }
+            }
           }
           for (LaserCut.CADShape shape : shapes) {
             // Check for selection or deselection of shapes
@@ -259,6 +270,7 @@ public class DrawSurface extends JPanel {
       @Override
       public void mouseReleased (MouseEvent ev) {
         dragged = null;
+        resize = null;
         scrollPoint = null;
         setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
         pushedToStack = false;
@@ -311,6 +323,17 @@ public class DrawSurface extends JPanel {
               }
             }
           }
+          repaint();
+        } else if (resize != null) {
+          if (!pushedToStack) {
+            pushedToStack = true;
+            pushToUndoStack();
+          }
+          if (doSnap && gridSpacing > 0) {
+            newLoc = toGrid(newLoc);
+          }
+          setInfoText(resize.getShapePositionInfo());
+          ((LaserCut.Resizable) resize).resizeShape(newLoc, workSize);
           repaint();
         } else if (scrollPoint != null) {
           // Drag the mouse to move the JScrollPane
@@ -1037,7 +1060,7 @@ public class DrawSurface extends JPanel {
         // Test code to view FlatteningPathIterator-generated lines
         g2.setStroke(shape.getShapeStroke(shape.getStrokeWidth()));
         g2.setColor(shape.getShapeColor());
-        List<Line2D.Double[]> sets = shape.getListOfScaledLines(zoomFactor * LaserCut.SCREEN_PPI);
+        List<Line2D.Double[]> sets = shape.getListOfScaledLines(zoomFactor * LaserCut.SCREEN_PPI, .01);
         for (Line2D.Double[] lines : sets) {
           for (Line2D.Double line : lines) {
             g2.draw(line);
