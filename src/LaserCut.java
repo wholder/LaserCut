@@ -2176,34 +2176,53 @@ public class LaserCut extends JFrame {
     }
 
     /**
+     * Rotate 2D point around anchor point
+     * @param point Point to rotate
+     * @param angle Angle to rotate
+     * @return Rotated 2D point
+     */
+    private Point2D.Double rotateAroundPoint (Point2D.Double anchor, Point2D.Double point, double angle) {
+      AffineTransform center = AffineTransform.getRotateInstance(Math.toRadians(angle), anchor.x, anchor.y);
+      Point2D.Double np = new Point2D.Double();
+      center.transform(point, np);
+      return np;
+    }
+
+    private Point2D.Double getAnchorPoint () {
+      return new Point2D.Double(xLoc, yLoc);
+    }
+
+    private Point2D.Double getLRPoint () {
+      if (centered) {
+        return new Point2D.Double(xLoc + width / 2, yLoc + height / 2);
+      } else {
+        return new Point2D.Double(xLoc + width, yLoc + height);
+      }
+    }
+
+    /**
      * Implement Resizeble to check if 'point' is close to shape's resize handle
      * @param point Location click on screen in model coordinates (inches)
      * @param zoomFactor Zoom factor (ratio)
      * @return true if close enough to consider a 'touch'
      */
     public boolean isResizeClicked (Point2D.Double point, double zoomFactor) {
-      double mx, my;
-      if (centered) {
-        mx = (xLoc + width / 2);
-        my = (yLoc + height / 2);
-      } else {
-        mx = (xLoc + width);
-        my = (yLoc + height);
-      }
-      double dist = point.distance(mx, my) * SCREEN_PPI;
+      Point2D.Double grab = rotateAroundPoint(getAnchorPoint(), getLRPoint(), rotation);
+      double dist = point.distance(grab.x, grab.y) * SCREEN_PPI;
       return dist < 5;
     }
 
     /**
      * Implement Resizeble to resize shape using newLoc to compute change
-     * @param newLoc new x/y position (in shape coordinates, inches)
+     * @param newLoc new x/y position (in workspace coordinates, inches)
      * @param workSize size of workspace in screen units
      */
     public void resizeShape (Point2D.Double newLoc, Dimension workSize) {
       double x = Math.max(Math.min(newLoc.x, workSize.width / SCREEN_PPI), 0);
       double y = Math.max(Math.min(newLoc.y, workSize.height / SCREEN_PPI), 0);
-      double newWid = x - xLoc;
-      double newHyt = y - yLoc;
+      Point2D.Double grab = rotateAroundPoint(getAnchorPoint(), new Point2D.Double(x, y), -rotation);
+      double newWid = centered ? (grab.x - xLoc) * 2 : grab.x - xLoc;
+      double newHyt = centered ? (grab.y - yLoc) * 2 : grab.y - yLoc;
       double rawWid = (double) img.getWidth() / ppi.width;
       double rawHyt = (double) img.getHeight() / ppi.height;
       double ratioX = newWid / rawWid;
@@ -2246,16 +2265,13 @@ public class LaserCut extends JFrame {
       g2.dispose();
       super.draw(g, zoom);
       if (isSelected) {
-        // Draw resize anchor point
+        // Draw grab point for resizing image
+        Point2D.Double anchor = getAnchorPoint();
+        Point2D.Double grab = getLRPoint();
+        Point2D.Double rGrab = rotateAroundPoint(anchor, grab, rotation);
         g2 =  (Graphics2D) g.create();
-        double mx, my;
-        if (centered) {
-          mx = (xLoc + width / 2) * zoom * SCREEN_PPI;
-          my = (yLoc + height / 2) * zoom * SCREEN_PPI;
-        } else {
-          mx = (xLoc + width) * zoom * SCREEN_PPI;
-          my = (yLoc + height) * zoom * SCREEN_PPI;
-        }
+        double mx = rGrab.x * zoom * SCREEN_PPI;
+        double my = rGrab.y * zoom * SCREEN_PPI;
         double mWid = 4 * zoom;
         g2.setStroke(new BasicStroke(1.8f));
         g2.setColor(Color.red);
@@ -2278,9 +2294,9 @@ public class LaserCut extends JFrame {
      * @param scale Array of double from getScale() where [0] is x scale and [1] is y scale
      * @return Bounding box for scaled and rotated image
      */
-    Rectangle2D getScaledRotatedBounds (double[] scale) {
+    Rectangle2D getScaledRotatedBounds (double scale) {
       AffineTransform at = new AffineTransform();
-      at.scale(scale[0], scale[1]);
+      at.scale(scale, scale);
       at.rotate(Math.toRadians(rotation), (double) img.getWidth() / 2, (double) img.getHeight() / 2);
       Path2D.Double tShape = (Path2D.Double) at.createTransformedShape(new Rectangle2D.Double(0, 0, img.getWidth(), img.getHeight()));
       return tShape.getBounds2D();
@@ -2292,10 +2308,10 @@ public class LaserCut extends JFrame {
      * @param scale Array of double from getScale() where [0] is x scale and [1] is y scale
      * @return AffineTransform which will scale and rotate image into bounding box computed by getScaledRotatedBounds()
      */
-    AffineTransform getScaledRotatedTransform (Rectangle2D bb, double[] scale) {
+    AffineTransform getScaledRotatedTransform (Rectangle2D bb, double scale) {
       AffineTransform at = new AffineTransform();
       at.translate(-bb.getX(), -bb.getY());
-      at.scale(scale[0], scale[1]);
+      at.scale(scale, scale);
       at.rotate(Math.toRadians(rotation), (double) img.getWidth() / 2, (double) img.getHeight() / 2);
       return at;
     }
@@ -2323,7 +2339,7 @@ public class LaserCut extends JFrame {
      * @param scale Array of double from getScale() where [0] is x scale and [1] is y scale
      * @return BufferedImage containing scaled and rotated image
      */
-    BufferedImage getScaledRotatedImage (AffineTransform at, Rectangle2D bb, double[] scale) {
+    BufferedImage getScaledRotatedImage (AffineTransform at, Rectangle2D bb, double scale) {
       // Create new BufferedImage the size of the bounding for for the scaled and rotated image
       int wid = (int) Math.round(bb.getWidth());
       int hyt = (int) Math.round(bb.getHeight());
@@ -2334,7 +2350,7 @@ public class LaserCut extends JFrame {
       // Draw scaled and rotated image into newly-created BufferedImage
       at = new AffineTransform();
       at.translate(-bb.getX(), -bb.getY());
-      at.scale(scale[0], scale[1]);
+      at.scale(scale, scale);
       at.rotate(Math.toRadians(rotation), (double) img.getWidth() / 2, (double) img.getHeight() / 2);
       g2.drawImage(img, at, null);
       return bufImg;
@@ -2356,6 +2372,8 @@ public class LaserCut extends JFrame {
     private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
       in.defaultReadObject();
       img = ImageIO.read(in);
+      width = (double) img.getWidth() / ppi.width * (scale / 100);
+      height = (double) img.getHeight() / ppi.height * (scale / 100);
     }
 
     @Override
@@ -3172,7 +3190,7 @@ public class LaserCut extends JFrame {
     /**
      * See if we clicked on an existing Catmull-Rom Control Point other than origin
      * @param surface Reference to DrawSurface
-     * @param point Point clicked in Workspace coordinates
+     * @param point Point clicked in Workspace coordinates (inches)
      * @param gPoint Closest grid point clicked in Workspace coordinates
      * @return true if clicked
      */
@@ -3211,7 +3229,7 @@ public class LaserCut extends JFrame {
 
     /**
      * See if we clicked on spline shape to add new control point
-     * @param point Point clicked in Workspace coordinates
+     * @param point Point clicked in Workspace coordinates (inches)
      * @return index into points List where we need to add new point
      */
     int getInsertionPoint (Point2D.Double point) {
@@ -3231,6 +3249,19 @@ public class LaserCut extends JFrame {
         }
       }
       return -1;
+    }
+
+    /**
+     * Rotate 2D point around 0,0 point
+     * @param point Point to rotate
+     * @param angle Angle to rotate
+     * @return Rotated 2D point
+     */
+    private Point2D.Double rotatePoint (Point2D.Double point, double angle) {
+      AffineTransform center = AffineTransform.getRotateInstance(Math.toRadians(angle), 0, 0);
+      Point2D.Double np = new Point2D.Double();
+      center.transform(point, np);
+      return np;
     }
 
     @Override
@@ -3267,13 +3298,6 @@ public class LaserCut extends JFrame {
         path = convert(pnts, false);
       }
       updateShape();
-    }
-
-    private Point2D.Double rotatePoint (Point2D.Double point, double angle) {
-      AffineTransform center = AffineTransform.getRotateInstance(Math.toRadians(angle), 0, 0);
-      Point2D.Double np = new Point2D.Double();
-      center.transform(point, np);
-      return np;
     }
 
     private Path2D.Double convert (Point2D.Double[] points, boolean close) {
