@@ -2220,9 +2220,16 @@ public class LaserCut extends JFrame {
     public void resizeShape (Point2D.Double newLoc, Dimension workSize) {
       double x = Math.max(Math.min(newLoc.x, workSize.width / SCREEN_PPI), 0);
       double y = Math.max(Math.min(newLoc.y, workSize.height / SCREEN_PPI), 0);
+      // Counter rotate mouse loc into shape's coordinate space to measure stretch/shrink
       Point2D.Double grab = rotateAroundPoint(getAnchorPoint(), new Point2D.Double(x, y), -rotation);
-      double newWid = centered ? (grab.x - xLoc) * 2 : grab.x - xLoc;
-      double newHyt = centered ? (grab.y - yLoc) * 2 : grab.y - yLoc;
+      double dx = grab.x - xLoc;
+      double dy = grab.y - yLoc;
+      double angle = Math.toDegrees(Math.atan2(dy, dx)) - 45;
+      rotation += angle;
+      rotation = rotation >= 360 ? rotation - 360 : rotation < 0 ? rotation + 360 : rotation;
+      grab = rotateAroundPoint(getAnchorPoint(), new Point2D.Double(x, y), -rotation);
+      double newWid = centered ? dx * 2 : dx;
+      double newHyt = centered ? dy * 2 : dy;
       double rawWid = (double) img.getWidth() / ppi.width;
       double rawHyt = (double) img.getHeight() / ppi.height;
       double ratioX = newWid / rawWid;
@@ -2387,6 +2394,12 @@ public class LaserCut extends JFrame {
       return new BasicStroke(strokeWidth, BasicStroke.CAP_SQUARE, BasicStroke.JOIN_MITER, 1.0f, dash1, 0.5f);
     }
 
+    /**
+     * Examine image metadata and try to determine image DPI.  Handle JPEG, PNG and BMP files
+     * @param file File comtaining image
+     * @return Detected DPI, or 72x72 DPI as default
+     * @throws IOException
+     */
     static Dimension getImageDPI (File file) throws IOException {
       ImageInputStream iis = ImageIO.createImageInputStream(file);
       try {
