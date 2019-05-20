@@ -13,7 +13,7 @@ public class DrawSurface extends JPanel {
   private Dimension                           workSize;
   private JTextField                          infoText;
   private List<LaserCut.CADShape>             shapes = new ArrayList<>();
-  private LaserCut.CADShape                   selected, dragged, resize;
+  private LaserCut.CADShape                   selected, dragged, resizeOrRotate;
   private Placer                              placer;
   private double                              gridSpacing;
   private int                                 gridMajor;
@@ -112,6 +112,15 @@ public class DrawSurface extends JPanel {
             }
           }
         } else if (ev.isShiftDown()) {
+          if (selected instanceof LaserCut.Resizable || selected instanceof LaserCut.Rotatable) {
+            // Check for click on resizeOrRotate point (used to drag shape to new size, or orientation)
+            if (selected.isResizeOrRotateClicked(newLoc, zoomFactor)) {
+              resizeOrRotate = selected;
+              setInfoText(selected.getInfo());
+              repaint();
+              return;
+            }
+          }
           for (LaserCut.CADShape shape : shapes) {
             // Add or remove clicked shape from dragList
             if (shape.isShapeClicked(newLoc, zoomFactor)) {
@@ -167,13 +176,11 @@ public class DrawSurface extends JPanel {
               repaint();
               return;
             }
-            if (selected instanceof LaserCut.Resizable) {
-              // Check for click on resize point (used to drag shape to new size)
-              if (((LaserCut.Resizable) selected).isResizeClicked(newLoc, zoomFactor)) {
-                resize = selected;
-                if (selected instanceof LaserCut.StateMessages) {
-                  setInfoText(((LaserCut.StateMessages) selected).getStateMsg());
-                }
+            if (selected instanceof LaserCut.Resizable || selected instanceof LaserCut.Rotatable) {
+              // Check for click on resizeOrRotate point (used to drag shape to new size or orientation)
+              if (selected.isResizeOrRotateClicked(newLoc, zoomFactor)) {
+                resizeOrRotate = selected;
+                setInfoText(selected.getInfo());
                 repaint();
                 return;
               }
@@ -270,7 +277,7 @@ public class DrawSurface extends JPanel {
       @Override
       public void mouseReleased (MouseEvent ev) {
         dragged = null;
-        resize = null;
+        resizeOrRotate = null;
         scrollPoint = null;
         setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
         pushedToStack = false;
@@ -324,16 +331,20 @@ public class DrawSurface extends JPanel {
             }
           }
           repaint();
-        } else if (resize != null) {
+        } else if (resizeOrRotate != null) {
           if (!pushedToStack) {
             pushedToStack = true;
             pushToUndoStack();
           }
-          if (doSnap && gridSpacing > 0) {
-            newLoc = toGrid(newLoc);
+          if (ev.isShiftDown()) {
+            resizeOrRotate.resizeOrRotateShape(newLoc, workSize, true);
+          } else {
+            if (doSnap && gridSpacing > 0) {
+              newLoc = toGrid(newLoc);
+            }
+            resizeOrRotate.resizeOrRotateShape(newLoc, workSize, false);
           }
-          setInfoText(resize.getShapePositionInfo());
-          ((LaserCut.Resizable) resize).resizeShape(newLoc, workSize);
+          setInfoText(resizeOrRotate.getInfo());
           repaint();
         } else if (scrollPoint != null) {
           // Drag the mouse to move the JScrollPane
@@ -364,7 +375,7 @@ public class DrawSurface extends JPanel {
         }
       }
     });
-    // Track JPanel resize events and save in prefs
+    // Track JPanel resizeOrRotate events and save in prefs
     addComponentListener(new ComponentAdapter() {
       public void componentResized (ComponentEvent ev)  {
         Rectangle bounds = ev.getComponent().getBounds();

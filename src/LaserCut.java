@@ -1456,10 +1456,11 @@ public class LaserCut extends JFrame {
 
   interface CADNoDraw {}  // Marker Interface (implented by CADRasterImage and CADReference to exclude them from cutting)
 
-  interface Resizable {   //  Implemented by CADShape subclasses that support resizing
-    void resizeShape (Point2D.Double newLoc, Dimension workSize);
-    boolean isResizeClicked (Point2D.Double point, double zoomFactor);
+  interface Resizable {   // Interface for CADShape subclasses that support resizing
+    public void resize(double dx, double dy);
   }
+
+  interface Rotatable {}  // Marker inteface for CADShape subclasses that support rotation
 
   interface ChangeListener {
     void shapeChanged (CADShape cadShape);
@@ -1586,6 +1587,7 @@ public class LaserCut extends JFrame {
       this.centered = centered;
     }
 
+    // Override in subclass, as needed
     String getShapePositionInfo () {
       return "xLoc: " + LaserCut.df.format(xLoc) + ", yLoc: " + LaserCut.df.format(yLoc);
     }
@@ -1749,7 +1751,7 @@ public class LaserCut extends JFrame {
     void draw (Graphics g, double zoom) {
       Graphics2D g2 = (Graphics2D) g.create();
       Shape dShape = getWorkspaceTranslatedShape();
-      // Scale Shape to scale and draw it
+      // Resize Shape to scale and draw it
       AffineTransform atScale = AffineTransform.getScaleInstance(zoom * SCREEN_PPI, zoom * SCREEN_PPI);
       dShape = atScale.createTransformedShape(dShape);
       g2.setStroke(getShapeStroke(getStrokeWidth()));
@@ -1764,6 +1766,18 @@ public class LaserCut extends JFrame {
           double mWid = 3 * zoom;
           g2.draw(new Line2D.Double(mx - mWid, my, mx + mWid, my));
           g2.draw(new Line2D.Double(mx, my - mWid, mx, my + mWid));
+        }
+      }
+      if (isSelected && (this instanceof Resizable || this instanceof Rotatable)) {
+        // Draw grab point for resizing image
+        Point2D.Double rGrab = rotateAroundPoint(getAnchorPoint(), getLRPoint(), rotation);
+        double mx = rGrab.x * zoom * SCREEN_PPI;
+        double my = rGrab.y * zoom * SCREEN_PPI;
+        double mWid = 4 * zoom;
+        if (this instanceof Resizable) {
+          g2.draw(new Rectangle2D.Double(mx - mWid, my - mWid, mWid * 2 - 1, mWid * 2 - 1));
+        } else {
+          g2.draw(new Ellipse2D.Double(mx - mWid, my - mWid, mWid * 2 - 1, mWid * 2 - 1));
         }
       }
       g2.dispose();
@@ -2056,6 +2070,76 @@ public class LaserCut extends JFrame {
       }
       return buf.toString();
     }
+
+    /*
+     * * * * * * * Resize and Rotate Logic * * * * * * * *
+     */
+
+    /**
+     * Rotate 2D point around anchor point
+     * @param point Point to rotate
+     * @param angle Angle to rotate
+     * @return Rotated 2D point
+     */
+    private Point2D.Double rotateAroundPoint (Point2D.Double anchor, Point2D.Double point, double angle) {
+      AffineTransform center = AffineTransform.getRotateInstance(Math.toRadians(angle), anchor.x, anchor.y);
+      Point2D.Double np = new Point2D.Double();
+      center.transform(point, np);
+      return np;
+    }
+
+    private Point2D.Double getAnchorPoint () {
+      Rectangle2D bnds = getShapeBounds();
+      if (centered) {
+        return new Point2D.Double(bnds.getX() + bnds.getWidth() / 2, bnds.getY() + bnds.getHeight() / 2);
+      } else {
+        return new Point2D.Double(bnds.getX(), bnds.getY());
+      }
+    }
+
+    private Point2D.Double getLRPoint () {
+      Rectangle2D bnds = getShapeBounds();
+      return new Point2D.Double(bnds.getX() + bnds.getWidth(), bnds.getY() + bnds.getHeight());
+    }
+
+    /**
+     * Implement Resizeble to check if 'point' is close to shape's resize handle
+     * @param point Location click on screen in model coordinates (inches)
+     * @param zoomFactor Zoom factor (ratio)
+     * @return true if close enough to consider a 'touch'
+     */
+    public boolean isResizeOrRotateClicked (Point2D.Double point, double zoomFactor) {
+      Point2D.Double grab = rotateAroundPoint(getAnchorPoint(), getLRPoint(), rotation);
+      double dist = point.distance(grab.x, grab.y) * SCREEN_PPI;
+      return dist < 5;
+    }
+
+    /**
+     * Implement Resizeble to resize shape using newLoc to compute change
+     * @param newLoc new x/y position (in workspace coordinates, inches)
+     * @param workSize size of workspace in screen units
+     */
+    public void resizeOrRotateShape (Point2D.Double newLoc, Dimension workSize, boolean doRotate) {
+      double x = Math.max(Math.min(newLoc.x, workSize.width / SCREEN_PPI), 0);
+      double y = Math.max(Math.min(newLoc.y, workSize.height / SCREEN_PPI), 0);
+      // Counter rotate mouse loc into shape's coordinate space to measure stretch/shrink
+      Point2D.Double grab = rotateAroundPoint(getAnchorPoint(), new Point2D.Double(x, y), -rotation);
+      double dx = grab.x - xLoc;
+      double dy = grab.y - yLoc;
+      if (doRotate || (this instanceof Rotatable && !(this instanceof Resizable))) {
+        if (this instanceof Rotatable) {
+          double angle = Math.toDegrees(Math.atan2(dy, dx)) - 45;
+          // Change angle in even, 1 degree steps
+          rotation += Math.floor( ( angle / 1 ) + 0.5 ) * 1;
+          rotation = rotation >= 360 ? rotation - 360 : rotation < 0 ? rotation + 360 : rotation;
+        }
+      } else {
+        if (this instanceof Resizable) {
+          ((Resizable) this).resize(dx, dy);
+        }
+      }
+      updateShape();
+    }
   }
 
   static class CADReference extends CADShape implements Serializable, CADNoDraw {
@@ -2115,7 +2199,7 @@ public class LaserCut extends JFrame {
     }
   }
 
-  static class CADRasterImage extends CADShape implements Serializable, CADNoDraw, Resizable {
+  static class CADRasterImage extends CADShape implements Serializable, CADNoDraw, Resizable, Rotatable {
     private static final long serialVersionUID = 2309856254388651139L;
     public double             width, height, scale = 100.0;
     public boolean            engrave3D;
@@ -2175,59 +2259,8 @@ public class LaserCut extends JFrame {
       return "Raster Image";
     }
 
-    /**
-     * Rotate 2D point around anchor point
-     * @param point Point to rotate
-     * @param angle Angle to rotate
-     * @return Rotated 2D point
-     */
-    private Point2D.Double rotateAroundPoint (Point2D.Double anchor, Point2D.Double point, double angle) {
-      AffineTransform center = AffineTransform.getRotateInstance(Math.toRadians(angle), anchor.x, anchor.y);
-      Point2D.Double np = new Point2D.Double();
-      center.transform(point, np);
-      return np;
-    }
-
-    private Point2D.Double getAnchorPoint () {
-      return new Point2D.Double(xLoc, yLoc);
-    }
-
-    private Point2D.Double getLRPoint () {
-      if (centered) {
-        return new Point2D.Double(xLoc + width / 2, yLoc + height / 2);
-      } else {
-        return new Point2D.Double(xLoc + width, yLoc + height);
-      }
-    }
-
-    /**
-     * Implement Resizeble to check if 'point' is close to shape's resize handle
-     * @param point Location click on screen in model coordinates (inches)
-     * @param zoomFactor Zoom factor (ratio)
-     * @return true if close enough to consider a 'touch'
-     */
-    public boolean isResizeClicked (Point2D.Double point, double zoomFactor) {
-      Point2D.Double grab = rotateAroundPoint(getAnchorPoint(), getLRPoint(), rotation);
-      double dist = point.distance(grab.x, grab.y) * SCREEN_PPI;
-      return dist < 5;
-    }
-
-    /**
-     * Implement Resizeble to resize shape using newLoc to compute change
-     * @param newLoc new x/y position (in workspace coordinates, inches)
-     * @param workSize size of workspace in screen units
-     */
-    public void resizeShape (Point2D.Double newLoc, Dimension workSize) {
-      double x = Math.max(Math.min(newLoc.x, workSize.width / SCREEN_PPI), 0);
-      double y = Math.max(Math.min(newLoc.y, workSize.height / SCREEN_PPI), 0);
-      // Counter rotate mouse loc into shape's coordinate space to measure stretch/shrink
-      Point2D.Double grab = rotateAroundPoint(getAnchorPoint(), new Point2D.Double(x, y), -rotation);
-      double dx = grab.x - xLoc;
-      double dy = grab.y - yLoc;
-      double angle = Math.toDegrees(Math.atan2(dy, dx)) - 45;
-      rotation += angle;
-      rotation = rotation >= 360 ? rotation - 360 : rotation < 0 ? rotation + 360 : rotation;
-      grab = rotateAroundPoint(getAnchorPoint(), new Point2D.Double(x, y), -rotation);
+    // Implement Resizable interface
+    public void resize (double dx, double dy) {
       double newWid = centered ? dx * 2 : dx;
       double newHyt = centered ? dy * 2 : dy;
       double rawWid = (double) img.getWidth() / ppi.width;
@@ -2238,7 +2271,6 @@ public class LaserCut extends JFrame {
       width = rawWid * ratio;
       height = rawHyt * ratio;
       scale = ratio * 100;
-      updateShape();
     }
 
     @Override
@@ -2271,20 +2303,6 @@ public class LaserCut extends JFrame {
       g2.drawImage(bufimg, at, null);
       g2.dispose();
       super.draw(g, zoom);
-      if (isSelected) {
-        // Draw grab point for resizing image
-        Point2D.Double anchor = getAnchorPoint();
-        Point2D.Double grab = getLRPoint();
-        Point2D.Double rGrab = rotateAroundPoint(anchor, grab, rotation);
-        g2 =  (Graphics2D) g.create();
-        double mx = rGrab.x * zoom * SCREEN_PPI;
-        double my = rGrab.y * zoom * SCREEN_PPI;
-        double mWid = 4 * zoom;
-        g2.setStroke(new BasicStroke(1.8f));
-        g2.setColor(Color.red);
-        g2.draw(new Ellipse2D.Double(mx - mWid, my - mWid, mWid * 2 - 1, mWid * 2 - 1));
-        g2.dispose();
-      }
     }
 
     /**
@@ -2464,7 +2482,7 @@ public class LaserCut extends JFrame {
     private static double     holeDiam = mmToInches(2.4);
     private boolean           checkClicked;
     public int                columns = 60;
-    public double width,      height;
+    public double             width, height;
     public boolean[][]        notes;
     private transient Shape   rect;
     private transient int     lastCol = 0;
@@ -2622,7 +2640,7 @@ public class LaserCut extends JFrame {
     }
   }
 
-  static class CADRectangle extends CADShape implements Serializable {
+  static class CADRectangle extends CADShape implements Serializable, Resizable, Rotatable {
     private static final long serialVersionUID = 5415641155292738232L;
     public double width, height, radius;
 
@@ -2648,6 +2666,12 @@ public class LaserCut extends JFrame {
       return "Rectangle";
     }
 
+    // Implement Resizable interface
+    public void resize (double dx, double dy) {
+      width = centered ? dx * 2 : dx;
+      height = centered ? dy * 2 : dy;
+    }
+
     @Override
     String[] getParameterNames () {
       return new String[]{"width|in", "height|in", "radius|in"};
@@ -2664,7 +2688,7 @@ public class LaserCut extends JFrame {
     }
   }
 
-  static class CADOval extends CADShape implements Serializable {
+  static class CADOval extends CADShape implements Serializable, Resizable, Rotatable  {
     private static final long serialVersionUID = 2518641166287730832L;
     public double width, height;
 
@@ -2690,6 +2714,12 @@ public class LaserCut extends JFrame {
       return "Oval";
     }
 
+    // Implement Resizable interface
+    public void resize (double dx, double dy) {
+      width = centered ? dx * 2 : dx;
+      height = centered ? dy * 2 : dy;
+    }
+
     @Override
     String[] getParameterNames () {
       return new String[]{"width|in", "height|in"};
@@ -2701,7 +2731,7 @@ public class LaserCut extends JFrame {
     }
   }
 
-  static class CADPolygon extends CADShape implements Serializable {
+  static class CADPolygon extends CADShape implements Serializable, Resizable, Rotatable {
     private static final long serialVersionUID = 973284612591842108L;
     public int    sides;
     public double diameter;
@@ -2726,6 +2756,11 @@ public class LaserCut extends JFrame {
     @Override
     String getName () {
       return "Polygon";
+    }
+
+    // Implement Resizable interface
+    public void resize (double dx, double dy) {
+      diameter = Math.sqrt(dx * dx + dy + dy);
     }
 
     @Override
@@ -3158,7 +3193,7 @@ public class LaserCut extends JFrame {
     }
   }
 
-  static class CADShapeSpline extends CADShape implements Serializable, StateMessages {
+  static class CADShapeSpline extends CADShape implements Serializable, StateMessages, Rotatable {
     private static final long serialVersionUID = 1175193935200692376L;
     private List<Point2D.Double>  points = new ArrayList<>();
     private Point2D.Double        movePoint;
