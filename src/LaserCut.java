@@ -766,7 +766,7 @@ public class LaserCut extends JFrame {
       // Display dialog to get tool radius and inset flag
       ParameterDialog.ParmItem[] rParms = {new ParameterDialog.ParmItem("radius|in{radius of tool}", 0d),
           new ParameterDialog.ParmItem("inset{If checked, toolpath routes interior" +
-              " of shape, else outside}", true)};
+              " of cadShape, else outside}", true)};
       ParameterDialog rDialog = (new ParameterDialog(rParms, new String[] {"OK", "Cancel"}, displayUnits));
       rDialog.setLocationRelativeTo(surface.getParent());
       rDialog.setVisible(true);              // Note: this call invokes dialog
@@ -1302,7 +1302,7 @@ public class LaserCut extends JFrame {
      * Add some test shapes to DrawSurface
      * * * * * * * * * * * * * * * * * * *
      */
-      // Create + shape via additive and subtractive geometric operations
+      // Create + cadShape via additive and subtractive geometric operations
       RoundRectangle2D.Double c1 = new RoundRectangle2D.Double(-.80, -.30, 1.60, .60, .40, .40);
       RoundRectangle2D.Double c2 = new RoundRectangle2D.Double(-.30, -.80, .60, 1.60, .40, .40);
       Area a1 = new Area(c1);
@@ -1593,7 +1593,7 @@ public class LaserCut extends JFrame {
     }
 
     /**
-     * Get absolute bounds of shape in workspace coords
+     * Get absolute bounds of cadShape in workspace coords
      * @return absolute bounding rectangle
      */
     Rectangle2D getShapeBounds () {
@@ -1635,7 +1635,7 @@ public class LaserCut extends JFrame {
     }
 
     /**
-     * Override in subclass to regenerate shape when parameters are changed
+     * Override in subclass to regenerate cadShape when parameters are changed
      * @return Shape built using current parameter settings
      */
     Shape buildShape () {
@@ -1643,7 +1643,7 @@ public class LaserCut extends JFrame {
     }
 
     /**
-     * Get shape, if not build, build shape first
+     * Get cadShape, if not build, build cadShape first
      * @return Shape
      */
     Shape getShape () {
@@ -1667,7 +1667,7 @@ public class LaserCut extends JFrame {
       // Position Shape centered on xLoc/yLoc in inches (x from left, y from top)
       at.rotate(Math.toRadians(rotation));
       if (!centered) {
-        // Position shape relative to its upper left bounding box at position xLoc/yLoc in inches
+        // Position cadShape relative to its upper left bounding box at position xLoc/yLoc in inches
         Rectangle2D bounds = dShape.getBounds2D();
         at.translate(bounds.getWidth() / 2, bounds.getHeight() / 2);
       }
@@ -1734,8 +1734,8 @@ public class LaserCut extends JFrame {
     }
 
     /**
-     * Transform shape to workspace and return as list of arrays of line segments where each array
-     * in the list is the set of lines for a closed shape.
+     * Transform cadShape to workspace and return as list of arrays of line segments where each array
+     * in the list is the set of lines for a closed cadShape.
      * @param scale scale factor
      * @return list of arrays of line segments
      */
@@ -1744,7 +1744,7 @@ public class LaserCut extends JFrame {
     }
 
     /**
-     * Draw shape to screen
+     * Draw cadShape to screen
      * @param g Graphics object
      * @param zoom Zoom factor (ratio)
      */
@@ -1785,7 +1785,7 @@ public class LaserCut extends JFrame {
 
     /**
      * Override in subclass, as needed
-     * @return Color used to draw shape in its current state
+     * @return Color used to draw cadShape in its current state
      */
     Color getShapeColor () {
       if (dragged) {
@@ -1815,7 +1815,7 @@ public class LaserCut extends JFrame {
 
     /**
      * Override in subclass, as needed
-     * @return width of stroke used to draw shape in its current state
+     * @return width of stroke used to draw cadShape in its current state
      */
     float getStrokeWidth () {
       if (dragged) {
@@ -1833,7 +1833,7 @@ public class LaserCut extends JFrame {
 
     /**
      * Override in subclass, as needed
-     * @return Stroke used to draw shape in its current state
+     * @return Stroke used to draw cadShape in its current state
      */
     Stroke getShapeStroke (float strokeWidth) {
       return new BasicStroke(strokeWidth);
@@ -1875,8 +1875,8 @@ public class LaserCut extends JFrame {
     }
 
     /**
-     * Set position of shape to a new location, but keep anchor inside working area
-     * @param newLoc new x/y position (in shape coordinates, inches)
+     * Set position of cadShape to a new location, but keep anchor inside working area
+     * @param newLoc new x/y position (in cadShape coordinates, inches)
      * @param workSize size of workspace in screen units
      * @return delta position change in a Point2D.Double object
      */
@@ -1889,7 +1889,7 @@ public class LaserCut extends JFrame {
     }
 
     /**
-     * Move shape's position by amount specified in 'delta'
+     * Move cadShape's position by amount specified in 'delta'
      * @param delta amount to move CADShape
      */
     void movePosition (Point2D.Double delta) {
@@ -1897,7 +1897,7 @@ public class LaserCut extends JFrame {
     }
 
     /**
-     * Check if 'point' is close to shape's xLoc/yLoc position
+     * Check if 'point' is close to cadShape's xLoc/yLoc position
      * @param point Location click on screen in model coordinates (inches)
      * @param zoomFactor Zoom factor (ratio)
      * @return true if close enough to consider a 'touch'
@@ -1908,18 +1908,18 @@ public class LaserCut extends JFrame {
     }
 
     /**
-     * Check if 'point' is close to one of the segments that make up the shape
+     * Check if 'point' is close to one of the segments that make up the cadShape
      * @param point Location click on screen in model coordinates (inches)
      * @param zoomFactor Zoom factor (ratio)
      * @return true if close enough to consider a 'touch'
      */
     boolean isShapeClicked (Point2D.Double point, double zoomFactor) {
-      // Scale Shape to Screen scale and scan all line segments in the shape
+      // Scale Shape to Screen scale and scan all line segments in the cadShape
       Shape lShape = getWorkspaceTranslatedShape();
-      // Compute slightly expanded bounding rectangle for shape
+      // Compute slightly expanded bounding rectangle for cadShape
       Rectangle2D bnds = lShape.getBounds2D();
       bnds = new Rectangle2D.Double(bnds.getX() - .1, bnds.getY() - .1, bnds.getWidth() + .2, bnds.getHeight() + .2);
-      // Check if point clicked is within  bounding rectangle of shape
+      // Check if point clicked is within  bounding rectangle of cadShape
       if (bnds.contains(point)) {
         Point2D.Double sPoint = new Point2D.Double(point.x * zoomFactor * SCREEN_PPI, point.y * zoomFactor * SCREEN_PPI);
         for (Line2D.Double[] lines : transformShapeToLines(lShape, zoomFactor * SCREEN_PPI, .01)) {
@@ -1960,7 +1960,7 @@ public class LaserCut extends JFrame {
 
     /**
      * Bring up editable parameter dialog box do user can edit fields.  Uses reflection to read and save
-     * parameter values before clicking the mouse to place the shape.
+     * parameter values before clicking the mouse to place the cadShape.
      * @return true if used clicked OK to save
      */
     boolean placeParameterDialog (DrawSurface surface, String dUnits) {
@@ -2011,7 +2011,7 @@ public class LaserCut extends JFrame {
             ex.printStackTrace();
           }
         }
-        // Update shape's internal state after parameter edit
+        // Update cadShape's internal state after parameter edit
         updateStateAfterParameterEdit();
         if ("Place".equals(actionButton)) {
           Point dLoc = surface.getLocationOnScreen();
@@ -2028,8 +2028,8 @@ public class LaserCut extends JFrame {
     }
 
     /**
-     * Used to return a string showing shape's current parameters
-     * @return String showing shape's current parameters
+     * Used to return a string showing cadShape's current parameters
+     * @return String showing cadShape's current parameters
      */
     String getInfo () {
       StringBuilder buf = new StringBuilder(getName() + ": ");
@@ -2103,7 +2103,7 @@ public class LaserCut extends JFrame {
     }
 
     /**
-     * Implement Resizeble to check if 'point' is close to shape's resize handle
+     * Implement Resizeble to check if 'point' is close to cadShape's resize handle
      * @param point Location click on screen in model coordinates (inches)
      * @param zoomFactor Zoom factor (ratio)
      * @return true if close enough to consider a 'touch'
@@ -2115,14 +2115,14 @@ public class LaserCut extends JFrame {
     }
 
     /**
-     * Implement Resizeble to resize shape using newLoc to compute change
+     * Implement Resizeble to resize cadShape using newLoc to compute change
      * @param newLoc new x/y position (in workspace coordinates, inches)
      * @param workSize size of workspace in screen units
      */
     public void resizeOrRotateShape (Point2D.Double newLoc, Dimension workSize, boolean doRotate) {
       double x = Math.max(Math.min(newLoc.x, workSize.width / SCREEN_PPI), 0);
       double y = Math.max(Math.min(newLoc.y, workSize.height / SCREEN_PPI), 0);
-      // Counter rotate mouse loc into shape's coordinate space to measure stretch/shrink
+      // Counter rotate mouse loc into cadShape's coordinate space to measure stretch/shrink
       Point2D.Double grab = rotateAroundPoint(getAnchorPoint(), new Point2D.Double(x, y), -rotation);
       double dx = grab.x - xLoc;
       double dy = grab.y - yLoc;
@@ -2834,7 +2834,7 @@ public class LaserCut extends JFrame {
 
     @Override
     Shape buildShape () {
-      // Note: Draw shape as if centered on origin
+      // Note: Draw cadShape as if centered on origin
       double xx = -width / 2;
       double yy = -height / 2;
       double tab = .75;
@@ -3217,11 +3217,11 @@ public class LaserCut extends JFrame {
     // Implement StateMessages interface
     public String getStateMsg () {
       if (closePath) {
-        return "Click and drag to move a control point, or click on shape to add new control point";
+        return "Click and drag to move a control point, or click on cadShape to add new control point";
       } else {
         String[] nextPnt = {"first", "second", "third", "additional"};
         return "Click to add " + (nextPnt[Math.min(nextPnt.length - 1, points.size())]) + " control point" +
-            (points.size() >= (nextPnt.length - 1) ? " (or click 1st control point to complete shape)" : "");
+            (points.size() >= (nextPnt.length - 1) ? " (or click 1st control point to complete cadShape)" : "");
       }
     }
 
@@ -3276,7 +3276,7 @@ public class LaserCut extends JFrame {
     }
 
     /**
-     * See if we clicked on spline shape to add new control point
+     * See if we clicked on spline cadShape to add new control point
      * @param point Point clicked in Workspace coordinates (inches)
      * @return index into points List where we need to add new point
      */
@@ -3506,7 +3506,7 @@ public class LaserCut extends JFrame {
 
     @Override
     protected List<String> getEditFields () {
-      return Arrays.asList("radius|in{radius of tool}", "inset{If checked, toolpath is inside shape, else outside}");
+      return Arrays.asList("radius|in{radius of tool}", "inset{If checked, toolpath is inside cadShape, else outside}");
     }
 
     @Override
@@ -3575,7 +3575,7 @@ public class LaserCut extends JFrame {
   }
 
   /**
-   * Class used to organize CADShape objects into a group
+   * Class used to organize CADShape objects into a items
    */
   static class CADShapeGroup implements Serializable {
     private static final long serialVersionUID = 3210128656295452345L;

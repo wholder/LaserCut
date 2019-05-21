@@ -59,6 +59,7 @@ class ZingLaser {
         rasterProperties.setProperty("power", laserCut.prefs.getInt("zing.rpower", ZING_RASTER_POWER_DEFAUlT));
         rasterProperties.setProperty("frequency", ZING_FREQ_DEFAUlT);
         rasterProperties.setProperty("focus", 0.0f);
+        boolean planPath = laserCut.prefs.getBoolean("zing.pathplan", true);
         LaserJob job = new LaserJob("laserCut", "laserCut", "laserCut");   // title, name, user
         // Process raster engrave passes, if any
         for (LaserCut.CADShape shape : laserCut.surface.getDesign()) {
@@ -90,7 +91,11 @@ class ZingLaser {
           VectorPart vp = new VectorPart(doCut ? cutProperties : engraveProperties, ZING_PPI);
           // Loop detects pen up/pen down based on start and end points of line segments
           boolean hasVector = false;
-          for (LaserCut.CADShape shape : laserCut.surface.selectLaserItems(doCut)) {
+          List<LaserCut.CADShape> shapes = laserCut.surface.selectLaserItems(doCut);
+          if (planPath) {
+            shapes = PathPlanner.optimize(shapes);
+          }
+          for (LaserCut.CADShape shape : shapes) {
             for (Line2D.Double[] lines : shape.getListOfScaledLines(ZING_PPI, .001)) {
               if (lines.length > 0) {
                 hasVector = true;
@@ -188,6 +193,9 @@ class ZingLaser {
           new ParameterDialog.ParmItem(new JSeparator()),
           new ParameterDialog.ParmItem("Raster Power|%", laserCut.prefs.getInt("zing.rpower", ZING_RASTER_POWER_DEFAUlT)),
           new ParameterDialog.ParmItem("Raster Speed", laserCut.prefs.getInt("zing.rspeed", ZING_SPEED_DEFAUlT)),
+          new ParameterDialog.ParmItem(new JSeparator()),
+          new ParameterDialog.ParmItem("Use Path Planner", laserCut.prefs.getBoolean("zing.pathplan", true)),
+
       };
       matMenu.addItemListener(ev2 -> {
         if (ev2.getStateChange() == ItemEvent.SELECTED) {
@@ -219,6 +227,8 @@ class ZingLaser {
         laserCut.prefs.putInt("zing.efreq",  (Integer) parmSet[10].value);
         laserCut.prefs.putInt("zing.rpower", (Integer) parmSet[12].value);
         laserCut.prefs.putInt("zing.rspeed", (Integer) parmSet[13].value);
+        laserCut.prefs.putBoolean("zing.pathplan", (Boolean) parmSet[15].value);
+
       }
     });
     zingMenu.add(zingSettings);

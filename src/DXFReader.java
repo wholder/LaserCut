@@ -15,7 +15,7 @@ import java.util.List;
  *  outlines such as thoes used for embroidery patterns and input to machines like Silhouette paper cutters.
  *  It's designed to convert POLYLINE and SPLINE sequences into an array of Path2D.Double objects from Java's
  *  geom package.  The parser assumes that DXF file's units are inches, but you can pass the parser a maximum
- *  size value and it will scale down the converted shape so that its maximum dimension fits within this limit.
+ *  size value and it will scale down the converted cadShape so that its maximum dimension fits within this limit.
  *  The code also contains a simple viewer app you can run to try it out on a DXF file.  From the command line
  *  type:
  *          java -jar DXFReader.jar file.dxf
@@ -374,7 +374,7 @@ public class DXFReader {
         AffineTransform at1 = new AffineTransform();
         Shape shape = at1.createTransformedShape(gv.getOutline());
         Rectangle2D bnds = shape.getBounds2D();
-        // Step 2 - Translate shape according to vAdjust and hAdjust values
+        // Step 2 - Translate cadShape according to vAdjust and hAdjust values
         AffineTransform at2 = new AffineTransform();
         // TODO: test all attachment point cases
         if (vAdjust == 3 && hAdjust == 0) {                             // Top left
@@ -397,12 +397,12 @@ public class DXFReader {
           at2.translate(-bnds.getWidth(), 0);
         }
         shape = at2.createTransformedShape(shape);
-        // Step 3 - Rotate and Scale shape
+        // Step 3 - Rotate and Scale cadShape
         AffineTransform at3 = new AffineTransform();
         at3.rotate(Math.toRadians(rotation));
         at3.scale(.1, -.1);
         shape = at3.createTransformedShape(shape);
-        // Step 4 - Translate shape to final position
+        // Step 4 - Translate cadShape to final position
         AffineTransform at4 = new AffineTransform();
         if (hAdjust != 0 || vAdjust != 0) {
           at4.translate(ix2, iy2);
@@ -556,7 +556,7 @@ public class DXFReader {
         AffineTransform at1 = new AffineTransform();
         Shape shape = at1.createTransformedShape(gv.getOutline());
         Rectangle2D bnds = shape.getBounds2D();
-        // Step 2 - Translate shape according to Attachment Point value
+        // Step 2 - Translate cadShape according to Attachment Point value
         AffineTransform at2 = new AffineTransform();
         // TODO: test all attachment point cases
         switch (attachPoint) {
@@ -589,13 +589,13 @@ public class DXFReader {
             break;
         }
         shape = at2.createTransformedShape(shape);
-        // Step 3 - Rotate and Scale shape
+        // Step 3 - Rotate and Scale cadShape
         AffineTransform at3 = new AffineTransform();
         double rotation = Math.atan2(yRot, xRot);
         at3.rotate(rotation);
         at3.scale(.1, -.1);
         shape = at3.createTransformedShape(shape);
-        // Step 4 - Translate shape to final position
+        // Step 4 - Translate cadShape to final position
         AffineTransform at4 = new AffineTransform();
         at4.translate(ix, iy);
         shape = at4.createTransformedShape(shape);

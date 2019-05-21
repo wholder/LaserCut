@@ -8,7 +8,20 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class PathOptimizer {
+/**
+ * ShapeOptimizer: This code tries to reconnected disconnected line and spline segments into a
+ * continuous path.  This code is invoked by manually selecting a set of shapes and then using
+ * the Edit menu item "Combine Selected Paths".  After processing, all selected shapes are put
+ * into a group with both newly-reconnected paths and paths that could not be connected.
+ *
+ * Limitations: the code assumes that the starting and ending points of the segments to reconnect
+ * match identically (to float level precision) in order to figure out when the starting point of
+ * a given segment can be connected to the ending point of another segment.  However, it does try
+ * to reconnect segements that match end to end, or start to start by flipping the start and end
+ * points, as needed.
+ */
+
+public class ShapeOptimizer {
   static class ShapeSeg {
     int       type;
     double    sx, sy, ex, ey;
@@ -36,7 +49,7 @@ public class PathOptimizer {
       }
     }
 
-    // Reverse path order
+    // Reverse path order of a segment
     void flip () {
       switch (type) {
         case PathIterator.SEG_LINETO:   // 1
@@ -235,6 +248,6 @@ public class PathOptimizer {
     path.lineTo(1, 2);
     // Combine segments into continuous path
     List<Shape> list = optimizeShape(path);
-    int dum = 0;
-    }
+    System.out.println(list.size());
+  }
 }

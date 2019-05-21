@@ -94,10 +94,10 @@ public class DrawSurface extends JPanel {
             }
           }
         } else if (ev.isControlDown()) {
-          // Select shape and then do CTRL-Click on second shape to measure distance from origin to origin
+          // Select cadShape and then do CTRL-Click on second cadShape to measure distance from origin to origin
           if (selected != null) {
             for (LaserCut.CADShape shape : shapes) {
-              // Check for mouse pointing to shape
+              // Check for mouse pointing to cadShape
               if (shape.isPositionClicked(newLoc, zoomFactor) || shape.isShapeClicked(newLoc, zoomFactor)) {
                 double dx = shape.xLoc - selected.xLoc;
                 double dy = shape.yLoc - selected.yLoc;
@@ -113,7 +113,7 @@ public class DrawSurface extends JPanel {
           }
         } else if (ev.isShiftDown()) {
           if (selected instanceof LaserCut.Resizable || selected instanceof LaserCut.Rotatable) {
-            // Check for click on resizeOrRotate point (used to drag shape to new size, or orientation)
+            // Check for click on resizeOrRotate point (used to drag cadShape to new size, or orientation)
             if (selected.isResizeOrRotateClicked(newLoc, zoomFactor)) {
               resizeOrRotate = selected;
               setInfoText(selected.getInfo());
@@ -122,7 +122,7 @@ public class DrawSurface extends JPanel {
             }
           }
           for (LaserCut.CADShape shape : shapes) {
-            // Add or remove clicked shape from dragList
+            // Add or remove clicked cadShape from dragList
             if (shape.isShapeClicked(newLoc, zoomFactor)) {
               if (shape != selected && selected != null) {
                 dragList.add(selected);
@@ -145,14 +145,14 @@ public class DrawSurface extends JPanel {
           setSelected(null);
         } else {
           if (selected != null) {
-            // Check for click and drag on selected shape's position anchor
+            // Check for click and drag on selected cadShape's position anchor
             if (selected.isPositionClicked(newLoc, zoomFactor)) {
               dragged = selected;
               showMeasure = false;
               return;
             }
             for (LaserCut.CADShape shape : shapes) {
-              // Check for click and drag of another shape's position anchor
+              // Check for click and drag of another cadShape's position anchor
               if (shape.isPositionClicked(newLoc, zoomFactor)) {
                 dragged = shape;
                 setSelected(shape);
@@ -161,13 +161,13 @@ public class DrawSurface extends JPanel {
                 return;
               }
             }
-            // Check for click inside shape if it implements Updatable (used by CADMusicStrip)
+            // Check for click inside cadShape if it implements Updatable (used by CADMusicStrip)
             if (selected instanceof LaserCut.Updatable && ((LaserCut.Updatable) selected).updateInternalState(newLoc)) {
               pushToUndoStack();
               repaint();
               return;
             }
-            // Check for click on anchor point (used to drag shape to new location)
+            // Check for click on anchor point (used to drag cadShape to new location)
             if (selected.selectMovePoint(DrawSurface.this, newLoc, toGrid(newLoc))) {
               dragged = selected;
               if (selected instanceof LaserCut.StateMessages) {
@@ -177,7 +177,7 @@ public class DrawSurface extends JPanel {
               return;
             }
             if (selected instanceof LaserCut.Resizable || selected instanceof LaserCut.Rotatable) {
-              // Check for click on resizeOrRotate point (used to drag shape to new size or orientation)
+              // Check for click on resizeOrRotate point (used to drag cadShape to new size or orientation)
               if (selected.isResizeOrRotateClicked(newLoc, zoomFactor)) {
                 resizeOrRotate = selected;
                 setInfoText(selected.getInfo());
@@ -393,7 +393,7 @@ public class DrawSurface extends JPanel {
           if (placer != null) {
             placer = null;
             setSelected(null);
-            setInfoText("Place shape cancelled");
+            setInfoText("Place cadShape cancelled");
             repaint();
           }
         }
@@ -647,7 +647,7 @@ public class DrawSurface extends JPanel {
   void placeShape (LaserCut.CADShape shape) {
     List<LaserCut.CADShape> items = new ArrayList<>();
     items.add(shape);
-    // Copy location of shape to Placer object, then zero shape's location
+    // Copy location of cadShape to Placer object, then zero cadShape's location
     Point2D.Double newLoc = new Point2D.Double(shape.xLoc, shape.yLoc);
     shape.setPosition(0, 0);
     placer = new Placer(items);
@@ -672,7 +672,7 @@ public class DrawSurface extends JPanel {
   }
 
   // Compute bounds for a set of CADShape objects
-  static Rectangle2D getSetBounds (List<LaserCut.CADShape> shapes) {
+  private static Rectangle2D getSetBounds (List<LaserCut.CADShape> shapes) {
     double minX = Double.MAX_VALUE;
     double minY = Double.MAX_VALUE;
     double maxWid = 0;
@@ -893,9 +893,9 @@ public class DrawSurface extends JPanel {
           shapes.remove(shape);
         }
       }
-      List<Shape> opt = PathOptimizer.optimizeShape(path);
+      List<Shape> opt = ShapeOptimizer.optimizeShape(path);
       // Group Optimized shapes
-      //LaserCut.CADShapeGroup group = new LaserCut.CADShapeGroup();
+      //LaserCut.CADShapeGroup items = new LaserCut.CADShapeGroup();
       for (Shape shape : opt) {
         Rectangle2D bnds = shape.getBounds2D();
         double xLoc = bnds.getX();
@@ -903,8 +903,8 @@ public class DrawSurface extends JPanel {
         AffineTransform at2 = AffineTransform.getTranslateInstance(-xLoc - bnds.getWidth() / 2, -yLoc - bnds.getHeight() / 2);
         shape = at2.createTransformedShape(shape);
         LaserCut.CADShape cadShape = new LaserCut.CADShape(shape, xLoc, yLoc, 0, false);
-        //group.addToGroup(cadShape);
-        //cadShape.setGroup(group);
+        //items.addToGroup(cadShape);
+        //cadShape.setGroup(items);
         shapes.add(cadShape);
       }
       clearDragList();
@@ -1012,7 +1012,7 @@ public class DrawSurface extends JPanel {
    * @param cutItems if true, only process shapes with 'engrave' set to false.
    * @return List of CADShape objects minus culled items
    */
-  ArrayList<LaserCut.CADShape> selectLaserItems (boolean cutItems) {
+  List<LaserCut.CADShape> selectLaserItems (boolean cutItems) {
     // Cull out items that will not be cut or that don't match cutItems
     ArrayList<LaserCut.CADShape> cullShapes = new ArrayList<>();
     for (LaserCut.CADShape shape : getDesign()) {
@@ -1027,7 +1027,7 @@ public class DrawSurface extends JPanel {
    * Called by MiniCNC code to cull out items that cannot be cut via CNC
    * @return List of CADShape objects minus culled items
    */
-  ArrayList<LaserCut.CADShape> selectCncItems () {
+  List<LaserCut.CADShape> selectCncItems () {
     // Cull out items that will not CNC
     ArrayList<LaserCut.CADShape> cullShapes = new ArrayList<>();
     for (LaserCut.CADShape shape : getDesign()) {

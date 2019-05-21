@@ -34,6 +34,7 @@ class MiniLaser extends GRBLBase {
         if (showConfirmDialog(laserCut, panel, "Send GRBL to Mini Laser", YES_NO_OPTION, PLAIN_MESSAGE, null) == OK_OPTION) {
           try {
             boolean miniDynamicLaser = laserCut.prefs.getBoolean("mini.laser.dynamic", true);
+            boolean planPath = laserCut.prefs.getBoolean("mini.laser.pathplan", true);
             int iterations = Integer.parseInt(tf.getText());
             // Generate G_Code for GRBL 1.1
             List<String> cmds = new ArrayList<>();
@@ -49,7 +50,11 @@ class MiniLaser extends GRBLBase {
             double lastX = 0, lastY = 0;
             for (int ii = 0; ii < iterations; ii++) {
               boolean laserOn = false;
-              for (LaserCut.CADShape shape : laserCut.surface.selectLaserItems(true)) {
+              List<LaserCut.CADShape> shapes = laserCut.surface.selectLaserItems(true);
+              if (planPath) {
+                shapes = PathPlanner.optimize(shapes);
+              }
+              for (LaserCut.CADShape shape : shapes) {
                 for (Line2D.Double[] lines : shape.getListOfScaledLines(1, .001)) {
                   boolean first = true;
                   for (Line2D.Double line : lines) {
@@ -108,12 +113,14 @@ class MiniLaser extends GRBLBase {
     miniLazerSettings.addActionListener(ev -> {
       ParameterDialog.ParmItem[] parmSet = {
           new ParameterDialog.ParmItem("Dynamic Laser", laserCut.prefs.getBoolean("mini.laser.dynamic", true)),
+          new ParameterDialog.ParmItem("Use Path Planner", laserCut.prefs.getBoolean("mini.laser.pathplan", true)),
           new ParameterDialog.ParmItem("Power|%", laserCut.prefs.getInt("mini.laser.power", MINI_POWER_DEFAULT)),
           new ParameterDialog.ParmItem("Speed{inches/minute}", laserCut.prefs.getInt("mini.laser.speed", MINI_SPEED_DEFAULT))
       };
       if (ParameterDialog.showSaveCancelParameterDialog(parmSet, dUnits, laserCut)) {
         int ii = 0;
         laserCut.prefs.putBoolean("mini.laser.dynamic", (Boolean) parmSet[ii++].value);
+        laserCut.prefs.putBoolean("mini.laser.pathplan", (Boolean) parmSet[ii++].value);
         laserCut.prefs.putInt("mini.laser.power", (Integer) parmSet[ii++].value);
         laserCut.prefs.putInt("mini.laser.speed", (Integer) parmSet[ii].value);
       }

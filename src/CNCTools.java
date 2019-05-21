@@ -56,11 +56,11 @@ class CNCTools {
   }
 
   /**
-   * Takes an array of lines that forms a closed shape and computes a parallel path around either the
-   * interior, or exterior of the shape depending on the setting of the parameter outside.
-   * @param lines array of lines for a shape for which this code will compute a parallel path
+   * Takes an array of lines that forms a closed cadShape and computes a parallel path around either the
+   * interior, or exterior of the cadShape depending on the setting of the parameter outside.
+   * @param lines array of lines for a cadShape for which this code will compute a parallel path
    * @param radius offset distance for parallel path (radius of CNC tool)
-   * @param outside true if parallel path should be around the outside of the shape, else inside
+   * @param outside true if parallel path should be around the outside of the cadShape, else inside
    * @return array of points for the parallel path
    */
   static Point2D.Double[] getParallelPath (Line2D.Double[] lines, double radius, boolean outside) {
@@ -83,15 +83,15 @@ class CNCTools {
       int jj = (ii + 1) % points.length;
       double d = points[ii].distance(points[jj]);
       double t = radius / d;
-      // Compute point "ext" that extends "radius" distance from point shape[n] toward point shape[n+1]
+      // Compute point "ext" that extends "radius" distance from point cadShape[n] toward point cadShape[n+1]
       Point2D.Double ext = new Point2D.Double((1 - t) * points[ii].x + t * points[jj].x, (1 - t) * points[ii].y + t * points[jj].y);
-      // Compute the normal to point shape[n] by rotating point "ext" +/- 90 degrees around point shape[n]
+      // Compute the normal to point cadShape[n] by rotating point "ext" +/- 90 degrees around point cadShape[n]
       Point2D.Double normal;
       if (clockwise ^ outside) {
-        // Rotate point ext -90 degrees (clockwise) around point shape[ii]
+        // Rotate point ext -90 degrees (clockwise) around point cadShape[ii]
         normal = new Point2D.Double(-(ext.y - points[ii].y) + points[ii].x, (ext.x - points[ii].x) + points[ii].y);
       } else {
-        // Rotate point ext 90 degrees (counter clockwise) around point shape[ii]
+        // Rotate point ext 90 degrees (counter clockwise) around point cadShape[ii]
         normal = new Point2D.Double((ext.y - points[ii].y) + points[ii].x, -(ext.x - points[ii].x) + points[ii].y);
       }
       pLines[ii] = new PLine(new Line2D.Double(points[ii], points[jj]), normal);
@@ -103,11 +103,11 @@ class CNCTools {
       Point2D.Double np1 = pLines[ii].intersects(pLines[(ii + 1) % points.length]);
       Point2D.Double np2 = pLines[(ii + 1) % points.length].intersects(pLines[(ii + 2) % points.length]);
       Point2D.Double ref = points[jj];
-      // Compute point "tip" that extends "radius" distance from shape's point to the intersection
+      // Compute point "tip" that extends "radius" distance from cadShape's point to the intersection
       double d = ref.distance(np1);
       double t = radius / d;
       Point2D.Double tip = new Point2D.Double((1 - t) * ref.x + t * np1.x, (1 - t) * ref.y + t * np1.y);
-      // Compute line through tip that's perpendicular to the line from shape's point to the intersection
+      // Compute line through tip that's perpendicular to the line from cadShape's point to the intersection
       PLine perp = new PLine(ref, tip, true);
       // Compute intersection with perpendicular and pLines[ii] and pLines[jj]
       Point2D.Double p1 = pLines[ii].intersects(perp);
@@ -162,9 +162,9 @@ class CNCTools {
   }
 
   /**
-   * Scans a set of points forming a closed shape to detect if points are in clockwise, or counterclockwise order
-   * @param points a set of lines forming a closed shape
-   * @return true if shape is drawn in clockwise order, else false
+   * Scans a set of points forming a closed cadShape to detect if points are in clockwise, or counterclockwise order
+   * @param points a set of lines forming a closed cadShape
+   * @return true if cadShape is drawn in clockwise order, else false
    */
   private static boolean isClockwise (Point2D.Double[] points) {
     double sum = 0;

@@ -10,7 +10,7 @@ public class CornerFinder {
 
   public static void main (String[] args) {
     Shape shape;
-    // Create + shape via additive and subtractive geometric operations
+    // Create + cadShape via additive and subtractive geometric operations
     Area sq = new Area(new Rectangle2D.Double(-2, -1, 4, 2));
     // Note: arcHeight and arcWith of .25 gives a radius of .125
     sq.add(new Area(new RoundRectangle2D.Double(-1, -2, 2, 4, .25, .25)));

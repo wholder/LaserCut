@@ -96,7 +96,7 @@ class BetterBoundingBox {
       g2.setBackground(getBackground());
       g2.clearRect(0, 0, d.width, d.height);
       g2.setColor(Color.black);
-      // Draw a cubic Bezier shape using Path2D.Double
+      // Draw a cubic Bezier cadShape using Path2D.Double
       Path2D.Double path = new Path2D.Double();
       path.moveTo(40, 140);
       path.curveTo(40, 60, 160, 60, 160, 140);
