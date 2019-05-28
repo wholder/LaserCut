@@ -4,6 +4,10 @@ import java.awt.geom.AffineTransform;
 import java.awt.geom.Rectangle2D;
 import java.io.File;
 
+/**
+ * ShapeWindow: Used by test code in SVGParser, GearGen and CornerFinder
+ */
+
 class ShapeWindow extends JFrame {
   private static final double   SCREEN_PPI = java.awt.Toolkit.getDefaultToolkit().getScreenResolution();
 

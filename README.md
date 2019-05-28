@@ -1,6 +1,5 @@
 <p align="center"><img src="https://github.com/wholder/LaserCut/blob/master/images/LaserCut%20Screenshot.png"></p>
-
-# LaserCut
+<p align="left"><img src="https://github.com/wholder/LaserCut/blob/master/images/LaserCut%20Logo.svg?sanitize=true"></p>
 LaserCut is an experimental, "Swiss Army Knife" type of program for creating 2D designs by combining primitive shapes using constructive geometry and then sending them to a laser cutter for vector cutting or vector engraving.  It began from my frustration with Epilog™ over their lack of support for Mac OS X drivers for the Zing and having to purchase and constantly update both MS Windows™ and [Parallels™](https://www.parallels.com) just to use the Zing.  Then, one day, I discovered a wonderful Java library named [LibLaserCut](https://github.com/t-oster/LibLaserCut) (originally created by Thomas Oster for his [VisiCut](http://hci.rwth-aachen.de/visicut) program) and used it to begin coding my own solution.  After that, LaserCut slowly grew as I added more and more features.  This means that the feature set of LaserCut happens to be things that I needed it to do and not the result of some well-thought-out plan.  However, I tried to make the design as modular as possible.  For example, you can add new 2D shapes by subclassing the superclass`CADShape`and writing a few overloaded methods.  I'm making LaserCut available under the BSD license, [as described in by Wikipedia](https://en.wikipedia.org/wiki/BSD_licenses), so feel free to adapt and use my original code, as needed.
 
 If you just want to try out the program, you don't need to download and compile the source code, as I try to maintain a pre-built, executable JAR file in the [out/artifacts/LaserCut_jar](https://github.com/wholder/LaserCut/tree/master/out/artifacts/LaserCut_jar) folder from which you can download and run LaserCut as long as you have Java installed on your system.  On a Mac, simply double click the LaserCut.jar file to run it once you've downloaded it, although you'll probably have to right click and select "Open" the  first time you run LaserCut due to the Mac OS X security check and the fact that I'm currently unable to digitally sign the JAR file.  You should also be able to double click and run using Windows, but some versions of Windows may require you to [enable this ability](https://www.addictivetips.com/windows-tips/run-a-jar-file-on-windows/) first.  LaserCut also seems to work fine on  Linux Mint 18.2 (KDE Edition) using Java 10.0.2, but I had to fiddle with permissions to get serial I/O working for the Mini Laser and Mini CNC features..
@@ -33,6 +32,7 @@ LaserCut uses the Java Language's reflection and object serialization features t
 - All shapes can be set to be cut or engraved by the laser cutter (Zing only)
 - Send jobs to an Eplilog™ Zing™ over an Ethernet connection (USB not supported)
 - Send jobs to a GRBL-based laser cutter with support for jogging position of laser head (experimental)
+- Path Optimzation laser cuts nested shapes, such as holes, before the shapes they are nested inside
 - Import vector outlines from an SVG files (beta)
 - Import vector outlines from a DXF files (beta)
 - Import drill holes and outlines from a Gerber file (experimental)
@@ -58,6 +58,7 @@ LaserCut uses the Java Language's reflection and object serialization features t
   - **5/7/2019** - Added "Export to DXF" using the [JDXF](https://jsevy.com/wordpress/index.php/java-and-android/jdxf-java-dxf-library/) library by Jonathan Sevy and fixed some errors in "Import DXF" when reading files with SPLINE entities.
   - **5/10/2019** - Added "Export to EPS" using new EPSWriter class.
   - **5/12/2019** - JavaCut now runs under Java 8, or greater (Java 10-only code commented out)
+  - **5/21/2019** - Added PathPlanner class to optimize laser cutting paths (still in development)
 ## Under Development
 - Support for a user-extendable library of specialized cutout shapes, such as for mounting RC Servos (to replace and extend the current Nema Stepper code)
 - Import vector shapes from EPS (Encapsulated PostScript®) files

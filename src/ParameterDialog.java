@@ -9,11 +9,12 @@ import javax.swing.plaf.basic.BasicComboBoxRenderer;
 import static javax.swing.JOptionPane.showMessageDialog;
 
 class ParameterDialog extends JDialog {
-  private boolean   cancelled = true;
-  private Point     mouseLoc;
-  private double    lblWeight = 0.5;
+  private static final double   lblWeight = 0.5;
+  private boolean               cancelled = true;
+  private Point                 mouseLoc;
 
   static class ParmItem {
+    JLabel      label;
     String      name, units = "", hint, key;
     Object      value, valueType;
     JComponent  field;
@@ -66,6 +67,15 @@ class ParameterDialog extends JDialog {
         units = "";
       } else {
         this.value = value;
+      }
+    }
+
+    void setInvalidData (boolean invalid) {
+      JTextField tf = (JTextField) field;
+      if (invalid)  {
+        tf.setBackground(Color.pink);
+      } else {
+        tf.setBackground(Color.white);
       }
     }
 
@@ -179,10 +189,6 @@ class ParameterDialog extends JDialog {
     }
   }
 
-  private void selLabelWeight (double lblWeight) {
-    this.lblWeight = lblWeight;
-  }
-
   private GridBagConstraints getGbc (int x, int y) {
     GridBagConstraints gbc = new GridBagConstraints();
     gbc.gridx = x;
@@ -244,7 +250,7 @@ class ParameterDialog extends JDialog {
     for (ParmItem parm : parms) {
       if (parm.value instanceof JComponent) {
         if (parm.name != null) {
-          fields.add(new JLabel(parm.name + ": "), getGbc(0, jj));
+          fields.add(parm.label = new JLabel(parm.name + ": "), getGbc(0, jj));
           fields.add((JComponent) parm.value, getGbc(1, jj));
         } else {
           GridBagConstraints gbc = new GridBagConstraints();
@@ -255,116 +261,113 @@ class ParameterDialog extends JDialog {
           fields.add((JComponent) parm.value, gbc);
         }
         jj++;
-        continue;
-      }
-      boolean isLength = parm.units.equals("in");
-      fields.add(new JLabel(parm.name + ": "), getGbc(0, jj));
-      if (parm.valueType instanceof Boolean) {
-        JCheckBox select = new JCheckBox();
-        select.setBorderPainted(false);
-        select.setFocusable(false);
-        select.setBorderPaintedFlat(true);
-        select.setSelected((Boolean) parm.value);
-        select.setHorizontalAlignment(JCheckBox.RIGHT);
-        fields.add(parm.field = select, getGbc(1, jj));
-      } else if (parm.valueType instanceof String[]) {
-        String[] labels = getLabels((String[]) parm.valueType);
-        JComboBox<String> select = parm.name.equals("fontName") ? new FontList(labels) : new JComboBox<>(labels);
-        String[] values = getValues((String[]) parm.valueType);
-        select.setSelectedIndex(Arrays.asList(values).indexOf((String) parm.value));
-        fields.add(parm.field = select, getGbc(1, jj));
-      } else if (parm.value instanceof JComponent) {
-        fields.add(parm.field = (JComponent) parm.value, getGbc(1, jj));
       } else {
-        String val;
-        if (parm.value instanceof Double) {
-          if (isLength && "mm".equals(dUnits)) {
-            val = LaserCut.df.format(LaserCut.inchesToMM((Double) parm.value));
-          } else if (isLength && "cm".equals(dUnits)) {
+        boolean isLength = parm.units.equals("in");
+        fields.add(parm.label = new JLabel(parm.name + ": "), getGbc(0, jj));
+        if (parm.valueType instanceof Boolean) {
+          JCheckBox select = new JCheckBox();
+          select.setBorderPainted(false);
+          select.setFocusable(false);
+          select.setBorderPaintedFlat(true);
+          select.setSelected((Boolean) parm.value);
+          select.setHorizontalAlignment(JCheckBox.RIGHT);
+          fields.add(parm.field = select, getGbc(1, jj));
+        } else if (parm.valueType instanceof String[]) {
+          String[] labels = getLabels((String[]) parm.valueType);
+          JComboBox<String> select = parm.name.equals("fontName") ? new FontList(labels) : new JComboBox<>(labels);
+          String[] values = getValues((String[]) parm.valueType);
+          select.setSelectedIndex(Arrays.asList(values).indexOf((String) parm.value));
+          fields.add(parm.field = select, getGbc(1, jj));
+        } else if (parm.value instanceof JComponent) {
+          fields.add(parm.field = (JComponent) parm.value, getGbc(1, jj));
+        } else {
+          String val;
+          if (parm.value instanceof Double) {
+            if (isLength && "mm".equals(dUnits)) {
+              val = LaserCut.df.format(LaserCut.inchesToMM((Double) parm.value));
+            } else if (isLength && "cm".equals(dUnits)) {
               val = LaserCut.df.format(LaserCut.inchesToCm((Double) parm.value));
-          } else {
-            val = LaserCut.df.format(parm.value);
-          }
-        } else {
-          val = parm.value.toString();
-        }
-        if (parm.lblValue) {
-          // If label name starts with "@" display value as JLabel
-          JLabel lbl = new JLabel(val, SwingConstants.RIGHT);
-          fields.add(parm.field = lbl, getGbc(1, jj));
-        } else {
-          JTextField jtf = new JTextField(val, 8);
-          Dimension dim = jtf.getPreferredSize();
-          jtf.setPreferredSize(new Dimension(dim.width, dim.height - 4));
-          jtf.setEditable(!parm.readOnly);
-          if (parm.readOnly) {
-            jtf.setForeground(Color.gray);
-          }
-          jtf.setHorizontalAlignment(JTextField.RIGHT);
-          fields.add(parm.field = jtf, getGbc(1, jj));
-          parm.field.addFocusListener(new FocusAdapter() {
-            @Override
-            public void focusGained (FocusEvent ev) {
-              super.focusGained(ev);
-              // Clear pink background indicating error
-              JTextField tf = (JTextField) ev.getComponent();
-              tf.setBackground(Color.white);
+            } else {
+              val = LaserCut.df.format(parm.value);
             }
-          });
-        }
-      }
-      int col = 2;
-      if (info != null) {
-        if (parm.key != null  &&  info.containsKey(parm.key)) {
-          try {
-            String msg = info.getProperty(parm.key);
-            final String[] tmp = msg.split("--");
-            ImageIcon icon = new ImageIcon(getClass().getResource("/images/info.png"));
-            JButton iBut = new JButton(icon);
-            Dimension dim = iBut.getPreferredSize();
-            iBut.setPreferredSize(new Dimension(dim.width - 4 , dim.height - 4));
-            fields.add(iBut, getGbc(col++, jj));
-            iBut.addActionListener(ev -> {
-            JTextArea textArea = new JTextArea(15, 40);
-            JScrollPane scrollPane = new JScrollPane(textArea);
-            scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
-            textArea.setText(tmp.length > 1 ? tmp[1] : tmp[0]);
-            textArea.setLineWrap(true);
-            textArea.setWrapStyleWord(true);
-            textArea.setEditable(false);
-            textArea.setCaretPosition(0);
-            showMessageDialog(this, scrollPane, tmp.length > 1 ? tmp[0] : "Info", JOptionPane.PLAIN_MESSAGE);
-            });
-          } catch (Exception ex) {
-            ex.printStackTrace();
+          } else {
+            val = parm.value.toString();
           }
-        } else {
-          fields.add(new JLabel(""), getGbc(col++, jj));
+          if (parm.lblValue) {
+            // If label name starts with "@" display value as JLabel
+            JLabel lbl = new JLabel(val, SwingConstants.RIGHT);
+            fields.add(parm.field = lbl, getGbc(1, jj));
+          } else {
+            JTextField tf = new JTextField(val, 8);
+            Dimension dim = tf.getPreferredSize();
+            tf.setPreferredSize(new Dimension(dim.width, dim.height - 4));
+            tf.setEditable(!parm.readOnly);
+            if (parm.readOnly) {
+              tf.setForeground(Color.gray);
+            }
+            tf.setHorizontalAlignment(JTextField.RIGHT);
+            fields.add(parm.field = tf, getGbc(1, jj));
+            parm.field.addFocusListener(new FocusAdapter() {
+              @Override
+              public void focusGained (FocusEvent ev) {
+                super.focusGained(ev);
+                parm.setInvalidData(false);
+              }
+            });
+          }
         }
+        int col = 2;
+        if (info != null) {
+          if (parm.key != null && info.containsKey(parm.key)) {
+            try {
+              String msg = info.getProperty(parm.key);
+              final String[] tmp = msg.split("--");
+              ImageIcon icon = new ImageIcon(getClass().getResource("/images/info.png"));
+              JButton iBut = new JButton(icon);
+              Dimension dim = iBut.getPreferredSize();
+              iBut.setPreferredSize(new Dimension(dim.width - 4, dim.height - 4));
+              fields.add(iBut, getGbc(col++, jj));
+              iBut.addActionListener(ev -> {
+                JTextArea textArea = new JTextArea(15, 40);
+                JScrollPane scrollPane = new JScrollPane(textArea);
+                scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+                textArea.setText(tmp.length > 1 ? tmp[1] : tmp[0]);
+                textArea.setLineWrap(true);
+                textArea.setWrapStyleWord(true);
+                textArea.setEditable(false);
+                textArea.setCaretPosition(0);
+                showMessageDialog(this, scrollPane, tmp.length > 1 ? tmp[0] : "Info", JOptionPane.PLAIN_MESSAGE);
+              });
+            } catch (Exception ex) {
+              ex.printStackTrace();
+            }
+          } else {
+            fields.add(new JLabel(""), getGbc(col++, jj));
+          }
+        }
+        if (parm.units != null) {
+          fields.add(new JLabel(" " + (isLength ? dUnits : parm.units)), getGbc(col, jj));
+        }
+        if (parm.hint != null) {
+          parm.field.setToolTipText(parm.hint);
+        }
+        jj++;
       }
-      if (parm.units != null) {
-        fields.add(new JLabel(" " + (isLength ? dUnits : parm.units)), getGbc(col, jj));
-      }
-      if (parm.hint != null) {
-        parm.field.setToolTipText(parm.hint);
-      }
-      jj++;
     }
     // Define a custion action button so we can catch and save the screen coordinates where the "Place" button was clicked...
     // Yeah, it's a lot of weird code but it avoids having the placed object not show up until the mouse is moved.
-    JButton button = new JButton( buttons[0]);
+    JButton button = new JButton(buttons[0]);
     button.addActionListener(actionEvent -> {
       JButton but = ((JButton) actionEvent.getSource());
       JOptionPane pane = (JOptionPane) but.getParent().getParent();
       pane.setValue(buttons[0]);
-      JOptionPane.getRootFrame().dispose();
     });
     button.addMouseListener(new MouseAdapter() {
       @Override
       public void mousePressed (MouseEvent ev) {
-        super.mousePressed(ev);
-        Point bl = button.getLocationOnScreen();
-        mouseLoc = new Point(bl.x + ev.getX(), bl.y + ev.getY());
+      super.mousePressed(ev);
+      Point bl = button.getLocationOnScreen();
+      mouseLoc = new Point(bl.x + ev.getX(), bl.y + ev.getY());
       }
     });
     Object[] buts = new Object[] {button, buttons[1]};
@@ -387,10 +390,9 @@ class ParameterDialog extends JDialog {
               if (comp instanceof JTextField) {
                 JTextField tf = (JTextField) comp;
                 if (parm.setValueAndValidate(tf.getText(), dUnits)) {
-                  invalid = true;
-                  tf.setBackground(Color.pink);
+                  parm.setInvalidData(invalid = true);
                 } else {
-                  tf.setBackground(Color.white);
+                  parm.setInvalidData(false);
                 }
               } else if (comp instanceof JCheckBox) {
                 parm.value = (((JCheckBox) comp).isSelected());

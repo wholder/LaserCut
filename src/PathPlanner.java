@@ -99,12 +99,15 @@ public class PathPlanner {
   }
 
   public static void main (String[] args) {
+    // A nests in E, B nests in F and D, D, E & F nest in G
     List<LaserCut.CADShape> shapes = new ArrayList<>();
-    shapes.add(new LaserCut.CADRectangle(15, 15, 5, 5, 0, 0, false));
-    shapes.add(new LaserCut.CADRectangle(35, 15, 5, 5, 0, 0, false));
-    shapes.add(new LaserCut.CADRectangle(10, 10, 15, 15, 0, 0, false));
-    shapes.add(new LaserCut.CADRectangle(30, 10, 15, 15, 0, 0, false));
-    shapes.add(new LaserCut.CADRectangle(5, 5, 45, 45, 0, 0, false));
+    shapes.add(new LaserCut.CADRectangle(15, 15, 5, 5, 0, 0, false));   // A
+    shapes.add(new LaserCut.CADRectangle(35, 15, 5, 5, 0, 0, false));   // B
+    shapes.add(new LaserCut.CADRectangle(50, 10, 5, 5, 0, 0, false));   // C
+    shapes.add(new LaserCut.CADRectangle(50, 20, 5, 5, 0, 0, false));   // D
+    shapes.add(new LaserCut.CADRectangle(10, 10, 15, 15, 0, 0, false)); // E
+    shapes.add(new LaserCut.CADRectangle(30, 10, 15, 15, 0, 0, false)); // F
+    shapes.add(new LaserCut.CADRectangle(5, 5, 55, 25, 0, 0, false));   // G
     List<LaserCut.CADShape>  oShapes = optimize(shapes);
     for (LaserCut.CADShape shape : oShapes) {
       Rectangle2D bnds = shape.getShapeBounds();

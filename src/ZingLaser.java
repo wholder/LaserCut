@@ -65,10 +65,11 @@ class ZingLaser {
         for (LaserCut.CADShape shape : laserCut.surface.getDesign()) {
           if (shape instanceof LaserCut.CADRasterImage && shape.engrave) {
             LaserCut.CADRasterImage raster = (LaserCut.CADRasterImage) shape;
-            Rectangle2D bnds = raster.getScaledRotatedBounds(ZING_PPI);
-            AffineTransform at = raster.getScaledRotatedTransform(bnds, ZING_PPI);
-            BufferedImage scaledImg = raster.getScaledRotatedImage(at, bnds, ZING_PPI);
-            Point2D.Double offset = raster.getScaledRotatedOrigin(at, bnds);
+            double[] scale = raster.getScale(ZING_PPI);
+            Rectangle2D bb = raster.getScaledRotatedBounds(scale);
+            AffineTransform at = raster.getScaledRotatedTransform(bb, scale);
+            BufferedImage scaledImg = raster.getScaledRotatedImage(at, bb, scale);
+            Point2D.Double offset = raster.getScaledRotatedOrigin(at, bb);
             int xLoc = (int) Math.round(shape.xLoc * ZING_PPI - offset.x);
             int yLoc = (int) Math.round(shape.yLoc * ZING_PPI - offset.y);
             com.t_oster.liblasercut.platform.Point loc = new com.t_oster.liblasercut.platform.Point(xLoc, yLoc);

@@ -56,11 +56,11 @@ import static javax.swing.JOptionPane.*;
     https://www.codeproject.com/Articles/3398/CadLib-for-creating-DXF-Drawing-Interchange-Format
 
   Mini Laser Engravers:
-    https://github.com/RBEGamer/K3_LASER_ENGRAVER_PROTOCOL
-    https://github.com/camrein/EzGraver
-    https://github.com/camrein/EzGraver/issues/43
-    https://github.com/AxelTB/nejePrint
-    http://lasergrbl.com/en/ and https://github.com/arkypita/LaserGRBL
+    K3 Laser:   https://github.com/RBEGamer/K3_LASER_ENGRAVER_PROTOCOL
+    EzGrazer:   https://github.com/camrein/EzGraver
+                https://github.com/camrein/EzGraver/issues/43
+    nejePrint:  https://github.com/AxelTB/nejePrint
+    LaserGRBL:  http://lasergrbl.com/en/ and https://github.com/arkypita/LaserGRBL
   */
 
 public class LaserCut extends JFrame {
@@ -110,7 +110,7 @@ public class LaserCut extends JFrame {
   private void showAboutBox () {
     ImageIcon icon = null;
     try {
-      icon = new ImageIcon(getClass().getResource("/images/laser_wip_black.png"));
+      icon = new ImageIcon(getClass().getResource("/images/LaserCut Logo.png"));
     } catch (Exception ex) {
       ex.printStackTrace();
     }
@@ -1425,6 +1425,10 @@ public class LaserCut extends JFrame {
     return inches * 2.54;
   }
 
+  static double mmToCm (double mm) {
+    return mm / 10;
+  }
+
   public static String getResourceFile (String file) {
     try {
       InputStream fis = LaserCut.class.getResourceAsStream(file);
@@ -2199,7 +2203,7 @@ public class LaserCut extends JFrame {
     }
   }
 
-  static class CADRasterImage extends CADShape implements Serializable, CADNoDraw, Resizable, Rotatable {
+  static class CADRasterImage extends CADShape implements Serializable, Resizable, Rotatable {
     private static final long serialVersionUID = 2309856254388651139L;
     public double             width, height, scale = 100.0;
     public boolean            engrave3D;
@@ -2307,42 +2311,45 @@ public class LaserCut extends JFrame {
 
     /**
      * Used to compute scale factors needed to engrave image on Zing
-     * @param destPpi destination ppi (usually ZING_PPI)
+     * @param destPpi destination ppi/dpi (usually ZING_PPI)
      * @return array of double where [0] is x scale and [1] is y scale
      */
     double[] getScale (double destPpi) {
-      return new double[] {(double) destPpi / ppi.getWidth() * scale / 100, (double) destPpi / ppi.getHeight() * scale / 100};
+      return new double[] {(destPpi * width) / img.getWidth(), (destPpi * height) / img.getHeight()};
     }
 
     /**
-     * Computes the bounding box (in pixels) after the imagea is scaled and rotated
+     * Computes the zero-centered bounding box (in inches * scale value) after the imagea is scaled and rotated
+     * Note: used by ZingLaser
      * @param scale Array of double from getScale() where [0] is x scale and [1] is y scale
      * @return Bounding box for scaled and rotated image
      */
-    Rectangle2D getScaledRotatedBounds (double scale) {
+    Rectangle2D getScaledRotatedBounds (double[] scale) {
       AffineTransform at = new AffineTransform();
-      at.scale(scale, scale);
+      at.scale(scale[0], scale[1]);
       at.rotate(Math.toRadians(rotation), (double) img.getWidth() / 2, (double) img.getHeight() / 2);
       Path2D.Double tShape = (Path2D.Double) at.createTransformedShape(new Rectangle2D.Double(0, 0, img.getWidth(), img.getHeight()));
       return tShape.getBounds2D();
     }
 
     /**
-     * Compute the AffineTransform needed to scale and rotate the image
+     * Compute the AffineTransform needed to scale and rotate the image so that upper left corner is at 0,0
+     * Note: used by ZingLaser
      * @param bb Bounding box computed by getScaledRotatedBounds()
      * @param scale Array of double from getScale() where [0] is x scale and [1] is y scale
      * @return AffineTransform which will scale and rotate image into bounding box computed by getScaledRotatedBounds()
      */
-    AffineTransform getScaledRotatedTransform (Rectangle2D bb, double scale) {
+    AffineTransform getScaledRotatedTransform (Rectangle2D bb, double[] scale) {
       AffineTransform at = new AffineTransform();
       at.translate(-bb.getX(), -bb.getY());
-      at.scale(scale, scale);
+      at.scale(scale[0], scale[1]);
       at.rotate(Math.toRadians(rotation), (double) img.getWidth() / 2, (double) img.getHeight() / 2);
       return at;
     }
 
     /**
      * Compute the origin point on the edge of the scaled and rotated image
+     * Note: used by ZingLaser
      * @param at AffineTransform used to scale and rotate
      * @param bb Bounding box computed by getScaledRotatedBounds()
      * @return Origin point on the edge of the image (offset by the negative of these amounts when drawing)
@@ -2359,12 +2366,13 @@ public class LaserCut extends JFrame {
 
     /**
      * Generate a scaled and rotated image that fits inside the bounding box computed by getScaledRotatedBounds()
+     * Note: used by ZingLaser
      * @param at AffineTransform used to scale and rotate
      * @param bb Bounding box computed by getScaledRotatedBounds()
      * @param scale Array of double from getScale() where [0] is x scale and [1] is y scale
      * @return BufferedImage containing scaled and rotated image
      */
-    BufferedImage getScaledRotatedImage (AffineTransform at, Rectangle2D bb, double scale) {
+    BufferedImage getScaledRotatedImage (AffineTransform at, Rectangle2D bb, double[] scale) {
       // Create new BufferedImage the size of the bounding for for the scaled and rotated image
       int wid = (int) Math.round(bb.getWidth());
       int hyt = (int) Math.round(bb.getHeight());
@@ -2375,7 +2383,7 @@ public class LaserCut extends JFrame {
       // Draw scaled and rotated image into newly-created BufferedImage
       at = new AffineTransform();
       at.translate(-bb.getX(), -bb.getY());
-      at.scale(scale, scale);
+      at.scale(scale[0], scale[1]);
       at.rotate(Math.toRadians(rotation), (double) img.getWidth() / 2, (double) img.getHeight() / 2);
       g2.drawImage(img, at, null);
       return bufImg;
