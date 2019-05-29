@@ -1,11 +1,7 @@
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
-import java.awt.geom.AffineTransform;
 import java.awt.geom.Line2D;
-import java.awt.geom.Point2D;
-import java.awt.geom.Rectangle2D;
-import java.awt.image.BufferedImage;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
@@ -72,17 +68,8 @@ class MiniLaser extends GRBLBase {
             DecimalFormat fmt = new DecimalFormat("#.#####");
             for (LaserCut.CADShape shape : shapes) {
               if (shape instanceof LaserCut.CADRasterImage) {
-                LaserCut.CADRasterImage raster = (LaserCut.CADRasterImage) shape;
-
-                double[] scale = raster.getScale(1);
-                Rectangle2D bb = raster.getScaledRotatedBounds(scale);
-                AffineTransform at = raster.getScaledRotatedTransform(bb, scale);
-                Point2D.Double offset = raster.getScaledRotatedOrigin(at, bb);
-                double xLoc = shape.xLoc + bb.getX();
-                double yLoc = shape.yLoc + bb.getY();
-
-
                 RasterSettings settings = new RasterSettings(engraveDpi, engraveSpeed, 1, engravePower);
+                LaserCut.CADRasterImage raster = (LaserCut.CADRasterImage) shape;
                 List<String>  rList = toGCode(raster.img,  raster.xLoc,  raster.yLoc,  raster.width,  raster.height, settings);
                 cmds.addAll(rList);
               } else {
