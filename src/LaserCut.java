@@ -2328,12 +2328,13 @@ public class LaserCut extends JFrame {
       AffineTransform at = new AffineTransform();
       at.scale(scale[0], scale[1]);
       at.rotate(Math.toRadians(rotation), (double) img.getWidth() / 2, (double) img.getHeight() / 2);
-      Path2D.Double tShape = (Path2D.Double) at.createTransformedShape(new Rectangle2D.Double(0, 0, img.getWidth(), img.getHeight()));
+      Rectangle2D.Double rect = new Rectangle2D.Double(0, 0, img.getWidth(), img.getHeight());
+      Path2D.Double tShape = (Path2D.Double) at.createTransformedShape(rect);
       return tShape.getBounds2D();
     }
 
     /**
-     * Compute the AffineTransform needed to scale and rotate the image so that upper left corner is at 0,0
+     * Compute the AffineTransform needed to scale and rotate a zero-centered image so that upper left corner is at 0,0
      * Note: used by ZingLaser
      * @param bb Bounding box computed by getScaledRotatedBounds()
      * @param scale Array of double from getScale() where [0] is x scale and [1] is y scale

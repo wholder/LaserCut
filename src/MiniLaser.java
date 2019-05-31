@@ -38,99 +38,95 @@ class MiniLaser extends GRBLBase {
     sendToMiniLazer.addActionListener((ActionEvent ex) -> {
       if (jPort.hasSerial()) {
         if (showConfirmDialog(laserCut, panel, "Send Job to Mini Laser", YES_NO_OPTION, PLAIN_MESSAGE, null) == OK_OPTION) {
-          try {
-            boolean miniDynamicLaser = laserCut.prefs.getBoolean("mini.laser.dynamic", true);
-            boolean planPath = laserCut.prefs.getBoolean("mini.laser.pathplan", true);
-            int iterations = Integer.parseInt(tf.getText());
-            // Cut Settings
-            int cutSpeed = laserCut.prefs.getInt("mini.laser.speed", MINI_CSPEED_DEFAULT);
-            cutSpeed = Math.min(MINI_MAX_SPEED, cutSpeed);                                      // Min speed = 10 inches/min
-            int cutPower = laserCut.prefs.getInt("mini.laser.power", MINI_CPOWER_DEFAULT);
-            cutPower = Math.min(MINI_MAX_POWER, MINI_MAX_POWER * cutPower / 100);               // Max power == 1000
-            // Engrave Settings
-            int engraveSpeed = laserCut.prefs.getInt("mini.laser.espeed", MINI_ESPEED_DEFAULT);
-            engraveSpeed = Math.min(MINI_MAX_SPEED, engraveSpeed);                              // Min speed = 10 inches/min
-            int engravePower = laserCut.prefs.getInt("mini.laser.epower", MINI_EPOWER_DEFAULT);
-            engravePower = Math.min(MINI_MAX_POWER, MINI_MAX_POWER * engravePower / 100);       // Max power == 1000
-            int engraveDpi = laserCut.prefs.getInt("mini.laser.dpi", MINI_DPI_DEFAULT);
-            // Generate G_Code for GRBL 1.1
-            List<String> cmds = new ArrayList<>();
-            // Add starting G-codes
-            cmds.add("G20");                                                                    // Set Inches as Units
-            cmds.add("M05");                                                                    // Set Laser Off
-            boolean laserOn = false;
-            // Process engraved items first, then cut items
-            List<LaserCut.CADShape> shapes = laserCut.surface.selectLaserItems(false);
-            shapes.addAll(laserCut.surface.selectLaserItems(true));
-            if (planPath) {
-              shapes = PathPlanner.optimize(shapes);
-            }
-            DecimalFormat fmt = new DecimalFormat("#.#####");
-            for (LaserCut.CADShape shape : shapes) {
-              if (shape instanceof LaserCut.CADRasterImage) {
-                RasterSettings settings = new RasterSettings(engraveDpi, engraveSpeed, 1, engravePower);
-                LaserCut.CADRasterImage raster = (LaserCut.CADRasterImage) shape;
-                List<String>  rList = toGCode(raster.img,  raster.xLoc,  raster.yLoc,  raster.width,  raster.height, settings);
-                cmds.addAll(rList);
+          boolean miniDynamicLaser = laserCut.prefs.getBoolean("mini.laser.dynamic", true);
+          boolean planPath = laserCut.prefs.getBoolean("mini.laser.pathplan", true);
+          int iterations = Integer.parseInt(tf.getText());
+          // Cut Settings
+          int cutSpeed = laserCut.prefs.getInt("mini.laser.speed", MINI_CSPEED_DEFAULT);
+          cutSpeed = Math.min(MINI_MAX_SPEED, cutSpeed);                                      // Min speed = 10 inches/min
+          int cutPower = laserCut.prefs.getInt("mini.laser.power", MINI_CPOWER_DEFAULT);
+          cutPower = Math.min(MINI_MAX_POWER, MINI_MAX_POWER * cutPower / 100);               // Max power == 1000
+          // Engrave Settings
+          int engraveSpeed = laserCut.prefs.getInt("mini.laser.espeed", MINI_ESPEED_DEFAULT);
+          engraveSpeed = Math.min(MINI_MAX_SPEED, engraveSpeed);                              // Min speed = 10 inches/min
+          int engravePower = laserCut.prefs.getInt("mini.laser.epower", MINI_EPOWER_DEFAULT);
+          engravePower = Math.min(MINI_MAX_POWER, MINI_MAX_POWER * engravePower / 100);       // Max power == 1000
+          int engraveDpi = laserCut.prefs.getInt("mini.laser.dpi", MINI_DPI_DEFAULT);
+          // Generate G_Code for GRBL 1.1
+          List<String> cmds = new ArrayList<>();
+          // Add starting G-codes
+          cmds.add("G20");                                                                    // Set Inches as Units
+          cmds.add("M05");                                                                    // Set Laser Off
+          boolean laserOn = false;
+          // Process engraved items first, then cut items
+          List<LaserCut.CADShape> shapes = laserCut.surface.selectLaserItems(false);
+          shapes.addAll(laserCut.surface.selectLaserItems(true));
+          if (planPath) {
+            shapes = PathPlanner.optimize(shapes);
+          }
+          DecimalFormat fmt = new DecimalFormat("#.#####");
+          for (LaserCut.CADShape shape : shapes) {
+            if (shape instanceof LaserCut.CADRasterImage) {
+              RasterSettings settings = new RasterSettings(engraveDpi, engraveSpeed, 1, engravePower);
+              LaserCut.CADRasterImage raster = (LaserCut.CADRasterImage) shape;
+              List<String>  rList = toGCode(raster, settings);
+              cmds.addAll(rList);
+            } else {
+              if (shape.engrave) {
+                cmds.add("S" + engravePower);                                                 // Set Laser Power (0 - 1000)
+                cmds.add("F" + engraveSpeed);                                                 // Set feed rate (inches/min)
               } else {
-                if (shape.engrave) {
-                  cmds.add("S" + engravePower);                                                 // Set Laser Power (0 - 1000)
-                  cmds.add("F" + engraveSpeed);                                                 // Set feed rate (inches/min)
-                } else {
-                  cmds.add("S" + cutPower);                                                     // Set Laser Power (0 - 1000)
-                  cmds.add("F" + cutSpeed);                                                     // Set feed rate (inches/min)
-                }
-                for (int ii = 0; ii < iterations; ii++) {
-                  double lastX = 0, lastY = 0;
-                  for (Line2D.Double[] lines : shape.getListOfScaledLines(1, .001)) {
-                    boolean first = true;
-                    for (Line2D.Double line : lines) {
-                      String x1 = LaserCut.df.format(line.x1);
-                      String y1 = LaserCut.df.format(line.y1);
-                      String x2 = LaserCut.df.format(line.x2);
-                      String y2 = LaserCut.df.format(line.y2);
-                      if (first) {
-                        cmds.add("M05");                                                        // Set Laser Off
-                        cmds.add("G00X" + fmt.format(x1) + "Y" + fmt.format(y1));               // Move to x1 y1
-                        if (cutPower > 0) {
-                          cmds.add(miniDynamicLaser ? "M04" : "M03");                           // Set Laser On
-                          laserOn = true;                                                       // Leave Laser On
-                        }
-                        cmds.add("G01X" + fmt.format(x2) + "Y" + fmt.format(y2));               // Line to x2 y2
-                        lastX = line.x2;
-                        lastY = line.y2;
-                      } else {
-                        if (lastX != line.x1 || lastY != line.y1) {
-                          cmds.add("M05");                                                      // Set Laser Off
-                          cmds.add("G00X" + fmt.format(x1) + "Y" + fmt.format(y1));             // Move to x1 y1
-                          laserOn = false;                                                      // Leave Laser Off
-                        }
-                        if (!laserOn && cutPower > 0) {
-                          cmds.add(miniDynamicLaser ? "M04" : "M03");                           // Set Laser On
-                          laserOn = true;                                                       // Leave Laser On
-                        }
-                        cmds.add("G01X" + fmt.format(x2) + "Y" + fmt.format(y2));               // Line to x2 y2
-                        lastX = line.x2;
-                        lastY = line.y2;
+                cmds.add("S" + cutPower);                                                     // Set Laser Power (0 - 1000)
+                cmds.add("F" + cutSpeed);                                                     // Set feed rate (inches/min)
+              }
+              for (int ii = 0; ii < iterations; ii++) {
+                double lastX = 0, lastY = 0;
+                for (Line2D.Double[] lines : shape.getListOfScaledLines(1, .001)) {
+                  boolean first = true;
+                  for (Line2D.Double line : lines) {
+                    String x1 = fmt.format(line.x1);
+                    String y1 = fmt.format(line.y1);
+                    String x2 = fmt.format(line.x2);
+                    String y2 = fmt.format(line.y2);
+                    if (first) {
+                      cmds.add("M05");                                                        // Set Laser Off
+                      cmds.add("G00X" + x1 + "Y" + y1);                                       // Move to x1 y1
+                      if (cutPower > 0) {
+                        cmds.add(miniDynamicLaser ? "M04" : "M03");                           // Set Laser On
+                        laserOn = true;                                                       // Leave Laser On
                       }
-                      first = false;
+                      cmds.add("G01X" + x2 + "Y" + y2);                                       // Line to x2 y2
+                      lastX = line.x2;
+                      lastY = line.y2;
+                    } else {
+                      if (lastX != line.x1 || lastY != line.y1) {
+                        cmds.add("M05");                                                      // Set Laser Off
+                        cmds.add("G00X" + x1 + "Y" + y1);                                     // Move to x1 y1
+                        laserOn = false;                                                      // Leave Laser Off
+                      }
+                      if (!laserOn && cutPower > 0) {
+                        cmds.add(miniDynamicLaser ? "M04" : "M03");                           // Set Laser On
+                        laserOn = true;                                                       // Leave Laser On
+                      }
+                      cmds.add("G01X" + x2 + "Y" + y2);                                       // Line to x2 y2
+                      lastX = line.x2;
+                      lastY = line.y2;
                     }
+                    first = false;
                   }
                 }
-                if (laserOn) {
-                  cmds.add("M05");                                                              // Set Laser Off
-                  laserOn = false;
-                }
+              }
+              if (laserOn) {
+                cmds.add("M05");                                                              // Set Laser Off
+                laserOn = false;
               }
             }
-            // Add ending G-codes
-            cmds.add("M5");                                                                     // Set Laser Off
-            cmds.add("G00X0Y0");                                                                // Move back to Origin
-            new GRBLSender(laserCut, jPort, cmds.toArray(new String[0]),
-                           new String[] {"M5", "G00X0Y0"});                                     // Abort commands
-          } catch (Exception ex2) {
-            laserCut.showErrorDialog("Invalid parameter " + tf.getText());
           }
+          // Add ending G-codes
+          cmds.add("M5");                                                                     // Set Laser Off
+          cmds.add("G00X0Y0");                                                                // Move back to Origin
+          new GRBLSender(laserCut, jPort, cmds.toArray(new String[0]),
+                         new String[] {"M5", "G00X0Y0"});                                     // Abort commands
         }
       } else {
         showMessageDialog(laserCut, "No Serial Port Selected", "Error", PLAIN_MESSAGE);

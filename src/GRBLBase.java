@@ -4,6 +4,7 @@ import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.geom.AffineTransform;
+import java.awt.geom.Point2D;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBuffer;
 import java.awt.image.WritableRaster;
@@ -805,14 +806,22 @@ class GRBLBase {
       cmdQueue = 0;
       try {
         for (int ii = 0; (ii < cmds.length) && !doAbort; ii++) {
-          String gcode = cmds[ii];
-          progress.setValue(ii);
+          String gcode = cmds[ii].trim();
           grbl.append(gcode + '\n');
+          if (gcode.contains(";")) {
+            // Remove comments
+            gcode = gcode.substring(0, gcode.indexOf(";")).trim();
+          }
+          // Ignore blank lines
+          if (gcode.length() == 0) {
+            continue;
+          }
+          progress.setValue(ii);
           jPort.sendString(gcode + '\n');
           synchronized (lock) {
             cmdQueue++;
           }
-          stepWait(8);
+          stepWait(5);                        // max number of 25 character gcode lines in GRBL's 128 byte buffer
         }
         stepWait(0);
         // Wait until all commands have been processed
@@ -863,67 +872,134 @@ class GRBLBase {
     return (value - minIn) * (maxOut - minOut) / (maxIn - minIn) + minOut;
   }
 
-  static List<String> toGCode (BufferedImage imgIn, double xOff, double yOff, double xSize, double ySize, RasterSettings settings) {
+  static List<String> toGCode (LaserCut.CADRasterImage cadRaster, RasterSettings settings) {
+    BufferedImage imgIn = cadRaster.img;
+    double xSize = cadRaster.width;
+    double ySize = cadRaster.height;
     if (settings == null) {
-      settings = new RasterSettings(100, 100, 1, 255);                    // Default settings
+      settings = new RasterSettings(100, 100, 1, 255);                    // Default settings 100 dpi, 100 in/min, 1 min, 255 max
     }
     // Resize image to match DPI specified for engraving
-    int wid = (int) Math.round(xSize * settings.rasterDpi);
-    int hyt = (int) Math.round(ySize * settings.rasterDpi);
-    BufferedImage img = new BufferedImage(wid, hyt, BufferedImage.TYPE_BYTE_GRAY);
+    int imgWid = (int) Math.round(xSize * settings.rasterDpi);
+    int imgHyt = (int) Math.round(ySize * settings.rasterDpi);
+    BufferedImage img = new BufferedImage(imgWid, imgHyt, BufferedImage.TYPE_BYTE_GRAY);
     Graphics2D g2 = img.createGraphics();
     g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
     g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
-    g2.drawImage(imgIn, 0, 0, wid, hyt, 0, 0, imgIn.getWidth(), imgIn.getHeight(), null);
+    g2.drawImage(imgIn, 0, 0, imgWid, imgHyt, 0, 0, imgIn.getWidth(), imgIn.getHeight(), null);
     g2.dispose();
     WritableRaster raster = img.getRaster();
     DataBuffer data = raster.getDataBuffer();
-    DecimalFormat fmt = new DecimalFormat("#.#####");
+    DecimalFormat fmt = new DecimalFormat("#.####");
+    List<String> buf = new ArrayList<>();
+    buf.add("G20");                                                                         // Set units to inches
+    buf.add("M4");                                                                          // Dynamic Laser Mode
+    buf.add("S0");                                                                          // S0 ; Laser off
+    buf.add("F" + settings.feedRate);                                                       // Fnn ; Set feedrate for engraving
     // Compute step sizes for raster
     double xStep = 1.0 / settings.rasterDpi;
     double yStep = 1.0 / settings.rasterDpi;
-    List<String> buf = new ArrayList<>();
-    buf.add("G20");                                                       // Set units to inches
-    buf.add("M4");                                                        // Dynamic Laser Mode
-    buf.add("S0");                                                        // S0 ; Laser off
-    buf.add("F" + settings.feedRate);                                     // Fnn ; Set feedrate for engraving
-    int prevValue = 0;
-    // Move quickly to start of next scan line
-    buf.add("G00X" + fmt.format(xOff) + "Y" + fmt.format(yOff));          // G00Xnn.nYnn.n
-    // Output GRBL Commands to Draw Raster Image
-    for (int yy = 0; yy < hyt; yy++) {
-      double yLoc = yOff + yStep * yy;
-      if ((yy & 1) == 0) {                                                // Scan left to right for even lines
-        // Step down to start of next scan line
-        buf.add("G00Y" + fmt.format(yLoc));                               // G00Ynn.n
-        for (int xx = 0; xx < wid; xx++) {
-          double xLoc = xOff + (xx + 1) * xStep;
-          int grey = 255 - data.getElem(yy * hyt + xx);                   // Read pixel and convert to greyscale
-          grey = map(grey, 0, 255, settings.laserMin, settings.laserMax); // Map 8 bit range to Laser Power Level range
-          if (grey != prevValue) {                                        // Only send Command if power has changed
-            buf.add("S" + grey +"G01X" + fmt.format(xLoc));               // Snn ; Set Laser Power Level
-          } else if (xx == wid - 1) {
-            buf.add("G01X" + fmt.format(xLoc));                           // G01Xn.00 ; Draw pixel to scanline
+    if (cadRaster.rotation != 0) {
+      // Compute AffineTransform for rotation
+      AffineTransform at = new AffineTransform();
+      if (cadRaster.centered) {
+        at.translate(cadRaster.xLoc - xSize / 2, cadRaster.yLoc - ySize / 2);
+        at.rotate(Math.toRadians(cadRaster.rotation), xSize / 2, ySize / 2);
+      } else {
+        at.translate(cadRaster.xLoc, cadRaster.yLoc);
+        at.rotate(Math.toRadians(cadRaster.rotation));
+      }
+      int prevValue = 0;
+      Point2D.Double loc = new Point2D.Double(0, 0);
+      // Output GRBL Commands to Draw Raster Image
+      for (int yy = 0; yy < imgHyt; yy++) {
+        double yLoc = yStep * yy;
+        if ((yy & 1) == 0) {                                                                // Scan left to right for even lines
+          for (int xx = 0; xx < imgWid; xx++) {
+            if (xx == 0) {
+              // Move quickly to start of next even scan line
+              double xLoc = xx * xStep;
+              loc.setLocation(xLoc, yLoc);
+              at.transform(loc, loc);
+              buf.add("G00X" + fmt.format(loc.x) + "Y" + fmt.format(loc.y));                // G00Xn.nYn.n
+            }
+            double xLoc = xx * xStep;
+            loc.setLocation(xLoc, yLoc);
+            at.transform(loc, loc);
+            int grey = 255 - data.getElem(yy * imgHyt + xx);                                // Read pixel and convert to greyscale
+            grey = map(grey, 0, 255, settings.laserMin, settings.laserMax);                 // Map 8 bit range to Laser Power Level range
+            if (grey != prevValue) {                                                        // Only send Command if power has changed
+              buf.add("S" + grey + "G01X" + fmt.format(loc.x) + "Y" + fmt.format(loc.y));   // G01Xn.nYn.n ; Set Laser Power and start draw
+            } else if (xx == imgWid - 1) {
+              buf.add("G01X" + fmt.format(loc.x) + "Y" + fmt.format(loc.y));                // G01Xn.nYn.n ; continue draw at last power
+            }
+            prevValue = grey;                                                               // Save the laser power for the next loop
           }
-          prevValue = grey;                                               // Save the laser power for the next loop
+        } else {                                                                            // Scan right to left for off lines
+          for (int xx = imgWid - 1; xx >= 0; xx--) {
+            if (xx == imgWid - 1) {
+              // Move quickly to start of next odd scan line
+              double xLoc = xx * xStep;
+              loc.setLocation(xLoc, yLoc);
+              at.transform(loc, loc);
+              buf.add("G00X" + fmt.format(loc.x) + "Y" + fmt.format(loc.y));                // G00Xn.nYn.n
+            }
+            double xLoc = xx * xStep;
+            loc.setLocation(xLoc, yLoc);
+            at.transform(loc, loc);
+            int grey = 255 - data.getElem(yy * imgHyt + xx);                                // Read pixel and convert to greyscale
+            grey = map(grey, 0, 255, settings.laserMin, settings.laserMax);                 // Map 8 bit range to Laser Power Level range
+            if (grey != prevValue) {                                                        // Only send Command if power has changed
+              buf.add("S" + grey + "G01X" + fmt.format(loc.x) + "Y" + fmt.format(loc.y));   // G01Xn.nYn.n ; Set Laser Power and start draw
+            } else if (xx == imgWid - 1) {
+              buf.add("G01X" + fmt.format(loc.x) + "Y" + fmt.format(loc.y));                // G01Xn.nYn.n ; continue draw at last power
+            }
+            prevValue = grey;                                                               // Save the laser power for the next loop
+          }
         }
-      } else {                                                            // Scan right to left for off lines
-        // Step down to end of next scan line
-        buf.add("G00Y" + fmt.format(yLoc));                               // G00Ynn.n
-        for (int xx = wid -1; xx >= 0; xx--) {
-          double xLoc = xOff + (xx + 1) * xStep;
-          int grey = 255 - data.getElem(yy * hyt + xx);                   // Read pixel and convert to greyscale
-          grey = map(grey, 0, 255, settings.laserMin, settings.laserMax); // Map 8 bit range to Laser Power Level range
-          if (grey != prevValue) {                                        // Only send Command if power has changed
-            buf.add("S" + grey +"G01X" + fmt.format(xLoc));               // Snn ; Set Laser Power Level
-          } else if (xx == 0) {
-            buf.add("G01X" + fmt.format(xLoc));                           // G01Xn.00 ; Draw pixel to scanline
+      }
+    } else {
+      // Get workspace location of unrotated upper left corner
+      double xOff = cadRaster.centered ? cadRaster.xLoc - xSize / 2 : cadRaster.xLoc;
+      double yOff = cadRaster.centered ? cadRaster.yLoc - ySize / 2 : cadRaster.yLoc;
+      int prevValue = 0;
+      // Move quickly to start of next scan line
+      buf.add("G00X" + fmt.format(xOff) + "Y" + fmt.format(yOff));                          // G00Xn.nYn.n
+      // Output GRBL Commands to Draw Raster Image
+      for (int yy = 0; yy < imgHyt; yy++) {
+        double yLoc = yOff + yStep * yy;
+        if ((yy & 1) == 0) {                                                                // Scan left to right for even lines
+          // Step down to start of next scan line
+          buf.add("G00Y" + fmt.format(yLoc));                                               // G00Yn.n
+          for (int xx = 0; xx < imgWid; xx++) {
+            double xLoc = xOff + xx * xStep;
+            int grey = 255 - data.getElem(yy * imgHyt + xx);                                // Read pixel and convert to greyscale
+            grey = map(grey, 0, 255, settings.laserMin, settings.laserMax);                 // Map 8 bit range to Laser Power Level range
+            if (grey != prevValue) {                                                        // Only send Command if power has changed
+              buf.add("S" + grey + "G01X" + fmt.format(xLoc));                              // Sn ; Set Laser Power and start draw
+            } else if (xx == imgWid - 1) {
+              buf.add("G01X" + fmt.format(xLoc));                                           // G01Xn.n ; continue draw at last power
+            }
+            prevValue = grey;                                                               // Save the laser power for the next loop
           }
-          prevValue = grey;                                               // Save the laser power for the next loop
+        } else {                                                                            // Scan right to left for off lines
+          // Step down to end of next scan line
+          buf.add("G00Y" + fmt.format(yLoc));                                               // G00Yn.n
+          for (int xx = imgWid - 1; xx >= 0; xx--) {
+            double xLoc = xOff + xx * xStep;
+            int grey = 255 - data.getElem(yy * imgHyt + xx);                                // Read pixel and convert to greyscale
+            grey = map(grey, 0, 255, settings.laserMin, settings.laserMax);                 // Map 8 bit range to Laser Power Level range
+            if (grey != prevValue) {                                                        // Only send Command if power has changed
+              buf.add("S" + grey + "G01X" + fmt.format(xLoc));                              // Sn ; Set Laser Power and start draw
+            } else if (xx == 0) {
+              buf.add("G01X" + fmt.format(xLoc));                                           // G01Xn.n ; continue draw at last power
+            }
+            prevValue = grey;                                                               // Save the laser power for the next loop
+          }
         }
       }
     }
-    buf.add("S0");                                                        // S0 ; Laser off
+    buf.add("S0");                                                                          // S0 ; Laser off
     return buf;
   }
 }
