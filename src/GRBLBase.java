@@ -131,7 +131,7 @@ class GRBLBase {
         idx1 = rsp.indexOf("[OPT:");
         idx2 = rsp.indexOf("]");
         if (idx1 >= 0 && idx2 > 0) {
-          grblOptions = rsp.substring(5, rsp.length() - 2);
+          grblOptions = rsp.substring(5, rsp.length() - 1);
         }
       }
       receive = sendGrbl(jPort, "$$");
