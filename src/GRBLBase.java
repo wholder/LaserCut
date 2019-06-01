@@ -381,8 +381,15 @@ class GRBLBase {
     jogMenu.addActionListener((ev) -> {
       if (jPort.hasSerial()) {
         if (this instanceof MiniLaser) {
-          // Make sure laser is off
-          sendGrbl(jPort, "M5", 20);
+          if (laserCut.miniLaserGuide) {
+            // Enable Laser at low intensity to act as guide beam
+            sendGrbl(jPort, "M4", 20);
+            sendGrbl(jPort, "S8", 20);
+            sendGrbl(jPort, "M3", 20);
+          } else {
+            // Make sure laser is off
+            sendGrbl(jPort, "M5", 20);
+          }
         }
         // Build Jog Controls
         JPanel frame = new JPanel(new BorderLayout(0, 2));
@@ -492,14 +499,14 @@ class GRBLBase {
         if (showOptionDialog(laserCut, frame, "Jog Controls", OK_CANCEL_OPTION, PLAIN_MESSAGE, null, options, options[1]) == 0) {
           // User pressed "Set Origin" so set coords to new position after jog
           try {
-            sendGrbl(jPort, "G92X0Y0Z0");
+            sendGrbl(jPort, "S0M5G92X0Y0Z0");
           } catch (Exception ex) {
             ex.printStackTrace();
           }
         } else {
           // User pressed "Cancel" so fast move back to old home position
           try {
-            sendGrbl(jPort, "G00X0Y0Z0");
+            sendGrbl(jPort, "S0M5G00X0Y0Z0");
           } catch (Exception ex) {
             ex.printStackTrace();
           }
@@ -999,7 +1006,7 @@ class GRBLBase {
         }
       }
     }
-    buf.add("S0");                                                                          // S0 ; Laser off
+    buf.add("S0M5");                                                                        // S0M5 ; Laser off
     return buf;
   }
 }

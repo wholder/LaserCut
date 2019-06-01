@@ -81,6 +81,7 @@ public class LaserCut extends JFrame {
   private boolean               snapToGrid = prefs.getBoolean("snapToGrid", true);
   private boolean               displayGrid = prefs.getBoolean("displayGrid", true);
   private boolean               enableMiniLaser = prefs.getBoolean("enableMiniLaser", true);
+  boolean                       miniLaserGuide = prefs.getBoolean("miniLaserGuide", false);
   private boolean               enableMiniCnc = prefs.getBoolean("enableMiniCnc", false);
   private MiniLaser             miniLaser;
   private MiniCNC               miniCnc;
@@ -138,6 +139,7 @@ public class LaserCut extends JFrame {
   private void showPreferencesBox () {
     Map<String,ParameterDialog.ParmItem> items = new LinkedHashMap<>();
     items.put("enableMiniLaser", new ParameterDialog.ParmItem("Mini Laser (restart to enable)", enableMiniLaser));
+    items.put("miniLaserGuide", new ParameterDialog.ParmItem("Mini Laser Guide Beam", miniLaserGuide));
     items.put("enableMiniCnc", new ParameterDialog.ParmItem("Mini CNC (restart to enabled)", enableMiniCnc));
     items.put("useMouseWheel", new ParameterDialog.ParmItem("Mouse Wheel Scrolling", prefs.getBoolean("useMouseWheel", false)));
     items.put("useDblClkZoom", new ParameterDialog.ParmItem("Double-click Zoom{Dbl click to Zoom 2x, Shift + dbl click to unZoom}",
@@ -156,6 +158,8 @@ public class LaserCut extends JFrame {
           configureMouseWheel();
         } else if ("enableMiniLaser".equals(name)) {
           prefs.putBoolean("enableMiniLaser", enableMiniLaser = (Boolean) parm.value);
+        } else if ("miniLaserGuide".equals(name)) {
+          prefs.putBoolean("miniLaserGuide", miniLaserGuide = (Boolean) parm.value);
         } else if ("enableMiniCnc".equals(name)) {
           prefs.putBoolean("enableMiniCnc", enableMiniCnc = (Boolean) parm.value);
         } else if ("useDblClkZoom".equals(name)) {

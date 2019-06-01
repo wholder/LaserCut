@@ -59,6 +59,7 @@ LaserCut uses the Java Language's reflection and object serialization features t
   - **5/10/2019** - Added "Export to EPS" using new EPSWriter class.
   - **5/12/2019** - JavaCut now runs under Java 8, or greater (Java 10-only code commented out)
   - **5/21/2019** - Added PathPlanner class to optimize laser cutting paths (still in development)
+  - **5/31/2019** - MiniLaser now supports engraving raster images (with optional rotation)
 ## Under Development
 - Support for a user-extendable library of specialized cutout shapes, such as for mounting RC Servos (to replace and extend the current Nema Stepper code)
 - Import vector shapes from EPS (Encapsulated PostScript®) files
