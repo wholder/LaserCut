@@ -71,37 +71,33 @@ public class LaserCut extends JFrame {
   transient Preferences         prefs = Preferences.userRoot().node(this.getClass().getName());
   DrawSurface                   surface;
   private JScrollPane           scrollPane;
+  private JMenuBar              menuBar = new JMenuBar();
   private JMenuItem             gerberZip;
-  private ButtonModel           noZoom;
   private int                   pxDpi = prefs.getInt("svg.pxDpi", 96);
   private long                  savedCrc;
   String                        displayUnits = prefs.get("displayUnits", "in");
   private boolean               useMouseWheel = prefs.getBoolean("useMouseWheel", false);
-  private boolean               miniDynamicLaser = prefs.getBoolean("mini.dynamicLaser", true);
   private boolean               snapToGrid = prefs.getBoolean("snapToGrid", true);
   private boolean               displayGrid = prefs.getBoolean("displayGrid", true);
-  private boolean               enableMiniLaser = prefs.getBoolean("enableMiniLaser", true);
-  boolean                       miniLaserGuide = prefs.getBoolean("miniLaserGuide", false);
-  private boolean               enableMiniCnc = prefs.getBoolean("enableMiniCnc", false);
-  private MiniLaser             miniLaser;
-  private MiniCNC               miniCnc;
-  private String                errorMsg;
+  private OutputDevice          outputDevice;
+  private int                   deviceMenuSlot;
+
+  interface OutputDevice {
+    String getName();
+    JMenu getDeviceMenu () throws Exception;
+    void closeDevice () throws Exception;
+    Rectangle2D.Double getWorkspaceSize ();
+    double getZoomFactor ();
+  }
 
   private boolean quitHandler () {
     if (savedCrc == surface.getDesignChecksum() || showWarningDialog("You have unsaved changes!\nDo you really want to quit?")) {
-      if (enableMiniLaser && miniLaser != null) {
-        try {
-          miniLaser.close();
-        } catch (Throwable ex) {
-          ex.printStackTrace();
+      try {
+        if (outputDevice != null) {
+          outputDevice.closeDevice();
         }
-      }
-      if (enableMiniCnc && miniCnc != null) {
-        try {
-          miniCnc.close();
-        } catch (Throwable ex) {
-          ex.printStackTrace();
-        }
+      } catch (Throwable ex) {
+        ex.printStackTrace();
       }
       return true;
     }
@@ -116,17 +112,15 @@ public class LaserCut extends JFrame {
       ex.printStackTrace();
     }
     String jsscInfo = null;
-    if (enableMiniLaser || enableMiniCnc) {
-      try {
-        jsscInfo = "  Java Simple Serial Connector " + SerialNativeInterface.getLibraryVersion() + "\n" +
-                   "  JSSC Native Code DLL Version " + SerialNativeInterface.getNativeLibraryVersion() + "\n";
-      } catch (Throwable ex) {
-        ex.printStackTrace();
-      }
+    try {
+      jsscInfo = "  Java Simple Serial Connector " + SerialNativeInterface.getLibraryVersion() + "\n" +
+                 "  JSSC Native Code DLL Version " + SerialNativeInterface.getNativeLibraryVersion() + "\n";
+    } catch (Throwable ex) {
+      ex.printStackTrace();
     }
     showMessageDialog(this,
         "By: Wayne Holder\n" +
-            "Java Version: " + System.getProperty("java.version") + "\n" +
+            "  Java Version: " + System.getProperty("java.version") + "\n" +
             "  LibLaserCut " + com.t_oster.liblasercut.LibInfo.getVersion() + "\n" +
             (jsscInfo != null ? jsscInfo : "") +
             "  Apache PDFBox " + org.apache.pdfbox.util.Version.getVersion() + "\n" +
@@ -137,10 +131,9 @@ public class LaserCut extends JFrame {
   }
 
   private void showPreferencesBox () {
+    String device = Integer.toString(prefs.getInt("outputDevice", 1));
     Map<String,ParameterDialog.ParmItem> items = new LinkedHashMap<>();
-    items.put("enableMiniLaser", new ParameterDialog.ParmItem("Mini Laser (restart to enable)", enableMiniLaser));
-    items.put("miniLaserGuide", new ParameterDialog.ParmItem("Mini Laser Guide Beam", miniLaserGuide));
-    items.put("enableMiniCnc", new ParameterDialog.ParmItem("Mini CNC (restart to enabled)", enableMiniCnc));
+    items.put("outputDevice", new ParameterDialog.ParmItem("Output Device:None|0:Zing|1:Mini Laser|2:Micro Laser|3:MiniCNC|4", device));
     items.put("useMouseWheel", new ParameterDialog.ParmItem("Mouse Wheel Scrolling", prefs.getBoolean("useMouseWheel", false)));
     items.put("useDblClkZoom", new ParameterDialog.ParmItem("Double-click Zoom{Dbl click to Zoom 2x, Shift + dbl click to unZoom}",
         prefs.getBoolean("useDblClkZoom", false)));
@@ -156,12 +149,28 @@ public class LaserCut extends JFrame {
         if ("useMouseWheel".equals(name)) {
           prefs.putBoolean("useMouseWheel", useMouseWheel = (Boolean) parm.value);
           configureMouseWheel();
-        } else if ("enableMiniLaser".equals(name)) {
-          prefs.putBoolean("enableMiniLaser", enableMiniLaser = (Boolean) parm.value);
-        } else if ("miniLaserGuide".equals(name)) {
-          prefs.putBoolean("miniLaserGuide", miniLaserGuide = (Boolean) parm.value);
-        } else if ("enableMiniCnc".equals(name)) {
-          prefs.putBoolean("enableMiniCnc", enableMiniCnc = (Boolean) parm.value);
+        } else if ("outputDevice".equals(name)) {
+          String newDevice = (String) parm.value;
+          if (newDevice != device) {
+            prefs.putInt("outputDevice", Integer.parseInt(newDevice));
+            menuBar.setEnabled(false);
+            try {
+              if (outputDevice != null) {
+                outputDevice.closeDevice();
+                menuBar.remove(deviceMenuSlot);
+                menuBar.revalidate();
+                menuBar.repaint();
+                outputDevice = null;
+              }
+            } catch (Throwable ex) {
+              ex.printStackTrace();
+            }
+            JMenu deviceMenu = getOutputDeviceMenu();
+            if (deviceMenu != null) {
+              menuBar.add(deviceMenu, deviceMenuSlot);
+            }
+            menuBar.setEnabled(true);
+          }
         } else if ("useDblClkZoom".equals(name)) {
           surface.setDoubleClickZoomEnable((Boolean) parm.value);
         } else if ("enableGerber".equals(name)) {
@@ -283,7 +292,7 @@ public class LaserCut extends JFrame {
 
   private LaserCut () {
     setTitle("LaserCut");
-    surface = new DrawSurface(prefs, scrollPane = new JScrollPane(), ZingLaser.zingFullSize);
+    surface = new DrawSurface(prefs, scrollPane = new JScrollPane());
     scrollPane.setViewportView(surface);
     JTextField itemInfo = new JTextField();
     surface.registerInfoJTextField(itemInfo);
@@ -351,7 +360,6 @@ public class LaserCut extends JFrame {
       }
     });
     // Add Menu Bar to Window
-    JMenuBar menuBar = new JMenuBar();
     setJMenuBar(menuBar);
     /*
      *  Add "File" Menu
@@ -387,8 +395,7 @@ public class LaserCut extends JFrame {
         if (!showWarningDialog("Discard current design?"))
           return;
         surface.clear();
-        surface.setZoomFactor(1);
-        noZoom.setSelected(true);
+        //surface.setZoomFactor(1);
         savedCrc = surface.getDesignChecksum();
         setTitle("LaserCut");
       }
@@ -415,8 +422,7 @@ public class LaserCut extends JFrame {
         try {
           File tFile = fileChooser.getSelectedFile();
           surface.setDesign(loadDesign(tFile));
-          surface.setZoomFactor(1);
-          noZoom.setSelected(true);
+          //surface.setZoomFactor(1);
           savedCrc = surface.getDesignChecksum();
           prefs.put("default.dir", tFile.getAbsolutePath());
           setTitle("LaserCut - (" + tFile + ")");
@@ -618,7 +624,6 @@ public class LaserCut extends JFrame {
       zoomGroup.add(zItem);
       zItem.addActionListener(ev -> surface.setZoomFactor(zoomFactor));
     }
-    noZoom = zoomGroup.getSelection();
     surface.addZoomListener((index) -> {
       for (int ii = 0; ii < zoomMenu.getMenuComponentCount(); ii++) {
         JRadioButtonMenuItem item = (JRadioButtonMenuItem) zoomMenu.getMenuComponent(ii);
@@ -1033,64 +1038,6 @@ public class LaserCut extends JFrame {
      */
     JMenu exportMenu = new JMenu("Export");
     //
-    // Add "Zing Laser" Menu to Export Menu
-    //
-    exportMenu.add(new ZingLaser(this).getZingMenu());
-    //
-    // Add "Mini Laser" Menu to Export Menu
-    //
-    if (enableMiniLaser) {
-      try {
-        exportMenu.add((miniLaser = new MiniLaser(this)).getMiniLaserMenu());
-      } catch (Throwable ex) {
-        if (showWarningDialog("Unable to initialize JSSCPort serial port (See \"Errors\" menu for more details)\n" +
-                              "Click OK to disable the Mini Laser and prevent this error from happening again.\n" +
-                              "Note; you can use the Preferences dialog box to renable the Mini Laser.\n" +
-                              "Do you want to disable the Mini Laser features?")) {
-          prefs.putBoolean("enableMiniLaser", enableMiniLaser = false);
-        }
-        // Save stack trace for "Error" menu
-        ByteArrayOutputStream bout = new ByteArrayOutputStream();
-        PrintWriter pout = new PrintWriter(bout);
-        ex.printStackTrace(pout);
-        try {
-          pout.close();
-          bout.close();
-        } catch (Exception ex2) {
-          ex.printStackTrace();
-        }
-        errorMsg = "Mini Laser Error:\n" + bout.toString();
-        ex.printStackTrace();
-      }
-    }
-    //
-    // Add "Mini CNC" Menu to Export Menu
-    //
-    if (enableMiniCnc) {
-      try {
-        exportMenu.add((miniCnc = new MiniCNC(this)).getMiniCncMenu());
-      } catch (Throwable ex) {
-        if (showWarningDialog("Unable to initialize JSSCPort serial port (See \"Errors\" menu for more details)\n" +
-                              "Click OK to disable the Mini CNC and prevent this error from happening again.\n" +
-                              "Note; you can use the Preferences dialog box to renable the Mini CNC.\n" +
-                              "Do you want to disable the Mini CNC features?")) {
-          prefs.putBoolean("enableMiniCnc", enableMiniCnc = false);
-        }
-        // Save stack trace for "Error" menu
-        ByteArrayOutputStream bout = new ByteArrayOutputStream();
-        PrintWriter pout = new PrintWriter(bout);
-        ex.printStackTrace(pout);
-        try {
-          pout.close();
-          bout.close();
-        } catch (Exception ex2) {
-          ex.printStackTrace();
-        }
-        errorMsg = (errorMsg != null ? errorMsg + "\n" : "") + "Mini CNC Error:\n" + bout.toString();
-        ex.printStackTrace();
-      }
-    }
-    //
     // Add "Export to PDF File" Menu Item
     //
     JMenuItem pdfOutput = new JMenuItem("Export to PDF File");
@@ -1259,12 +1206,21 @@ public class LaserCut extends JFrame {
       }
     });
     exportMenu.add(epsOutput);
-
     menuBar.add(exportMenu);
+
+    /*
+     *  Add Menu for selected output device
+     */
+    deviceMenuSlot = menuBar.getMenuCount();
+    JMenu deviceMenu = getOutputDeviceMenu();
+    if (deviceMenu != null) {
+      menuBar.add(deviceMenu);
+    }
     /*
      *  Add "Units" Menu
      */
     JMenu unitsMenu = new JMenu("Units");
+    unitsMenu.setToolTipText("Select units to be used in controls");
     ButtonGroup unitGroup = new ButtonGroup();
     String[] unitSet = {"Inches:in", "Centimeters:cm", "Millimeters:mm"};
     displayUnits = prefs.get("displayUnits", "in");
@@ -1281,14 +1237,6 @@ public class LaserCut extends JFrame {
       });
     }
     menuBar.add(unitsMenu);
-    if (errorMsg != null) {
-      // Add "Error" Menu if JSSC error thrown
-      JMenu errorMenu = new JMenu("Errors");
-      JMenuItem eItem = new JMenuItem("Error Stacktrace");
-      errorMenu.add(eItem);
-      eItem.addActionListener(ev -> showScrollingDialog(errorMsg));
-      menuBar.add(errorMenu);
-    }
     // Track window move events and save in prefs
     addComponentListener(new ComponentAdapter() {
       public void componentMoved (ComponentEvent ev)  {
@@ -1300,12 +1248,12 @@ public class LaserCut extends JFrame {
     setLocation(prefs.getInt("window.x", 10), prefs.getInt("window.y", 10));
     pack();
     setVisible(true);
-    if (true) {
-    /*
-     * * * * * * * * * * * * * * * * * * *
-     * Add some test shapes to DrawSurface
-     * * * * * * * * * * * * * * * * * * *
-     */
+    if (outputDevice instanceof ZingLaser) {
+      /*
+       * * * * * * * * * * * * * * * * * * *
+       * Add some test shapes to DrawSurface
+       * * * * * * * * * * * * * * * * * * *
+       */
       // Create + cadShape via additive and subtractive geometric operations
       RoundRectangle2D.Double c1 = new RoundRectangle2D.Double(-.80, -.30, 1.60, .60, .40, .40);
       RoundRectangle2D.Double c2 = new RoundRectangle2D.Double(-.30, -.80, .60, 1.60, .40, .40);
@@ -1338,8 +1286,65 @@ public class LaserCut extends JFrame {
       surface.addShape(new CADText(4.625, .25, "Belle", "Helvetica", "bold", 72, 0, 0, false));
       // Add Test Gear
       surface.addShape(new CADGear(2.25, 2.25, .1, 30, 10, 20, .25, 0, mmToInches(3)));
-      savedCrc = surface.getDesignChecksum();   // Allow quit if unchanged
     }
+    savedCrc = surface.getDesignChecksum();   // Allow quit if unchanged
+  }
+
+  private JMenu getOutputDeviceMenu () {
+    String device = "";
+    JMenu menu = null;
+    try {
+      switch (prefs.getInt("outputDevice", 0)) {
+        case 1:
+          outputDevice = new ZingLaser(this);
+          break;
+        case 2:
+          outputDevice = new MiniLaser(this);
+          break;
+        case 3:
+          outputDevice = new MicroLaser(this);
+          break;
+        case 4:
+          outputDevice = new MiniCNC(this);
+          break;
+        default:
+          outputDevice = null;
+          break;
+      }
+      if (outputDevice != null) {
+        device = outputDevice.getName();
+        surface.setZoomFactor(outputDevice.getZoomFactor());
+        surface.setSurfaceSize(outputDevice.getWorkspaceSize());
+        menu = outputDevice.getDeviceMenu();
+        menu.setToolTipText("Use 'Preferences' menu to change output device");
+      }
+    } catch (Throwable ex) {
+      if (showWarningDialog("Unable to initialize JSSCPort serial port for " + device + "\n" +
+          "Note; use the Preferences dialog box to renable the " + device + ".\n" +
+          "Do you want to view the error message ?")) {
+        // Disable output device for future restarts
+        prefs.putInt("outputDevice", 0);
+      }
+      // Save stack trace for "Error" menu
+      ByteArrayOutputStream bout = new ByteArrayOutputStream();
+      PrintWriter pout = new PrintWriter(bout);
+      ex.printStackTrace(pout);
+      try {
+        pout.close();
+        bout.close();
+      } catch (Exception ex2) {
+        ex.printStackTrace();
+      }
+      String errorMsg = device + " Error:\n" + bout.toString();
+      ex.printStackTrace();
+      // Add Error Menu for device
+      JMenu errorMenu = new JMenu(device);
+      JMenuItem eItem = new JMenuItem("View Error Stacktrace");
+      errorMenu.add(eItem);
+      eItem.addActionListener(ev -> showScrollingDialog(errorMsg));
+      return errorMenu;
+    }
+    return menu;
   }
 
   /**
@@ -1771,7 +1776,7 @@ public class LaserCut extends JFrame {
           // Draw move anchor point
           double mx = xLoc * zoom * SCREEN_PPI;
           double my = yLoc * zoom * SCREEN_PPI;
-          double mWid = 3 * zoom;
+          double mWid = 3;
           g2.draw(new Line2D.Double(mx - mWid, my, mx + mWid, my));
           g2.draw(new Line2D.Double(mx, my - mWid, mx, my + mWid));
         }
@@ -1781,7 +1786,7 @@ public class LaserCut extends JFrame {
         Point2D.Double rGrab = rotateAroundPoint(getAnchorPoint(), getLRPoint(), rotation);
         double mx = rGrab.x * zoom * SCREEN_PPI;
         double my = rGrab.y * zoom * SCREEN_PPI;
-        double mWid = 4 * zoom;
+        double mWid = 3;
         if (this instanceof Resizable) {
           g2.draw(new Rectangle2D.Double(mx - mWid, my - mWid, mWid * 2 - 1, mWid * 2 - 1));
         } else {
@@ -3565,8 +3570,6 @@ public class LaserCut extends JFrame {
               double y1 = (line.y1 + .15) * 4000;
               double x2 = (line.x2 + .15) * 4000;
               double y2 = (line.y2 + .15) * 4000;
-              System.out.println("new Line2D.Double(" + df.format(x1) + ", " + df.format(y1) + ", " +
-                df.format(x2) + ", " + df.format(y2) + "),");
             }
           }
         }

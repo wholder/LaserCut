@@ -63,15 +63,15 @@ public class DrawSurface extends JPanel {
     }
   }
 
-  DrawSurface (Preferences prefs, JScrollPane scrollPane, Dimension workSize) {
+  DrawSurface (Preferences prefs, JScrollPane scrollPane) {
     super(true);
     this.prefs = prefs;
     gridSpacing = prefs.getDouble("gridSpacing", 0);
     gridMajor = prefs.getInt("gridMajor", 0);
     useDblClkZoom = prefs.getBoolean("useDblClkZoom", false);
     DrawSurface thisSurface = this;
-    // Set JPanel size for Zing's maximum work area, or other, if resized by user
-    setPreferredSize(this.workSize = workSize);
+    // Set JPanel size to a temprary default size
+    setPreferredSize(workSize = new Dimension(500, 500));
     addMouseListener(new MouseAdapter() {
       @Override
       public void mousePressed (MouseEvent ev) {
@@ -425,14 +425,12 @@ public class DrawSurface extends JPanel {
     return workSize;
   }
 
-  void setSurfaceSize (Dimension size) {
-    workSize = size;
-    setSize(size);
-    double tmp = zoomFactor;
-    zoomFactor = 1;
+  void setSurfaceSize (Rectangle2D.Double size) {
+    workSize = new Dimension((int) (size.getWidth() * LaserCut.SCREEN_PPI), (int) (size.getHeight() * LaserCut.SCREEN_PPI));
+    setInfoText("");
+    setSize(workSize);
     JFrame container = (JFrame) getFocusCycleRootAncestor();
     container.pack();
-    zoomFactor = tmp;
     getParent().revalidate();
     repaint();
   }
@@ -1010,9 +1008,10 @@ public class DrawSurface extends JPanel {
    * shapes that implement CADNoDraw interface and, if cutItems is true, also culls shapes with engrave set to true; or,
    * if cutItems is false, culls shapes where engrave is set to false.
    * @param cutItems if true, only process shapes with 'engrave' set to false.
+   * @param planPath if true, use PathPlanner to organize nested shapes
    * @return List of CADShape objects minus culled items
    */
-  List<LaserCut.CADShape> selectLaserItems (boolean cutItems) {
+  List<LaserCut.CADShape> selectLaserItems (boolean cutItems, boolean planPath) {
     // Cull out items that will not be cut or that don't match cutItems
     ArrayList<LaserCut.CADShape> cullShapes = new ArrayList<>();
     for (LaserCut.CADShape shape : getDesign()) {
@@ -1020,7 +1019,7 @@ public class DrawSurface extends JPanel {
         cullShapes.add(shape);
       }
     }
-    return cullShapes;
+    return planPath ? PathPlanner.optimize(cullShapes) : cullShapes;
   }
 
   /**

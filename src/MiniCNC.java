@@ -43,27 +43,44 @@
   import java.awt.*;
   import java.awt.event.ActionEvent;
   import java.awt.geom.Line2D;
+  import java.awt.geom.Rectangle2D;
   import java.text.DecimalFormat;
   import java.util.ArrayList;
   import java.util.List;
 
   import static javax.swing.JOptionPane.*;
 
-  class MiniCNC extends GRBLBase {
+  class MiniCNC extends GRBLBase implements LaserCut.OutputDevice {
     private static final int      MINI_CNC_FEED_DEFAULT = 255;
     private static final int      MINI_CNC_RPM_DEFAULT = 100;
-    private static Dimension      miniCncSize = new Dimension((int) (6 * LaserCut.SCREEN_PPI), (int) (5 * LaserCut.SCREEN_PPI));
     private JSSCPort              jPort;
-    private LaserCut              laserCut;
-    private String                dUnits;
 
     MiniCNC (LaserCut laserCut) {
-      this.laserCut = laserCut;
-      this.dUnits = laserCut.displayUnits;
+      super(laserCut);
     }
 
-    JMenu getMiniCncMenu () throws Exception {
-      JMenu miniCncMenu = new JMenu("Mini CNC");
+    // Implement for GRBLBase to define Preferences prefix, such as "mini.laser."
+    String getPrefix () {
+      return "mini.cnc.";
+    }
+
+    // Implement for LaserCut.OutputDevice
+    public String getName () {
+      return "Mini CNC";
+    }
+
+    // Implement for LaserCut.OutputDevice
+    public Rectangle2D.Double getWorkspaceSize () {
+      return new Rectangle2D.Double(0, 0, 6.0, 5.0);
+    }
+
+    // Implement for LaserCut.OutputDevice
+    public double getZoomFactor () {
+      return 1.0;
+    }
+
+    public JMenu getDeviceMenu () {
+      JMenu miniCncMenu = new JMenu(getName());
       jPort = new JSSCPort("mini.cnc.", laserCut.prefs);
       // Add "Send to Mini Laser" Submenu Item
       JPanel panel = new JPanel(new GridLayout(1, 2));
@@ -71,7 +88,7 @@
       JTextField tf = new JTextField("1", 4);
       panel.add(tf);
       JMenuItem sendToMiniCnc = new JMenuItem("Send GRBL to Mini CNC");
-      sendToMiniCnc.addActionListener((ActionEvent ex) -> {
+      sendToMiniCnc.addActionListener((ActionEvent ev) -> {
         if (jPort.hasSerial()) {
           if (showConfirmDialog(laserCut, panel, "Send GRBL to Mini CNC", YES_NO_OPTION, PLAIN_MESSAGE, null) == OK_OPTION) {
             double zDepth = Double.parseDouble(tf.getText());
@@ -106,8 +123,13 @@
             cmds.add("G00Z0");                                              // Fast Retract Z axis (in case of abort)
             cmds.add("S0");                                                 // Set Spindle to zero RPM
             cmds.add("G00X0Y0");                                            // Move back to Origin
-            new GRBLSender(laserCut, jPort, cmds.toArray(new String[0]),    // Send commands to Mini CNC
-                           new String[] {"F0"});                            // On abort, Spindle to zero RPM
+            try {
+              new GRBLSender(cmds.toArray(new String[0]),                   // Send commands to Mini CNC
+                  new String[]{"F0"});                                      // On abort, Spindle to zero RPM
+            } catch (Exception ex) {
+              ex.printStackTrace();
+              showMessageDialog(laserCut, "Error sending commands", "Error", PLAIN_MESSAGE);
+            }
           }
         } else {
           showMessageDialog(laserCut, "No Serial Port Selected", "Error", PLAIN_MESSAGE);
@@ -128,24 +150,20 @@
         }
       });
       miniCncMenu.add(miniLazerSettings);
-      // Add "Resize for Mini Lazer" Submenu Item
-      JMenuItem miniResize = new JMenuItem("Resize for Mini CNC (" + (miniCncSize.width / LaserCut.SCREEN_PPI) +
-        " x " + (miniCncSize.height / LaserCut.SCREEN_PPI) + ")");
-      miniResize.addActionListener(ev -> laserCut.surface.setSurfaceSize(miniCncSize));
-      miniCncMenu.add(miniResize);
       // Add "Jog Controls" Submenu Item
-      miniCncMenu.add(getGRBLJogMenu(laserCut, jPort, true));
+      miniCncMenu.add(getGRBLJogMenu(true));
       // Add "Get GRBL Settings" Menu Item
-      miniCncMenu.add(getGRBLSettingsMenu(laserCut, jPort));
+      miniCncMenu.add(getGRBLSettingsMenu());
       // Add "Get GRBL Coordinates" Menu Item
-      miniCncMenu.add(getGRBLCoordsMenu(laserCut, jPort));
+      miniCncMenu.add(getGRBLCoordsMenu());
       // Add "Port" and "Baud" Submenu to MenuBar
       miniCncMenu.add(jPort.getPortMenu());
       miniCncMenu.add(jPort.getBaudMenu());
       return miniCncMenu;
     }
 
-    void close () {
+    // Implemented for LaserCut.OutputDevice
+    public void closeDevice () {
       if (jPort != null) {
         jPort.close();
       }

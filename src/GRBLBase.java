@@ -1,13 +1,13 @@
+import jssc.SerialPortException;
+
 import javax.swing.*;
 import javax.swing.text.DefaultCaret;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.geom.AffineTransform;
-import java.awt.geom.Point2D;
 import java.awt.image.BufferedImage;
-import java.awt.image.DataBuffer;
-import java.awt.image.WritableRaster;
+import java.io.IOException;
 import java.text.DecimalFormat;
 import java.util.*;
 import java.util.List;
@@ -106,128 +106,151 @@ import static javax.swing.JOptionPane.*;
    *    http://linuxcnc.org/docs/html/gcode.html
    */
 
-class GRBLBase {
+abstract class GRBLBase {
+  JSSCPort      jPort;
+  LaserCut      laserCut;
+  String        dUnits;
 
-  JMenuItem getGRBLSettingsMenu (LaserCut parent, JSSCPort jPort) {
+  abstract String getPrefix ();
+
+  GRBLBase (LaserCut laserCut) {
+    this.laserCut = laserCut;
+    this.dUnits = laserCut.displayUnits;
+    jPort = new JSSCPort(getPrefix(), laserCut.prefs);
+  }
+
+  JMenuItem getGRBLSettingsMenu () {
     JMenuItem settings = new JMenuItem("Get GRBL Settings");
     settings.addActionListener(ev -> {
       if (jPort.hasSerial()) {
-      String receive = sendGrbl(jPort, "$I");
-      String[] rsps = receive.split("\n");
-      String grblBuild = "unknown";
-      String grblVersion = "unknown";
-      String grblOptions = "unknown";
-      for (String rsp : rsps ) {
-        int idx1 = rsp.indexOf("[VER:");
-        int idx2 = rsp.indexOf("]");
-        if (idx1 >= 0 && idx2 > 0) {
-          grblVersion = rsp.substring(5, rsp.length() - 2);
-          if (grblVersion.contains(":")) {
-            String[] tmp = grblVersion.split(":");
-            grblVersion = tmp[1];
-            grblBuild = tmp[0];
-          }
-        }
-        idx1 = rsp.indexOf("[OPT:");
-        idx2 = rsp.indexOf("]");
-        if (idx1 >= 0 && idx2 > 0) {
-          grblOptions = rsp.substring(5, rsp.length() - 1);
-        }
-      }
-      receive = sendGrbl(jPort, "$$");
-      String[] opts = receive.split("\n");
-      HashMap<String,String> sVals = new LinkedHashMap<>();
-      for (String opt : opts) {
-        String[] vals = opt.split("=");
-        if (vals.length == 2) {
-          sVals.put(vals[0], vals[1]);
-        }
-      }
-      JPanel sPanel;
-      if (grblVersion != null) {
-        ParameterDialog.ParmItem[] parmSet = {
-          new ParameterDialog.ParmItem("@Grbl Version",                 grblVersion),
-          new ParameterDialog.ParmItem("@Grbl Build",                   grblBuild),
-          new ParameterDialog.ParmItem("@Grbl Options",                 grblOptions),
-          new ParameterDialog.ParmItem(new JSeparator()),
-          new ParameterDialog.ParmItem("Step pulse|usec",               sVals, "$0"),
-          new ParameterDialog.ParmItem("Step idle delay|msec",          sVals, "$1"),
-          new ParameterDialog.ParmItem("Step port invert",              sVals, "$2", new String[] {"X", "Y", "Z"}),   // Bitfield
-          new ParameterDialog.ParmItem("Direction port invert",         sVals, "$3", new String[] {"X", "Y", "Z"}),   // Bitfield
-          new ParameterDialog.ParmItem("Step enable invert|boolean",    sVals, "$4"),
-          new ParameterDialog.ParmItem("Limit pins invert|boolean",     sVals, "$5"),
-          new ParameterDialog.ParmItem("Probe pin invert|boolean",      sVals, "$6"),
-          new ParameterDialog.ParmItem("Status report|mask",            sVals, "$10"),
-          new ParameterDialog.ParmItem("Junction deviation|mm",         sVals, "$11"),
-          new ParameterDialog.ParmItem("Arc tolerance|mm",              sVals, "$12"),
-          new ParameterDialog.ParmItem("Report inches|boolean",         sVals, "$13"),
-          new ParameterDialog.ParmItem("Soft limits|boolean",           sVals, "$20"),
-          new ParameterDialog.ParmItem("Hard limits|boolean",           sVals, "$21"),
-          new ParameterDialog.ParmItem("Homing cycle|boolean",          sVals, "$22"),
-          new ParameterDialog.ParmItem("Homing dir invert",             sVals, "$23", new String[] {"X", "Y", "Z"}),   // Bitfield
-          new ParameterDialog.ParmItem("Homing feed|mm/min",            sVals, "$24"),
-          new ParameterDialog.ParmItem("Homing seek|mm/min",            sVals, "$25"),
-          new ParameterDialog.ParmItem("Homing debounce|msec",          sVals, "$26"),
-          new ParameterDialog.ParmItem("Homing pull-off|mm",            sVals, "$27"),
-          new ParameterDialog.ParmItem("Max spindle speed|RPM",         sVals, "$30"),
-          new ParameterDialog.ParmItem("Min spindle speed|RPM",         sVals, "$31"),
-          new ParameterDialog.ParmItem("Laser mode|boolean",            sVals, "$32"),
-          new ParameterDialog.ParmItem("X Axis|steps/mm",               sVals, "$100"),
-          new ParameterDialog.ParmItem("Y Axis|steps/mm",               sVals, "$101"),
-          new ParameterDialog.ParmItem("Z Axis|steps/mm",               sVals, "$102"),
-          new ParameterDialog.ParmItem("X Max rate|mm/min",             sVals, "$110"),
-          new ParameterDialog.ParmItem("Y Max rate|mm/min",             sVals, "$111"),
-          new ParameterDialog.ParmItem("Z Max rate|mm/min",             sVals, "$112"),
-          new ParameterDialog.ParmItem("X Acceleration|mm/sec\u00B2",   sVals, "$120"),
-          new ParameterDialog.ParmItem("Y Acceleration|mm/sec\u00B2",   sVals, "$121"),
-          new ParameterDialog.ParmItem("Z Acceleration|mm/sec\u00B2",   sVals, "$122"),
-          new ParameterDialog.ParmItem("X Max travel|mm",               sVals, "$130"),
-          new ParameterDialog.ParmItem("Y Max travel|mm",               sVals, "$131"),
-          new ParameterDialog.ParmItem("Z Max travel|mm",               sVals, "$132"),
-        };
-        Properties info = parent.getProperties(LaserCut.getResourceFile("grbl/grblparms.props"));
-        ParameterDialog dialog = (new ParameterDialog(parmSet, new String[] {"Save", "Cancel"}, null, info));
-        dialog.setLocationRelativeTo(parent);
-        dialog.setVisible(true);              // Note: this call invokes dialog
-        if (dialog.wasPressed()) {
-          java.util.List<String> cmds = new ArrayList<>();
-          for (ParameterDialog.ParmItem parm : parmSet) {
-            String value = parm.getStringValue();
-            if (!parm.readOnly & !parm.lblValue && !value.equals(sVals.get(parm.key))) {
-              //System.out.println(parm.name + ": changed from " + sVals.get(parm.key) + " to " + value);
-              cmds.add(parm.key + "=" + value);
+        try {
+          GRBLRunner runner = new GRBLRunner(20);
+          String grblBuild = "unknown";
+          String grblVersion = "unknown";
+          String grblOptions = "unknown";
+          String receive = runner.sendCmd("$I");
+          String[] rsps = receive.split("\n");
+          for (String rsp : rsps) {
+            int idx1 = rsp.indexOf("[VER:");
+            int idx2 = rsp.indexOf("]");
+            if (idx1 >= 0 && idx2 > 0) {
+              grblVersion = rsp.substring(5, rsp.length() - 2);
+              if (grblVersion.contains(":")) {
+                String[] tmp = grblVersion.split(":");
+                grblVersion = tmp[1];
+                grblBuild = tmp[0];
+              }
+            }
+            idx1 = rsp.indexOf("[OPT:");
+            idx2 = rsp.indexOf("]");
+            if (idx1 >= 0 && idx2 > 0) {
+              grblOptions = rsp.substring(5, rsp.length() - 1);
             }
           }
-          if (cmds.size() > 0) {
-            new GRBLSender(parent, jPort, cmds.toArray(new String[0]));
+          receive = runner.sendCmd("$$");
+          String[] opts = receive.split("\n");
+          HashMap<String, String> sVals = new LinkedHashMap<>();
+          for (String opt : opts) {
+            String[] vals = opt.split("=");
+            if (vals.length == 2) {
+              sVals.put(vals[0], vals[1]);
+            }
           }
-        //} else {
-          //System.out.println("Cancel");
+          JPanel sPanel;
+          if (grblVersion != null) {
+            ParameterDialog.ParmItem[] parmSet = {
+                new ParameterDialog.ParmItem("@Grbl Version", grblVersion),
+                new ParameterDialog.ParmItem("@Grbl Build", grblBuild),
+                new ParameterDialog.ParmItem("@Grbl Options", grblOptions),
+                new ParameterDialog.ParmItem(new JSeparator()),
+                new ParameterDialog.ParmItem("Step pulse|usec", sVals, "$0"),
+                new ParameterDialog.ParmItem("Step idle delay|msec", sVals, "$1"),
+                new ParameterDialog.ParmItem("Step port invert", sVals, "$2", new String[]{"X", "Y", "Z"}),   // Bitfield
+                new ParameterDialog.ParmItem("Direction port invert", sVals, "$3", new String[]{"X", "Y", "Z"}),   // Bitfield
+                new ParameterDialog.ParmItem("Step enable invert|boolean", sVals, "$4"),
+                new ParameterDialog.ParmItem("Limit pins invert|boolean", sVals, "$5"),
+                new ParameterDialog.ParmItem("Probe pin invert|boolean", sVals, "$6"),
+                new ParameterDialog.ParmItem("Status report|mask", sVals, "$10"),
+                new ParameterDialog.ParmItem("Junction deviation|mm", sVals, "$11"),
+                new ParameterDialog.ParmItem("Arc tolerance|mm", sVals, "$12"),
+                new ParameterDialog.ParmItem("Report inches|boolean", sVals, "$13"),
+                new ParameterDialog.ParmItem("Soft limits|boolean", sVals, "$20"),
+                new ParameterDialog.ParmItem("Hard limits|boolean", sVals, "$21"),
+                new ParameterDialog.ParmItem("Homing cycle|boolean", sVals, "$22"),
+                new ParameterDialog.ParmItem("Homing dir invert", sVals, "$23", new String[]{"X", "Y", "Z"}),   // Bitfield
+                new ParameterDialog.ParmItem("Homing feed|mm/min", sVals, "$24"),
+                new ParameterDialog.ParmItem("Homing seek|mm/min", sVals, "$25"),
+                new ParameterDialog.ParmItem("Homing debounce|msec", sVals, "$26"),
+                new ParameterDialog.ParmItem("Homing pull-off|mm", sVals, "$27"),
+                new ParameterDialog.ParmItem("Max spindle speed|RPM", sVals, "$30"),
+                new ParameterDialog.ParmItem("Min spindle speed|RPM", sVals, "$31"),
+                new ParameterDialog.ParmItem("Laser mode|boolean", sVals, "$32"),
+                new ParameterDialog.ParmItem("X Axis|steps/mm", sVals, "$100"),
+                new ParameterDialog.ParmItem("Y Axis|steps/mm", sVals, "$101"),
+                new ParameterDialog.ParmItem("Z Axis|steps/mm", sVals, "$102"),
+                new ParameterDialog.ParmItem("X Max rate|mm/min", sVals, "$110"),
+                new ParameterDialog.ParmItem("Y Max rate|mm/min", sVals, "$111"),
+                new ParameterDialog.ParmItem("Z Max rate|mm/min", sVals, "$112"),
+                new ParameterDialog.ParmItem("X Acceleration|mm/sec\u00B2", sVals, "$120"),
+                new ParameterDialog.ParmItem("Y Acceleration|mm/sec\u00B2", sVals, "$121"),
+                new ParameterDialog.ParmItem("Z Acceleration|mm/sec\u00B2", sVals, "$122"),
+                new ParameterDialog.ParmItem("X Max travel|mm", sVals, "$130"),
+                new ParameterDialog.ParmItem("Y Max travel|mm", sVals, "$131"),
+                new ParameterDialog.ParmItem("Z Max travel|mm", sVals, "$132"),
+            };
+            Properties info = laserCut.getProperties(LaserCut.getResourceFile("grbl/grblparms.props"));
+            ParameterDialog dialog = (new ParameterDialog(parmSet, new String[]{"Save", "Cancel"}, null, info));
+            dialog.setLocationRelativeTo(laserCut);
+            dialog.setVisible(true);              // Note: this call invokes dialog
+            if (dialog.wasPressed()) {
+              java.util.List<String> cmds = new ArrayList<>();
+              for (ParameterDialog.ParmItem parm : parmSet) {
+                if (parm.value instanceof JSeparator) {
+                  continue;
+                }
+                String value = parm.getStringValue();
+                if (!parm.readOnly & !parm.lblValue && !value.equals(sVals.get(parm.key))) {
+                  //System.out.println(parm.name + ": changed from " + sVals.get(parm.key) + " to " + value);
+                  cmds.add(parm.key + "=" + value);
+                }
+              }
+              if (cmds.size() > 0) {
+                for (String cmd : cmds) {
+                  runner.sendCmd(cmd);
+                }
+              }
+              //} else {
+              //System.out.println("Cancel");
+            }
+          } else {
+            sPanel = new JPanel(new GridLayout(sVals.size() + 5, 2, 4, 0));
+            Font font = new Font("Courier", Font.PLAIN, 14);
+            JLabel lbl;
+            int idx1 = rsps[0].indexOf("[");
+            int idx2 = rsps[0].indexOf("]");
+            if (rsps.length == 2 && idx1 >= 0 && idx2 > 0) {
+              grblVersion = rsps[0].substring(1, rsps[0].length() - 2);
+            }
+            sPanel.add(new JLabel("GRBL Version: " + (grblVersion != null ? grblVersion : "unknown")));
+            sPanel.add(new JSeparator());
+            for (String key : sVals.keySet()) {
+              sPanel.add(lbl = new JLabel(padSpace(key + ":") + sVals.get(key)));
+              lbl.setFont(font);
+            }
+            sPanel.add(new JSeparator());
+            sPanel.add(new JLabel("Note: upgrade to GRBL 1.1, or later"));
+            sPanel.add(new JLabel("to enable settings editor."));
+            Object[] options = {"OK"};
+            showOptionDialog(laserCut, sPanel, "GRBL Settings", OK_CANCEL_OPTION, PLAIN_MESSAGE, null, options, options[0]);
+          }
+          runner.close();
+        } catch (Exception ex) {
+          ex.printStackTrace();
+          showMessageDialog(laserCut, "Unable to open Serial Port", "Error", PLAIN_MESSAGE);
         }
-      } else {
-        sPanel = new JPanel(new GridLayout(sVals.size() + 5, 2, 4, 0));
-        Font font = new Font("Courier", Font.PLAIN, 14);
-        JLabel lbl;
-        int idx1 = rsps[0].indexOf("[");
-        int idx2 = rsps[0].indexOf("]");
-        if (rsps.length == 2 && idx1 >= 0 && idx2 > 0) {
-          grblVersion = rsps[0].substring(1, rsps[0].length() - 2);
+        } else {
+          showMessageDialog(laserCut, "No Serial Port Selected", "Error", PLAIN_MESSAGE);
         }
-        sPanel.add(new JLabel("GRBL Version: " + (grblVersion != null ? grblVersion : "unknown")));
-        sPanel.add(new JSeparator());
-        for (String key : sVals.keySet()) {
-          sPanel.add(lbl = new JLabel(padSpace(key + ":") + sVals.get(key)));
-          lbl.setFont(font);
-        }
-        sPanel.add(new JSeparator());
-        sPanel.add(new JLabel("Note: upgrade to GRBL 1.1, or later"));
-        sPanel.add(new JLabel("to enable settings editor."));
-        Object[] options = {"OK"};
-        showOptionDialog(parent, sPanel, "GRBL Settings", OK_CANCEL_OPTION, PLAIN_MESSAGE, null, options, options[0]);
-      }
-      } else {
-        showMessageDialog(parent, "No Serial Port Selected", "Error", PLAIN_MESSAGE);
-      }
     });
     return settings;
   }
@@ -311,205 +334,229 @@ class GRBLBase {
     }
   }
 
-  JMenuItem getGRBLCoordsMenu (LaserCut laserCut, JSSCPort jPort) {
+  JMenuItem getGRBLCoordsMenu () {
     JMenuItem coords = new JMenuItem("Get GRBL Coordinates");
     coords.addActionListener(ev -> {
       if (jPort.hasSerial()) {
-        String receive = sendGrbl(jPort, "$#");
-        String[] rsps = receive.split("\n");
-        List<ParameterDialog.ParmItem> list = new ArrayList<>();
-        for (String rsp : rsps) {
-          if (rsp.startsWith("[") && rsp.endsWith("]")) {
-            rsp = rsp.substring(1, rsp.length() - 1);
-            String[] g1 = rsp.split(":");
-            if (g1.length >= 2) {
-              String name = g1[0];
-              String[] vals = g1[1].split(",");
-              if (vals.length == 3) {
-                boolean canEdit = false;
-                boolean addSep = false;
-                if (name.startsWith("G")) {
-                  int gNum = Integer.parseInt(name.substring(1));
-                  canEdit = gNum >= 54 && gNum <= 59;
-                  addSep = gNum == 59;
-                }
-                list.add(new ParameterDialog.ParmItem(name, new DroPanel(laserCut, vals[0], vals[1], vals[2], canEdit)));
-                if (addSep) {
-                  list.add(new ParameterDialog.ParmItem(new JSeparator()));
+        try {
+          GRBLRunner runner = new GRBLRunner(10);
+          String receive = runner.sendCmd("$#");
+          String[] rsps = receive.split("\n");
+          List<ParameterDialog.ParmItem> list = new ArrayList<>();
+          for (String rsp : rsps) {
+            if (rsp.startsWith("[") && rsp.endsWith("]")) {
+              rsp = rsp.substring(1, rsp.length() - 1);
+              String[] g1 = rsp.split(":");
+              if (g1.length >= 2) {
+                String name = g1[0];
+                String[] vals = g1[1].split(",");
+                if (vals.length == 3) {
+                  boolean canEdit = false;
+                  boolean addSep = false;
+                  if (name.startsWith("G")) {
+                    int gNum = Integer.parseInt(name.substring(1));
+                    canEdit = gNum >= 54 && gNum <= 59;
+                    addSep = gNum == 59;
+                  }
+                  list.add(new ParameterDialog.ParmItem(name, new DroPanel(laserCut, vals[0], vals[1], vals[2], canEdit)));
+                  if (addSep) {
+                    list.add(new ParameterDialog.ParmItem(new JSeparator()));
+                  }
                 }
               }
             }
           }
-        }
-        ParameterDialog.ParmItem[] parmSet = list.toArray(new ParameterDialog.ParmItem[0]);
-        ParameterDialog dialog = (new ParameterDialog(parmSet, new String[] {"Save", "Cancel"}, null));
-        dialog.setLocationRelativeTo(laserCut);
-        dialog.setTitle("Workspace Coordinates");
-        dialog.setVisible(true);                                                    // Note: this call invokes dialog
-        if (dialog.wasPressed()) {
-          for (ParameterDialog.ParmItem parm : parmSet) {
-            if (parm.value instanceof DroPanel) {
-              DroPanel dro = (DroPanel) parm.value;
-              String[] oVals = dro.getVals();
-              String[] iVals = dro.getInitialVals();
-              if (!iVals[0].equals(oVals[0]) || !iVals[1].equals(oVals[1]) || !iVals[2].equals(oVals[2])) {
-                if (parm.name.startsWith("G")) {
-                  // Update G55 - G59
-                  int num = Integer.parseInt(parm.name.substring(1)) - 53;
-                  String cmd = "G90 G20 G10 L2 P" + num + " X" + oVals[0] + " Y" + oVals[1] + " Z" + oVals[2];
-                  sendGrbl(jPort, cmd);
-                } else if ("G28".equals(parm.name)) {
-                  // Placeholder
-                } else if ("G30".equals(parm.name)) {
-                  // Placeholder
+          ParameterDialog.ParmItem[] parmSet = list.toArray(new ParameterDialog.ParmItem[0]);
+          ParameterDialog dialog = (new ParameterDialog(parmSet, new String[]{"Save", "Cancel"}, null));
+          dialog.setLocationRelativeTo(laserCut);
+          dialog.setTitle("Workspace Coordinates");
+          dialog.setVisible(true);                                                    // Note: this call invokes dialog
+          if (dialog.wasPressed()) {
+            for (ParameterDialog.ParmItem parm : parmSet) {
+              if (parm.value instanceof DroPanel) {
+                DroPanel dro = (DroPanel) parm.value;
+                String[] oVals = dro.getVals();
+                String[] iVals = dro.getInitialVals();
+                if (!iVals[0].equals(oVals[0]) || !iVals[1].equals(oVals[1]) || !iVals[2].equals(oVals[2])) {
+                  if (parm.name.startsWith("G")) {
+                    // Update G55 - G59
+                    int num = Integer.parseInt(parm.name.substring(1)) - 53;
+                    String cmd = "G90 G20 G10 L2 P" + num + " X" + oVals[0] + " Y" + oVals[1] + " Z" + oVals[2];
+                    runner.sendCmd(cmd);
+                  } else if ("G28".equals(parm.name)) {
+                    // Placeholder
+                  } else if ("G30".equals(parm.name)) {
+                    // Placeholder
+                  }
                 }
+              } else {
+                System.out.println(parm.name + ": " + parm.value);
               }
-            } else {
-              System.out.println(parm.name + ": " + parm.value);
             }
+          } else {
+            System.out.println("Cancel");
           }
-        } else {
-          System.out.println("Cancel");
+          runner.close();
+        } catch (Exception ex) {
+          ex.printStackTrace();
+          showMessageDialog(laserCut, "Unable to open Serial Port", "Error", PLAIN_MESSAGE);
         }
+      } else {
+        showMessageDialog(laserCut, "No Serial Port Selected", "Error", PLAIN_MESSAGE);
       }
     });
     return coords;
   }
 
-  JMenuItem getGRBLJogMenu (LaserCut laserCut, JSSCPort jPort, boolean probeEnabled) {
+  JMenuItem getGRBLJogMenu (boolean probeEnabled) {
     JMenuItem jogMenu = new JMenuItem("Jog Controls");
     jogMenu.addActionListener((ev) -> {
       if (jPort.hasSerial()) {
-        if (this instanceof MiniLaser) {
-          if (laserCut.miniLaserGuide) {
-            // Enable Laser at low intensity to act as guide beam
-            sendGrbl(jPort, "M4", 20);
-            sendGrbl(jPort, "S8", 20);
-            sendGrbl(jPort, "M3", 20);
-          } else {
-            // Make sure laser is off
-            sendGrbl(jPort, "M5", 20);
-          }
-        }
-        // Build Jog Controls
-        JPanel frame = new JPanel(new BorderLayout(0, 2));
-        JPanel topPanel = new JPanel();
-        topPanel.setLayout(new BorderLayout(0, 2));
-        DroPanel dro = new DroPanel(laserCut);
-        dro.setPosition(sendGrbl(jPort, "?"));                                        // Show initial position
-        topPanel.add(dro, BorderLayout.NORTH);
-        JSlider speed = new JSlider(10, 100, 100);
-        topPanel.add(speed, BorderLayout.SOUTH);
-        speed.setMajorTickSpacing(10);
-        speed.setPaintTicks(true);
-        speed.setPaintLabels(true);
-        frame.add(topPanel, BorderLayout.NORTH);
-        JPanel buttons = new JPanel(new GridLayout(3, 4, 4, 4));
-        JLabel tmp;
-        Font font2 = new Font("Monospaced", Font.PLAIN, 20);
-        // Row 1
-        buttons.add(new JogButton(new Arrow(135), jPort, speed, dro, "Y-% X-%"));     // Up Left
-        buttons.add(new JogButton(new Arrow(180), jPort, speed, dro, "Y-%"));         // Up
-        buttons.add(new JogButton(new Arrow(225), jPort, speed, dro, "Y-% X+%"));     // Up Right
-        buttons.add(new JogButton(new Arrow(180), jPort, speed, dro, "Z+%"));         // Up
-        // Row 2
-        buttons.add(new JogButton(new Arrow(90), jPort, speed, dro, "X-%"));          // Left
-        buttons.add(tmp = new JLabel("X/Y", JLabel.CENTER));
-        tmp.setFont(font2);
-        buttons.add(new JogButton(new Arrow(270), jPort, speed, dro, "X+%"));         // Right
-        buttons.add(tmp = new JLabel("Z", JLabel.CENTER));
-        tmp.setFont(font2);
-        // Row 3
-        buttons.add(new JogButton(new Arrow(45), jPort, speed, dro, "Y+% X-%"));      // Down Left
-        buttons.add(new JogButton(new Arrow(0), jPort, speed, dro, "Y+%"));           // Down
-        buttons.add(new JogButton(new Arrow(315), jPort, speed, dro, "Y+% X+%"));     // Down Right
-        buttons.add(new JogButton(new Arrow(0), jPort, speed, dro, "Z-%"));           // Down
-        frame.add(buttons, BorderLayout.CENTER);
-        // Create button for Jog Dialog
-        final JButton setOrigin = getButton("Set Origin");
-        final JButton cancel = getButton("Cancel");
-        if (probeEnabled) {
-          // Setup Probe Z controls
-          JPanel probePanel = new JPanel(new GridLayout(1, 2));
-          JButton probeButton = new JButton("Probe Z Axis");
-          JTextField probeDisp = new JTextField();
-          probeDisp.setHorizontalAlignment(JTextField.RIGHT);
-          probeDisp.setEditable(false);
-          probePanel.add(probeButton);
-          probePanel.add(probeDisp);
-          frame.add(probePanel, BorderLayout.SOUTH);
-          probeButton.addActionListener(ev2 -> {
-            if (showConfirmDialog(laserCut, "Is Z Axis Probe Target Ready?", "Caution", YES_NO_OPTION, PLAIN_MESSAGE) == OK_OPTION) {
-              Runnable probe = () -> {
-                setOrigin.setEnabled(false);
-                cancel.setEnabled(false);
-                probeDisp.setText("Probing...");
-                int state = 0;
-                boolean error = false;
-                String rsp = "";
-                while (state < 3) {
-                  switch (state++) {
-                  case 0:
-                    rsp = sendGrbl(jPort, "G38.3G20F5 Z-1", 20);                      // Lower Z axis until contact
-                    break;
-                  case 1:
-                    rsp = sendGrbl(jPort, "G38.5G20F5 Z0", 20);                       // Raise until contact lost
-                    break;
-                  case 2:
-                    rsp = sendGrbl(jPort, "G38.3G20F1 Z-1", 20);                      // Lower Z axis at slower speed until contact
-                    break;
-                  }
-                  String[] rLines = rsp.split("\n");
-                  if (rLines.length < 2 || !"ok".equals(rLines[1])) {
-                    error = true;
-                    break;
-                  }
-                  rsp = rLines[0];
-                  if (rsp.toLowerCase().contains("alarm")) {
-                    error = true;
-                    sendGrbl(jPort, "$X");
-                  }
-                  if (rsp.startsWith("[PRB:") && rsp.endsWith(":1]")) {
-                    rsp = rsp.substring(5, rsp.length() - 3);
-                    String[] axes = rsp.split(",");
-                    if (axes.length == 3) {
-                      probeDisp.setText(axes[2]);
-                    } else {
-                      error = true;
-                      break;
-                    }
-                  } else {
-                    error = true;
-                    break;
-                  }
-                }
-                if (error) {
-                  probeDisp.setText("Error");
-                }
-                sendGrbl(jPort, "G0 Z0", 20);                                       // Cancel probe mode and return Z to home
-                setOrigin.setEnabled(true);
-                cancel.setEnabled(true);
-             };
-              new Thread(probe).start();
+        try {
+          GRBLRunner runner = new GRBLRunner(20);
+          if (this instanceof MiniLaser) {
+            int guidePower = ((MiniLaser) this).getGuidePower();
+            if (guidePower > 0) {
+              // Enable Laser at low intensity to act as guide beam
+              runner.sendCmd("M4");
+              runner.sendCmd("S" + guidePower);
+              runner.sendCmd("M3");
+            } else {
+              // Make sure laser is off
+              runner.sendCmd("M5");
             }
-          });
-        }
-        // Bring up Jog Controls
-        Object[] options = new Object[] {setOrigin, cancel};
-        if (showOptionDialog(laserCut, frame, "Jog Controls", OK_CANCEL_OPTION, PLAIN_MESSAGE, null, options, options[1]) == 0) {
-          // User pressed "Set Origin" so set coords to new position after jog
-          try {
-            sendGrbl(jPort, "S0M5G92X0Y0Z0");
-          } catch (Exception ex) {
-            ex.printStackTrace();
           }
-        } else {
-          // User pressed "Cancel" so fast move back to old home position
-          try {
-            sendGrbl(jPort, "S0M5G00X0Y0Z0");
-          } catch (Exception ex) {
-            ex.printStackTrace();
+          // Build Jog Controls
+          JPanel frame = new JPanel(new BorderLayout(0, 2));
+          JPanel topPanel = new JPanel();
+          topPanel.setLayout(new BorderLayout(0, 2));
+          DroPanel dro = new DroPanel(laserCut);
+          dro.setPosition(runner.sendCmd("?"));                                         // Show initial position
+          topPanel.add(dro, BorderLayout.NORTH);
+          JSlider speed = new JSlider(10, 100, 100);
+          topPanel.add(speed, BorderLayout.SOUTH);
+          speed.setMajorTickSpacing(10);
+          speed.setPaintTicks(true);
+          speed.setPaintLabels(true);
+          frame.add(topPanel, BorderLayout.NORTH);
+          JPanel buttons = new JPanel(new GridLayout(3, 4, 4, 4));
+          JLabel tmp;
+          Font font2 = new Font("Monospaced", Font.PLAIN, 20);
+          JogButton jb;
+          // Row 1
+          buttons.add(new JogButton(new Arrow(135), speed, dro, "Y-% X-%"));            // Up Left
+          buttons.add(new JogButton(new Arrow(180), speed, dro, "Y-%"));                // Up
+          buttons.add(new JogButton(new Arrow(225), speed, dro, "Y-% X+%"));            // Up Right
+          buttons.add(jb = new JogButton(new Arrow(180), speed, dro, "Z+%"));           // Up
+          if (this instanceof MiniLaser) {
+            jb.setEnabled(false);
           }
+          // Row 2
+          buttons.add(new JogButton(new Arrow(90), speed, dro, "X-%"));                 // Left
+          buttons.add(tmp = new JLabel("X/Y", JLabel.CENTER));
+          tmp.setFont(font2);
+          buttons.add(new JogButton(new Arrow(270), speed, dro, "X+%"));                // Right
+          buttons.add(tmp = new JLabel("Z", JLabel.CENTER));
+          tmp.setFont(font2);
+          // Row 3
+          buttons.add(new JogButton(new Arrow(45), speed, dro, "Y+% X-%"));             // Down Left
+          buttons.add(new JogButton(new Arrow(0), speed, dro, "Y+%"));                  // Down
+          buttons.add(new JogButton(new Arrow(315), speed, dro, "Y+% X+%"));            // Down Right
+          buttons.add(jb = new JogButton(new Arrow(0),  speed, dro, "Z-%"));            // Down
+          if (this instanceof MiniLaser) {
+            jb.setEnabled(false);
+          }
+          frame.add(buttons, BorderLayout.CENTER);
+          // Create button for Jog Dialog
+          final JButton setOrigin = getButton("Set Origin");
+          final JButton cancel = getButton("Cancel");
+          if (probeEnabled) {
+            // Setup Probe Z controls
+            JPanel probePanel = new JPanel(new GridLayout(1, 2));
+            JButton probeButton = new JButton("Probe Z Axis");
+            JTextField probeDisp = new JTextField();
+            probeDisp.setHorizontalAlignment(JTextField.RIGHT);
+            probeDisp.setEditable(false);
+            probePanel.add(probeButton);
+            probePanel.add(probeDisp);
+            frame.add(probePanel, BorderLayout.SOUTH);
+            probeButton.addActionListener(ev2 -> {
+              if (showConfirmDialog(laserCut, "Is Z Axis Probe Target Ready?", "Caution", YES_NO_OPTION, PLAIN_MESSAGE) == OK_OPTION) {
+                Runnable probe = () -> {
+                  try {
+                    setOrigin.setEnabled(false);
+                    cancel.setEnabled(false);
+                    probeDisp.setText("Probing...");
+                    int state = 0;
+                    boolean error = false;
+                    String rsp = "";
+                    while (state < 3) {
+                      switch (state++) {
+                        case 0:
+                          rsp = runner.sendCmd("G38.3G20F5 Z-1");                       // Lower Z axis until contact
+                          break;
+                        case 1:
+                          rsp = runner.sendCmd("G38.5G20F5 Z0");                        // Raise until contact lost
+                          break;
+                        case 2:
+                          rsp = runner.sendCmd("G38.3G20F1 Z-1");                       // Lower Z axis at slower speed until contact
+                          break;
+                      }
+                      String[] rLines = rsp.split("\n");
+                      if (rLines.length < 2 || !"ok".equals(rLines[1])) {
+                        error = true;
+                        break;
+                      }
+                      rsp = rLines[0];
+                      if (rsp.toLowerCase().contains("alarm")) {
+                        error = true;
+                        runner.sendCmd("$X");
+                      }
+                      if (rsp.startsWith("[PRB:") && rsp.endsWith(":1]")) {
+                        rsp = rsp.substring(5, rsp.length() - 3);
+                        String[] axes = rsp.split(",");
+                        if (axes.length == 3) {
+                          probeDisp.setText(axes[2]);
+                        } else {
+                          error = true;
+                          break;
+                        }
+                      } else {
+                        error = true;
+                        break;
+                      }
+                    }
+                    if (error) {
+                      probeDisp.setText("Error");
+                    }
+                    runner.sendCmd("G0 Z0");                                            // Cancel probe mode and return Z to home
+                    setOrigin.setEnabled(true);
+                    cancel.setEnabled(true);
+                  } catch (Exception ex) {
+                    ex.printStackTrace();
+                  }
+                };
+                new Thread(probe).start();
+              }
+            });
+          }
+          // Bring up Jog Controls
+          Object[] options = new Object[] {setOrigin, cancel};
+          if (showOptionDialog(laserCut, frame, "Jog Controls", OK_CANCEL_OPTION, PLAIN_MESSAGE, null, options, options[1]) == 0) {
+            // User pressed "Set Origin" so set coords to new position after jog
+            try {
+              runner.sendCmd("S0M5G92X0Y0Z0");
+            } catch (Exception ex) {
+              ex.printStackTrace();
+            }
+          } else {
+            // User pressed "Cancel" so fast move back to old home position
+            runner.sendCmd("S0M5G00X0Y0Z0");
+          }
+          runner.close();
+        } catch (Exception ex) {
+          ex.printStackTrace();
+          showMessageDialog(laserCut, "Unable to open Serial Port", "Error", PLAIN_MESSAGE);
         }
       } else {
         showMessageDialog(laserCut, "No Serial Port Selected", "Error", PLAIN_MESSAGE);
@@ -552,8 +599,7 @@ class GRBLBase {
     }
   }
 
-  static class JogButton extends JButton implements Runnable, JSSCPort.RXEvent {
-    private JSSCPort      jPort;
+  class JogButton extends JButton implements Runnable, JSSCPort.RXEvent {
     private JSlider       speed;
     private DroPanel      dro;
     private StringBuilder response = new StringBuilder();
@@ -562,11 +608,10 @@ class GRBLBase {
     transient boolean     pressed, running;
     private final JogButton.Lock lock = new JogButton.Lock();
 
-    private static final class Lock { }
+    private final class Lock { }
 
-    JogButton (Icon icon, JSSCPort jPort, JSlider speed, DroPanel dro, String cmd) {
+    JogButton (Icon icon, JSlider speed, DroPanel dro, String cmd) {
       super(icon);
-      this.jPort = jPort;
       this.speed = speed;
       this.dro = dro;
       this.cmd = cmd;
@@ -595,8 +640,15 @@ class GRBLBase {
       });
     }
 
+    @Override
+    public void setEnabled (boolean state) {
+      super.setEnabled(false);
+      setForeground(Color.lightGray);
+      setBackground(Color.lightGray);
+    }
+
     public void run () {
-      jPort.setRXHandler(JogButton.this);
+      jPort.setRXHandler(this);
       nextStep = step = 0;
       boolean firstPress = true;
       try {
@@ -628,9 +680,10 @@ class GRBLBase {
         Thread.sleep(500);
         running = false;
       } catch (Exception ex) {
-        ex.printStackTrace(System.out);
+        ex.printStackTrace();
+        showMessageDialog(laserCut, "Unable to open Serial Port", "Error", PLAIN_MESSAGE);
       } finally {
-        jPort.removeRXHandler(JogButton.this);
+        jPort.removeRXHandler(this);
       }
     }
 
@@ -656,60 +709,62 @@ class GRBLBase {
     }
   }
 
-  /**
-   * Send one line GRBL command and return buf (terminated by "ok\n" or timeout)
-   * @param jPort Open JSSC port
-   * @param cmd command string
-   * @return buf string (excluding "ok\n")
-   */
-  private String sendGrbl (JSSCPort jPort, String cmd) {
-    StringBuilder buf = new StringBuilder();
-    new GRBLRunner(jPort, cmd, buf);
-    return buf.toString();
-  }
+  private class GRBLRunner implements Runnable, JSSCPort.RXEvent {
+    private StringBuilder   buf = new StringBuilder(), line = new StringBuilder();
+    private int             timeoutCount, seconds;
+    transient boolean       running, done, ready, timeout;
 
-  private String sendGrbl (JSSCPort jPort, String cmd, int seconds) {
-    StringBuilder buf = new StringBuilder();
-    new GRBLRunner(jPort, cmd, buf, seconds);
-    return buf.toString();
-  }
-
-  private static class GRBLRunner extends Thread implements JSSCPort.RXEvent {
-    private StringBuilder   buf, line = new StringBuilder();
-    private JSSCPort        jPort;
-    private int             timeout;
-    transient boolean       running = true, done;
-
-    GRBLRunner (JSSCPort jPort, String cmd, StringBuilder rsp) {
-      this(jPort, cmd, rsp, 1);
-    }
-
-    GRBLRunner (JSSCPort jPort, String cmd, StringBuilder rsp, int seconds) {
-      this.jPort = jPort;
-      this.buf = rsp;
-      this.timeout = seconds * 10;
-      jPort.setRXHandler(GRBLRunner.this);
-      start();
-      try {
-        jPort.sendString(cmd + '\n');
-        while (!done) {
-          Thread.sleep(10);
+    GRBLRunner (int seconds) throws Exception {
+      this.seconds = seconds;
+      // Wait for startup response from GRBL
+      jPort.open(this);
+      int timeout = 100 * 10;
+      while (!ready) {
+        if (--timeout <= 0) {
+          throw new IOException("Serial port timeout");
         }
-      } catch (Exception ex) {
-        ex.printStackTrace();
+        try {
+          Thread.sleep(10);
+        } catch (InterruptedException ex) {
+          ex.printStackTrace();
+        }
       }
     }
 
+    String sendCmd (String cmd) throws Exception {
+      buf.setLength(0);
+      line.setLength(0);
+      timeoutCount = seconds * 10;
+      timeout = false;
+      done = false;
+      running = true;
+      new Thread(this).start();
+      jPort.sendString(cmd + '\n');
+      while (!done && !timeout) {
+        Thread.sleep(10);
+      }
+      if (timeout) {
+        throw new IllegalStateException("Serial port timeout");
+      }
+      return buf.toString();
+    }
+
     public void rxChar (byte cc) {
-      if (cc == '\n') {
-        if ("ok".equalsIgnoreCase(line.toString().trim())) {
-          running = false;
+      if (!done) {
+        if (cc == '\n') {
+          if (ready) {
+            if ("ok".equalsIgnoreCase(line.toString().trim())) {
+              running = false;
+            }
+            line.setLength(0);
+            buf.append('\n');
+          } else {
+            ready = line.toString().contains("Grbl");
+          }
+        } else if (cc != '\r') {
+          line.append((char) cc);
+          buf.append((char) cc);
         }
-        line.setLength(0);
-        buf.append('\n');
-      } else if (cc != '\r'){
-        line.append((char) cc);
-        buf.append((char) cc);
       }
     }
 
@@ -717,21 +772,25 @@ class GRBLBase {
       while (running) {
         try {
           Thread.sleep(100);
-          if (timeout-- < 0) {
+          if (timeoutCount-- < 0) {
+            timeout = true;
             break;
           }
         } catch (InterruptedException ex) {
           ex.printStackTrace();
         }
       }
-      jPort.removeRXHandler(GRBLRunner.this);
       done = true;
+    }
+
+    void close () {
+      jPort.close();
     }
   }
 
   // https://github.com/gnea/grbl/wiki
 
-  static class GRBLSender extends Thread implements JSSCPort.RXEvent {
+  class GRBLSender implements JSSCPort.RXEvent, Runnable {
     private StringBuilder   response = new StringBuilder();
     private String          lastResponse = "";
     private String[]        cmds, abortCmds;
@@ -740,21 +799,29 @@ class GRBLBase {
     private JProgressBar    progress;
     private volatile long   cmdQueue;
     private final Lock      lock = new Lock();
-    private JSSCPort        jPort;
-    private boolean         doAbort;
+    private boolean         doAbort, ready;
 
     final class Lock { }
 
-    GRBLSender (Frame parent, JSSCPort jPort, String[] cmds) {
-      this(parent, jPort, cmds, new String[0]);
-    }
-
-    GRBLSender (Frame parent, JSSCPort jPort, String[] cmds, String[] abortCmds) {
-      this.jPort = jPort;
+    GRBLSender (String[] cmds, String[] abortCmds) throws SerialPortException, IOException {
+      jPort.open(this);
+      int timeout = 100 * 10;
+      // Wait for startup response from GRBL
+      while (!ready) {
+        if (--timeout <= 0) {
+          throw new IOException("Serial port timeout");
+        }
+        try {
+          Thread.sleep(10);
+        } catch (InterruptedException ex) {
+          ex.printStackTrace();
+        }
+      }
+      response.setLength(0);
       this.cmds = cmds;
       this.abortCmds = abortCmds;
-      frame = new JDialog(parent, "G-Code Monitor");
-      frame.setLocationRelativeTo(parent);
+      frame = new JDialog(laserCut, "G-Code Monitor");
+      frame.setLocationRelativeTo(laserCut);
       frame.add(progress = new JProgressBar(), BorderLayout.NORTH);
       progress.setMaximum(cmds.length);
       JScrollPane sPane = new JScrollPane(grbl = new JTextArea());
@@ -770,22 +837,26 @@ class GRBLBase {
       frame.setSize(400, 300);
       frame.setLocation(loc.x + loc.width / 2 - 150, loc.y + loc.height / 2 - 150);
       frame.setVisible(true);
-      start();
+      new Thread(this).start();
     }
 
     public void rxChar (byte cc) {
       if (cc == '\n') {
         String rsp = response.toString();
-        if (!rsp.toLowerCase().contains("ok")) {
-          grbl.append(lastResponse = rsp);
-          grbl.append("\n");
-        }
-        if (rsp.toLowerCase().contains("error")) {
-          doAbort = true;
-        }
-        response.setLength(0);
-        synchronized (lock) {
-          cmdQueue--;
+        if (ready) {
+          if (!rsp.toLowerCase().contains("ok")) {
+            grbl.append(lastResponse = rsp);
+            grbl.append("\n");
+          }
+          if (rsp.toLowerCase().contains("error")) {
+            doAbort = true;
+          }
+          response.setLength(0);
+          synchronized (lock) {
+            cmdQueue--;
+          }
+        } else {
+          ready = rsp.contains("Grbl");
         }
       } else if (cc != '\r'){
         response.append((char) cc);
@@ -809,7 +880,6 @@ class GRBLBase {
     //  <Idle|MPos:0.000,0.000,0.000|FS:0,0|Pn:Z>
 
     public void run () {
-      jPort.setRXHandler(GRBLSender.this);
       cmdQueue = 0;
       try {
         for (int ii = 0; (ii < cmds.length) && !doAbort; ii++) {
@@ -842,7 +912,8 @@ class GRBLBase {
           }
         }
         if (doAbort) {
-          //jPort.sendByte((byte) 0x18);      // Locks up GRBL (can't jog after issued)
+          //jPort.sendByte((byte) 0x18);        // Locks up GRBL (can't jog after issued)
+          //jPort.sendString("$X\n");           // Kill Alarm Lock
           for (String cmd : abortCmds) {
             jPort.sendString(cmd + "\n");     // Set abort command
             stepWait(1);
@@ -851,162 +922,9 @@ class GRBLBase {
       } catch (Exception ex) {
         ex.printStackTrace();
       }
-      jPort.removeRXHandler(GRBLSender.this);
+      jPort.close();
       frame.setVisible(false);
       frame.dispose();
     }
-  }
-
-  /*
-   * * * * * * * * RASTER CODE * * * * * * * *
-   */
-
-  static class RasterSettings {
-    private int   rasterDpi;          // Raster Size used for Engraving
-    private int   feedRate;           // in inches/sec
-    private int   laserMin;           // Laser Minimum Power for Engraving
-    private int   laserMax;           // Laser Maximum Power for Engraving
-
-    RasterSettings (int rasterDpi, int feedRate, int laserMin, int laserMax) {
-      this.rasterDpi = rasterDpi;
-      this.feedRate = feedRate;
-      this.laserMin = laserMin;
-      this.laserMax = laserMax;
-    }
-  }
-
-  static private int map (int value, int minIn, int maxIn, int minOut, int maxOut) {
-    return (value - minIn) * (maxOut - minOut) / (maxIn - minIn) + minOut;
-  }
-
-  static List<String> toGCode (LaserCut.CADRasterImage cadRaster, RasterSettings settings) {
-    BufferedImage imgIn = cadRaster.img;
-    double xSize = cadRaster.width;
-    double ySize = cadRaster.height;
-    if (settings == null) {
-      settings = new RasterSettings(100, 100, 1, 255);                    // Default settings 100 dpi, 100 in/min, 1 min, 255 max
-    }
-    // Resize image to match DPI specified for engraving
-    int imgWid = (int) Math.round(xSize * settings.rasterDpi);
-    int imgHyt = (int) Math.round(ySize * settings.rasterDpi);
-    BufferedImage img = new BufferedImage(imgWid, imgHyt, BufferedImage.TYPE_BYTE_GRAY);
-    Graphics2D g2 = img.createGraphics();
-    g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-    g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
-    g2.drawImage(imgIn, 0, 0, imgWid, imgHyt, 0, 0, imgIn.getWidth(), imgIn.getHeight(), null);
-    g2.dispose();
-    WritableRaster raster = img.getRaster();
-    DataBuffer data = raster.getDataBuffer();
-    DecimalFormat fmt = new DecimalFormat("#.####");
-    List<String> buf = new ArrayList<>();
-    buf.add("G20");                                                                         // Set units to inches
-    buf.add("M4");                                                                          // Dynamic Laser Mode
-    buf.add("S0");                                                                          // S0 ; Laser off
-    buf.add("F" + settings.feedRate);                                                       // Fnn ; Set feedrate for engraving
-    // Compute step sizes for raster
-    double xStep = 1.0 / settings.rasterDpi;
-    double yStep = 1.0 / settings.rasterDpi;
-    if (cadRaster.rotation != 0) {
-      // Compute AffineTransform for rotation
-      AffineTransform at = new AffineTransform();
-      if (cadRaster.centered) {
-        at.translate(cadRaster.xLoc - xSize / 2, cadRaster.yLoc - ySize / 2);
-        at.rotate(Math.toRadians(cadRaster.rotation), xSize / 2, ySize / 2);
-      } else {
-        at.translate(cadRaster.xLoc, cadRaster.yLoc);
-        at.rotate(Math.toRadians(cadRaster.rotation));
-      }
-      int prevValue = 0;
-      Point2D.Double loc = new Point2D.Double(0, 0);
-      // Output GRBL Commands to Draw Raster Image
-      for (int yy = 0; yy < imgHyt; yy++) {
-        double yLoc = yStep * yy;
-        if ((yy & 1) == 0) {                                                                // Scan left to right for even lines
-          for (int xx = 0; xx < imgWid; xx++) {
-            if (xx == 0) {
-              // Move quickly to start of next even scan line
-              double xLoc = xx * xStep;
-              loc.setLocation(xLoc, yLoc);
-              at.transform(loc, loc);
-              buf.add("G00X" + fmt.format(loc.x) + "Y" + fmt.format(loc.y));                // G00Xn.nYn.n
-            }
-            double xLoc = xx * xStep;
-            loc.setLocation(xLoc, yLoc);
-            at.transform(loc, loc);
-            int grey = 255 - data.getElem(yy * imgHyt + xx);                                // Read pixel and convert to greyscale
-            grey = map(grey, 0, 255, settings.laserMin, settings.laserMax);                 // Map 8 bit range to Laser Power Level range
-            if (grey != prevValue) {                                                        // Only send Command if power has changed
-              buf.add("S" + grey + "G01X" + fmt.format(loc.x) + "Y" + fmt.format(loc.y));   // G01Xn.nYn.n ; Set Laser Power and start draw
-            } else if (xx == imgWid - 1) {
-              buf.add("G01X" + fmt.format(loc.x) + "Y" + fmt.format(loc.y));                // G01Xn.nYn.n ; continue draw at last power
-            }
-            prevValue = grey;                                                               // Save the laser power for the next loop
-          }
-        } else {                                                                            // Scan right to left for off lines
-          for (int xx = imgWid - 1; xx >= 0; xx--) {
-            if (xx == imgWid - 1) {
-              // Move quickly to start of next odd scan line
-              double xLoc = xx * xStep;
-              loc.setLocation(xLoc, yLoc);
-              at.transform(loc, loc);
-              buf.add("G00X" + fmt.format(loc.x) + "Y" + fmt.format(loc.y));                // G00Xn.nYn.n
-            }
-            double xLoc = xx * xStep;
-            loc.setLocation(xLoc, yLoc);
-            at.transform(loc, loc);
-            int grey = 255 - data.getElem(yy * imgHyt + xx);                                // Read pixel and convert to greyscale
-            grey = map(grey, 0, 255, settings.laserMin, settings.laserMax);                 // Map 8 bit range to Laser Power Level range
-            if (grey != prevValue) {                                                        // Only send Command if power has changed
-              buf.add("S" + grey + "G01X" + fmt.format(loc.x) + "Y" + fmt.format(loc.y));   // G01Xn.nYn.n ; Set Laser Power and start draw
-            } else if (xx == imgWid - 1) {
-              buf.add("G01X" + fmt.format(loc.x) + "Y" + fmt.format(loc.y));                // G01Xn.nYn.n ; continue draw at last power
-            }
-            prevValue = grey;                                                               // Save the laser power for the next loop
-          }
-        }
-      }
-    } else {
-      // Get workspace location of unrotated upper left corner
-      double xOff = cadRaster.centered ? cadRaster.xLoc - xSize / 2 : cadRaster.xLoc;
-      double yOff = cadRaster.centered ? cadRaster.yLoc - ySize / 2 : cadRaster.yLoc;
-      int prevValue = 0;
-      // Move quickly to start of next scan line
-      buf.add("G00X" + fmt.format(xOff) + "Y" + fmt.format(yOff));                          // G00Xn.nYn.n
-      // Output GRBL Commands to Draw Raster Image
-      for (int yy = 0; yy < imgHyt; yy++) {
-        double yLoc = yOff + yStep * yy;
-        if ((yy & 1) == 0) {                                                                // Scan left to right for even lines
-          // Step down to start of next scan line
-          buf.add("G00Y" + fmt.format(yLoc));                                               // G00Yn.n
-          for (int xx = 0; xx < imgWid; xx++) {
-            double xLoc = xOff + xx * xStep;
-            int grey = 255 - data.getElem(yy * imgHyt + xx);                                // Read pixel and convert to greyscale
-            grey = map(grey, 0, 255, settings.laserMin, settings.laserMax);                 // Map 8 bit range to Laser Power Level range
-            if (grey != prevValue) {                                                        // Only send Command if power has changed
-              buf.add("S" + grey + "G01X" + fmt.format(xLoc));                              // Sn ; Set Laser Power and start draw
-            } else if (xx == imgWid - 1) {
-              buf.add("G01X" + fmt.format(xLoc));                                           // G01Xn.n ; continue draw at last power
-            }
-            prevValue = grey;                                                               // Save the laser power for the next loop
-          }
-        } else {                                                                            // Scan right to left for off lines
-          // Step down to end of next scan line
-          buf.add("G00Y" + fmt.format(yLoc));                                               // G00Yn.n
-          for (int xx = imgWid - 1; xx >= 0; xx--) {
-            double xLoc = xOff + xx * xStep;
-            int grey = 255 - data.getElem(yy * imgHyt + xx);                                // Read pixel and convert to greyscale
-            grey = map(grey, 0, 255, settings.laserMin, settings.laserMax);                 // Map 8 bit range to Laser Power Level range
-            if (grey != prevValue) {                                                        // Only send Command if power has changed
-              buf.add("S" + grey + "G01X" + fmt.format(xLoc));                              // Sn ; Set Laser Power and start draw
-            } else if (xx == 0) {
-              buf.add("G01X" + fmt.format(xLoc));                                           // G01Xn.n ; continue draw at last power
-            }
-            prevValue = grey;                                                               // Save the laser power for the next loop
-          }
-        }
-      }
-    }
-    buf.add("S0M5");                                                                        // S0M5 ; Laser off
-    return buf;
   }
 }

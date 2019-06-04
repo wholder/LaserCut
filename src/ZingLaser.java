@@ -14,25 +14,45 @@ import java.awt.image.BufferedImage;
 import java.util.*;
 import java.util.List;
 
-class ZingLaser {
-  private static final double   ZING_PPI = 500;
-  private static final int      ZING_SPEED_DEFAUlT = 55;
-  private static final int      ZING_FREQ_DEFAUlT = 500;
-  private static final int      ZING_CUT_POWER_DEFAUlT = 85;
-  private static final int      ZING_ENGRAVE_POWER_DEFAUlT = 5;
-  private static final int      ZING_RASTER_POWER_DEFAUlT = 50;
-  static final Dimension        zingFullSize = new Dimension((int) (16 * LaserCut.SCREEN_PPI), (int) (12 * LaserCut.SCREEN_PPI));
-  static final Dimension        zing12x12Size = new Dimension((int) (12 * LaserCut.SCREEN_PPI), (int) (12 * LaserCut.SCREEN_PPI));
-  private LaserCut              laserCut;
-  private String                dUnits;
+class ZingLaser implements LaserCut.OutputDevice {
+  private static final double               ZING_PPI = 500;
+  private static final int                  ZING_SPEED_DEFAUlT = 55;
+  private static final int                  ZING_FREQ_DEFAUlT = 500;
+  private static final int                  ZING_CUT_POWER_DEFAUlT = 85;
+  private static final int                  ZING_ENGRAVE_POWER_DEFAUlT = 5;
+  private static final int                  ZING_RASTER_POWER_DEFAUlT = 50;
+  private static final Rectangle2D.Double   zingFullSize = new Rectangle2D.Double(0, 0, 16, 12);
+  private static final Rectangle2D.Double   zing12x12Size = new Rectangle2D.Double(0, 0, 12, 12);
+  private LaserCut                          laserCut;
+  private String                            dUnits;
 
   ZingLaser (LaserCut laserCut) {
     this.laserCut = laserCut;
     this.dUnits = laserCut.displayUnits;
   }
 
-  JMenu getZingMenu () {
-    JMenu zingMenu = new JMenu("Zing Laser");
+  // Implemented for LaserCut.OutputDevice
+  public String getName () {
+    return "Zing Laser";
+  }
+
+  // Implemented for LaserCut.OutputDevice
+  public Rectangle2D.Double getWorkspaceSize () {
+    return new Rectangle2D.Double(0, 0, 16, 12);
+  }
+
+  // Implemented for LaserCut.OutputDevice
+  public void closeDevice () {
+    // Nothing to do
+  }
+
+  // Implemented for LaserCut.OutputDevice
+  public double getZoomFactor () {
+    return 1.0;
+  }
+
+  public JMenu getDeviceMenu () {
+    JMenu zingMenu = new JMenu(getName());
     // Add "Send to Zing" Submenu Item
     JMenuItem sendToZing = new JMenuItem("Send Job to Zing");
     sendToZing.addActionListener(ev -> {
@@ -92,10 +112,7 @@ class ZingLaser {
           VectorPart vp = new VectorPart(doCut ? cutProperties : engraveProperties, ZING_PPI);
           // Loop detects pen up/pen down based on start and end points of line segments
           boolean hasVector = false;
-          List<LaserCut.CADShape> shapes = laserCut.surface.selectLaserItems(doCut);
-          if (planPath) {
-            shapes = PathPlanner.optimize(shapes);
-          }
+          List<LaserCut.CADShape> shapes = laserCut.surface.selectLaserItems(doCut, planPath);
           for (LaserCut.CADShape shape : shapes) {
             for (Line2D.Double[] lines : shape.getListOfScaledLines(ZING_PPI, .001)) {
               if (lines.length > 0) {
@@ -234,12 +251,13 @@ class ZingLaser {
     });
     zingMenu.add(zingSettings);
     // Add "Resize for Zing" Full Size Submenu Items
-    JMenuItem zingResize = new JMenuItem("Resize for Zing (" + (zingFullSize.width / LaserCut.SCREEN_PPI) + " x " +
-          (zingFullSize.height / LaserCut.SCREEN_PPI) + ")");
-    zingResize.addActionListener(ev -> laserCut.surface.setSurfaceSize(zingFullSize));
+    JMenuItem zingResize = new JMenuItem("Resize for Zing (" + zingFullSize.width  + " x " + zingFullSize.height  + ")");
+    zingResize.addActionListener(ev -> {
+      laserCut.surface.setZoomFactor(1);
+      laserCut.surface.setSurfaceSize(zingFullSize);
+    });
     zingMenu.add(zingResize);
-    JMenuItem zing12x12 = new JMenuItem("Resize for Zing (" + (zing12x12Size.width / LaserCut.SCREEN_PPI) + " x " +
-          (zing12x12Size.height / LaserCut.SCREEN_PPI) + ")");
+    JMenuItem zing12x12 = new JMenuItem("Resize for Zing (" + zing12x12Size.width + " x " +  zing12x12Size.height + ")");
     zing12x12.addActionListener(ev -> laserCut.surface.setSurfaceSize(zing12x12Size));
     zingMenu.add(zing12x12);
     return zingMenu;

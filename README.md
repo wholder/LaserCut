@@ -41,7 +41,7 @@ LaserCut uses the Java Language's reflection and object serialization features t
 - Export vector designs to DXF files
 - Export vector designs to EPS files
 - Freeform drawing of shapes (Beta) using [Catmull-Rom Splines](https://en.wikipedia.org/wiki/Centripetal_Catmull–Rom_spline) and then automatically convert them into [Bézier Curve](https://en.wikipedia.org/wiki/Bézier_curve)-based shapes.
-- Raster images which can be engraved on Zing or used as tracing templates for spline shapes
+- Raster images which can be engraved on Zing or used as tracing templates for spline shapes.  Also supports full rotation of raster images as well as control over DPI of of engraved images.
 ## Jog Controls
 <p align="center"><img src="https://github.com/wholder/LaserCut/blob/master/images/Jog%20Dialog.png"></p>
 
@@ -60,6 +60,7 @@ LaserCut uses the Java Language's reflection and object serialization features t
   - **5/12/2019** - JavaCut now runs under Java 8, or greater (Java 10-only code commented out)
   - **5/21/2019** - Added PathPlanner class to optimize laser cutting paths (still in development)
   - **5/31/2019** - MiniLaser now supports engraving raster images (with optional rotation)
+  - **6/4/2019** - Extensive rewrite of GRBL code and how serial ports are managed.  Now, only one output device can be active at one time, whicih prevents conflicts due to many USB serial interfaces, especially those based on cloned chipsets, showing identical USB device names.
 ## Under Development
 - Support for a user-extendable library of specialized cutout shapes, such as for mounting RC Servos (to replace and extend the current Nema Stepper code)
 - Import vector shapes from EPS (Encapsulated PostScript®) files
