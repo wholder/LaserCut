@@ -123,8 +123,9 @@ abstract class GRBLBase {
     JMenuItem settings = new JMenuItem("Get GRBL Settings");
     settings.addActionListener(ev -> {
       if (jPort.hasSerial()) {
+        GRBLRunner runner = new GRBLRunner(20);
         try {
-          GRBLRunner runner = new GRBLRunner(20);
+          runner.connect();
           String grblBuild = "unknown";
           String grblVersion = "unknown";
           String grblOptions = "unknown";
@@ -243,14 +244,15 @@ abstract class GRBLBase {
             Object[] options = {"OK"};
             showOptionDialog(laserCut, sPanel, "GRBL Settings", OK_CANCEL_OPTION, PLAIN_MESSAGE, null, options, options[0]);
           }
-          runner.close();
         } catch (Exception ex) {
           ex.printStackTrace();
           showMessageDialog(laserCut, "Unable to open Serial Port", "Error", PLAIN_MESSAGE);
+        } finally {
+          runner.close();
         }
-        } else {
-          showMessageDialog(laserCut, "No Serial Port Selected", "Error", PLAIN_MESSAGE);
-        }
+      } else {
+        showMessageDialog(laserCut, "No Serial Port Selected", "Error", PLAIN_MESSAGE);
+      }
     });
     return settings;
   }
@@ -338,8 +340,9 @@ abstract class GRBLBase {
     JMenuItem coords = new JMenuItem("Get GRBL Coordinates");
     coords.addActionListener(ev -> {
       if (jPort.hasSerial()) {
+        GRBLRunner runner = new GRBLRunner(10);
         try {
-          GRBLRunner runner = new GRBLRunner(10);
+          runner.connect();
           String receive = runner.sendCmd("$#");
           String[] rsps = receive.split("\n");
           List<ParameterDialog.ParmItem> list = new ArrayList<>();
@@ -396,10 +399,11 @@ abstract class GRBLBase {
           } else {
             System.out.println("Cancel");
           }
-          runner.close();
         } catch (Exception ex) {
           ex.printStackTrace();
           showMessageDialog(laserCut, "Unable to open Serial Port", "Error", PLAIN_MESSAGE);
+        } finally {
+          runner.close();
         }
       } else {
         showMessageDialog(laserCut, "No Serial Port Selected", "Error", PLAIN_MESSAGE);
@@ -412,8 +416,9 @@ abstract class GRBLBase {
     JMenuItem jogMenu = new JMenuItem("Jog Controls");
     jogMenu.addActionListener((ev) -> {
       if (jPort.hasSerial()) {
+        GRBLRunner runner = new GRBLRunner(20);
         try {
-          GRBLRunner runner = new GRBLRunner(20);
+          runner.connect();
           if (this instanceof MiniLaser) {
             int guidePower = ((MiniLaser) this).getGuidePower();
             if (guidePower > 0) {
@@ -553,10 +558,11 @@ abstract class GRBLBase {
             // User pressed "Cancel" so fast move back to old home position
             runner.sendCmd("S0M5G00X0Y0Z0");
           }
-          runner.close();
         } catch (Exception ex) {
           ex.printStackTrace();
           showMessageDialog(laserCut, "Unable to open Serial Port", "Error", PLAIN_MESSAGE);
+        } finally {
+          runner.close();
         }
       } else {
         showMessageDialog(laserCut, "No Serial Port Selected", "Error", PLAIN_MESSAGE);
@@ -709,13 +715,19 @@ abstract class GRBLBase {
     }
   }
 
+  /**
+   *  GRBLRunner - used by GUI functions, such as Settings and Jog Menu
+   */
   private class GRBLRunner implements Runnable, JSSCPort.RXEvent {
     private StringBuilder   buf = new StringBuilder(), line = new StringBuilder();
     private int             timeoutCount, seconds;
     transient boolean       running, done, ready, timeout;
 
-    GRBLRunner (int seconds) throws Exception {
+    GRBLRunner (int seconds) {
       this.seconds = seconds;
+    }
+
+    void connect () throws Exception {
       // Wait for startup response from GRBL
       jPort.open(this);
       int timeout = 100 * 10;
@@ -750,21 +762,19 @@ abstract class GRBLBase {
     }
 
     public void rxChar (byte cc) {
-      if (!done) {
-        if (cc == '\n') {
-          if (ready) {
-            if ("ok".equalsIgnoreCase(line.toString().trim())) {
-              running = false;
-            }
-            line.setLength(0);
-            buf.append('\n');
-          } else {
-            ready = line.toString().contains("Grbl");
+      if (cc == '\n') {
+        if (ready) {
+          if ("ok".equalsIgnoreCase(line.toString().trim())) {
+            running = false;
           }
-        } else if (cc != '\r') {
-          line.append((char) cc);
-          buf.append((char) cc);
+          line.setLength(0);
+          buf.append('\n');
+        } else {
+          ready = line.toString().contains("Grbl");
         }
+      } else if (cc != '\r') {
+        line.append((char) cc);
+        buf.append((char) cc);
       }
     }
 
@@ -788,8 +798,10 @@ abstract class GRBLBase {
     }
   }
 
-  // https://github.com/gnea/grbl/wiki
-
+  /**
+   *  Used by LaserCut to send engraving and cutting g-code to GRBL-based devices
+   *  See: https://github.com/gnea/grbl/wiki
+   */
   class GRBLSender implements JSSCPort.RXEvent, Runnable {
     private StringBuilder   response = new StringBuilder();
     private String          lastResponse = "";
