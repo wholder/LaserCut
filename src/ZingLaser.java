@@ -38,7 +38,7 @@ class ZingLaser implements LaserCut.OutputDevice {
 
   // Implemented for LaserCut.OutputDevice
   public Rectangle2D.Double getWorkspaceSize () {
-    return new Rectangle2D.Double(0, 0, 16, 12);
+    return zingFullSize;
   }
 
   // Implemented for LaserCut.OutputDevice

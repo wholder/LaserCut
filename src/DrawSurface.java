@@ -427,6 +427,10 @@ public class DrawSurface extends JPanel {
 
   void setSurfaceSize (Rectangle2D.Double size) {
     workSize = new Dimension((int) (size.getWidth() * LaserCut.SCREEN_PPI), (int) (size.getHeight() * LaserCut.SCREEN_PPI));
+    Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+    if (workSize.width > screenSize.width || workSize.height > screenSize.height) {
+      workSize = screenSize;
+    }
     setInfoText("");
     setSize(workSize);
     JFrame container = (JFrame) getFocusCycleRootAncestor();
