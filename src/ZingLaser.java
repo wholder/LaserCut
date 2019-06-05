@@ -233,14 +233,12 @@ class ZingLaser implements LaserCut.OutputDevice {
 
     ZingSender (LaserCut laserCut, EpilogZing lasercutter, LaserJob job) {
       super(laserCut);
-
       setTitle(ZingLaser.this.getName() + " Monitor");
       this.lasercutter = lasercutter;
       this.job = job;
       add(progress = new JProgressBar(), BorderLayout.NORTH);
       progress.setMaximum(100);
       JScrollPane sPane = new JScrollPane(status = new JTextArea());
-      status.append("Starting Job...\n");
       status.setMargin(new Insets(3, 3, 3, 3));
       DefaultCaret caret = (DefaultCaret) status.getCaret();
       caret.setUpdatePolicy(DefaultCaret.ALWAYS_UPDATE);
@@ -250,6 +248,8 @@ class ZingLaser implements LaserCut.OutputDevice {
       setLocation(loc.x + loc.width / 2 - 150, loc.y + loc.height / 2 - 75);
       setVisible(true);
       new Thread(this).start();
+      status.append("Starting Job...\n");
+      paint(getGraphics());       // Kludge to get JTextArea to update
     }
 
     public void run () {
@@ -262,7 +262,6 @@ class ZingLaser implements LaserCut.OutputDevice {
           public void progressChanged (Object obj, int ii) {
             progress.setValue(ii);
             status.append("Completed " + ii + "%\n");
-
           }
 
           @Override
