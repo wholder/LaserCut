@@ -54,14 +54,14 @@ class ZingLaser implements LaserCut.OutputDevice {
   public JMenu getDeviceMenu () {
     JMenu zingMenu = new JMenu(getName());
     // Add "Send to Zing" Submenu Item
-    JMenuItem sendToZing = new JMenuItem("Send Job to Zing");
+    JMenuItem sendToZing = new JMenuItem("Send Job to " + getName());
     sendToZing.addActionListener(ev -> {
       String zingIpAddress = laserCut.prefs.get("zing.ip", "10.0.1.201");
       if (zingIpAddress == null ||  zingIpAddress.length() == 0) {
-        laserCut.showErrorDialog("Please set the Zing's IP Address in Export->Zing Settings");
+        laserCut.showErrorDialog("Please set the " + getName() + "'s IP Address in " + getName() + "->Zing Settings");
         return;
       }
-      if (laserCut.showWarningDialog("Press OK to Send Job to Zing")) {
+      if (laserCut.showWarningDialog("Press OK to Send Job to " + getName())) {
         EpilogZing lasercutter = new EpilogZing(zingIpAddress);
         // Set Properties for Materials, such as for 3 mm birch plywood, Set: 60% speed, 80% power, 0 focus, 500 Hz.
         PowerSpeedFocusFrequencyProperty cutProperties = new PowerSpeedFocusFrequencyProperty();
@@ -139,45 +139,7 @@ class ZingLaser implements LaserCut.OutputDevice {
             }
           }
         }
-        ZingMonitor zMon = new ZingMonitor(laserCut);
-        new Thread(() -> {
-          List<String> warnings = new LinkedList<>();
-          boolean hadError = false;
-          String errMsg = "Unknown error";
-          try {
-            lasercutter.sendJob(job, new ProgressListener() {
-              @Override
-              public void progressChanged (Object obj, int ii) {
-                zMon.setProgress(ii);
-              }
-
-              @Override
-              public void taskChanged (Object obj, String str) {
-                //zMon.setProgress(i);
-              }
-            }, warnings);
-          } catch (Exception ex) {
-            hadError = true;
-            errMsg = ex.getMessage();
-          } finally {
-            zMon.setVisible(false);
-            zMon.dispose();
-            if (hadError) {
-              laserCut.showErrorDialog("Unable to send job to Zing.\n" + errMsg);
-            } else if (warnings.size() > 0) {
-              StringBuilder buf = new StringBuilder();
-              boolean addLf = false;
-              for (String warning : warnings) {
-                if (addLf) {
-                  buf.append('\n');
-                }
-                addLf = true;
-                buf.append(warning);
-              }
-              laserCut.showInfoDialog(buf.toString());
-            }
-          }
-        }).start();
+        new ZingSender(laserCut, lasercutter, job);
       }
     });
     zingMenu.add(sendToZing);
@@ -194,10 +156,10 @@ class ZingLaser implements LaserCut.OutputDevice {
       }
     }
     matMenu.setSelectedIndex(0);
-    JMenuItem zingSettings = new JMenuItem("Zing Settings");
+    JMenuItem zingSettings = new JMenuItem(getName() + " Settings");
     zingSettings.addActionListener(ev -> {
       ParameterDialog.ParmItem[] parmSet = {
-          new ParameterDialog.ParmItem("Zing IP Add", laserCut.prefs.get("zing.ip", "10.0.1.201")),
+          new ParameterDialog.ParmItem(getName() + " IP Add", laserCut.prefs.get("zing.ip", "10.0.1.201")),
           new ParameterDialog.ParmItem(new JSeparator()),
           new ParameterDialog.ParmItem(matMenu),
           new ParameterDialog.ParmItem(new JSeparator()),
@@ -251,24 +213,30 @@ class ZingLaser implements LaserCut.OutputDevice {
     });
     zingMenu.add(zingSettings);
     // Add "Resize for Zing" Full Size Submenu Items
-    JMenuItem zingResize = new JMenuItem("Resize for Zing (" + zingFullSize.width  + " x " + zingFullSize.height  + ")");
+    JMenuItem zingResize = new JMenuItem("Resize for " + getName() + " (" + zingFullSize.width  + " x " + zingFullSize.height  + ")");
     zingResize.addActionListener(ev -> {
       laserCut.surface.setZoomFactor(1);
       laserCut.surface.setSurfaceSize(zingFullSize);
     });
     zingMenu.add(zingResize);
-    JMenuItem zing12x12 = new JMenuItem("Resize for Zing (" + zing12x12Size.width + " x " +  zing12x12Size.height + ")");
+    JMenuItem zing12x12 = new JMenuItem("Resize for " + getName() + " (" + zing12x12Size.width + " x " +  zing12x12Size.height + ")");
     zing12x12.addActionListener(ev -> laserCut.surface.setSurfaceSize(zing12x12Size));
     zingMenu.add(zing12x12);
     return zingMenu;
   }
 
-  static class ZingMonitor extends JDialog {
+  class ZingSender extends JDialog implements Runnable {
+    EpilogZing              lasercutter;
+    LaserJob                job;
     private JProgressBar    progress;
     private JTextArea       status;
 
-    ZingMonitor (LaserCut laserCut) {
-      super(laserCut, "Zing Monitor");
+    ZingSender (LaserCut laserCut, EpilogZing lasercutter, LaserJob job) {
+      super(laserCut);
+
+      setTitle(ZingLaser.this.getName() + " Monitor");
+      this.lasercutter = lasercutter;
+      this.job = job;
       add(progress = new JProgressBar(), BorderLayout.NORTH);
       progress.setMaximum(100);
       JScrollPane sPane = new JScrollPane(status = new JTextArea());
@@ -281,11 +249,48 @@ class ZingLaser implements LaserCut.OutputDevice {
       setSize(300, 150);
       setLocation(loc.x + loc.width / 2 - 150, loc.y + loc.height / 2 - 75);
       setVisible(true);
+      new Thread(this).start();
     }
 
-    void setProgress(int prog) {
-      progress.setValue(prog);
-      status.append("Completed prog" + prog + "%\n");
+    public void run () {
+      List<String> warnings = new LinkedList<>();
+      boolean hadError = false;
+      String errMsg = "Unknown error";
+      try {
+        lasercutter.sendJob(job, new ProgressListener() {
+          @Override
+          public void progressChanged (Object obj, int ii) {
+            progress.setValue(ii);
+            status.append("Completed " + ii + "%\n");
+
+          }
+
+          @Override
+          public void taskChanged (Object obj, String str) {
+            // setProgress(i);
+          }
+        }, warnings);
+      } catch (Exception ex) {
+        hadError = true;
+        errMsg = ex.getMessage();
+      } finally {
+        setVisible(false);
+        dispose();
+        if (hadError) {
+          laserCut.showErrorDialog("Unable to send job to " + ZingLaser.this.getName() + ".\n" + errMsg);
+        } else if (warnings.size() > 0) {
+          StringBuilder buf = new StringBuilder();
+          boolean addLf = false;
+          for (String warning : warnings) {
+            if (addLf) {
+              buf.append('\n');
+            }
+            addLf = true;
+            buf.append(warning);
+          }
+          laserCut.showInfoDialog(buf.toString());
+        }
+      }
     }
   }
 }

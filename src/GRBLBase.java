@@ -802,11 +802,10 @@ abstract class GRBLBase {
    *  Used by LaserCut to send engraving and cutting g-code to GRBL-based devices
    *  See: https://github.com/gnea/grbl/wiki
    */
-  class GRBLSender implements JSSCPort.RXEvent, Runnable {
+  class GRBLSender extends JDialog implements JSSCPort.RXEvent, Runnable {
     private StringBuilder   response = new StringBuilder();
     private String          lastResponse = "";
     private String[]        cmds, abortCmds;
-    private JDialog         frame;
     private JTextArea       grbl;
     private JProgressBar    progress;
     private volatile long   cmdQueue;
@@ -816,6 +815,27 @@ abstract class GRBLBase {
     final class Lock { }
 
     GRBLSender (String[] cmds, String[] abortCmds) throws SerialPortException, IOException {
+      setTitle("G-Code Monitor");
+      setLocationRelativeTo(laserCut);
+      add(progress = new JProgressBar(), BorderLayout.NORTH);
+      progress.setMaximum(cmds.length);
+      JScrollPane sPane = new JScrollPane(grbl = new JTextArea());
+      grbl.setMargin(new Insets(3, 3, 3, 3));
+      DefaultCaret caret = (DefaultCaret) grbl.getCaret();
+      caret.setUpdatePolicy(DefaultCaret.ALWAYS_UPDATE);
+      grbl.setEditable(false);
+      add(sPane, BorderLayout.CENTER);
+      JButton abort = new JButton("Abort Job");
+      add(abort, BorderLayout.SOUTH);
+      abort.addActionListener(ev -> doAbort = true);
+      Rectangle loc = getBounds();
+      setSize(400, 300);
+      setLocation(loc.x + loc.width / 2 - 150, loc.y + loc.height / 2 - 150);
+      validate();
+      setVisible(true);
+      grbl.setText("Connecting");
+      paint(getGraphics());       // Kludge to get JTextArea to update
+      // Connect tp device and start sending gcode
       jPort.open(this);
       int timeout = 100 * 10;
       // Wait for startup response from GRBL
@@ -824,31 +844,18 @@ abstract class GRBLBase {
           throw new IOException("Serial port timeout");
         }
         try {
-          Thread.sleep(10);
+          Thread.sleep(100);
+          grbl.append(".");
+          paint(getGraphics());   // Kludge to get JTextArea to update
         } catch (InterruptedException ex) {
           ex.printStackTrace();
         }
       }
+      grbl.append("\nConnected\n");
+      paint(getGraphics());     // Kludge to get JTextArea to update
       response.setLength(0);
       this.cmds = cmds;
       this.abortCmds = abortCmds;
-      frame = new JDialog(laserCut, "G-Code Monitor");
-      frame.setLocationRelativeTo(laserCut);
-      frame.add(progress = new JProgressBar(), BorderLayout.NORTH);
-      progress.setMaximum(cmds.length);
-      JScrollPane sPane = new JScrollPane(grbl = new JTextArea());
-      grbl.setMargin(new Insets(3, 3, 3, 3));
-      DefaultCaret caret = (DefaultCaret) grbl.getCaret();
-      caret.setUpdatePolicy(DefaultCaret.ALWAYS_UPDATE);
-      grbl.setEditable(false);
-      frame.add(sPane, BorderLayout.CENTER);
-      JButton abort = new JButton("Abort Job");
-      frame.add(abort, BorderLayout.SOUTH);
-      abort.addActionListener(ev -> doAbort = true);
-      Rectangle loc = frame.getBounds();
-      frame.setSize(400, 300);
-      frame.setLocation(loc.x + loc.width / 2 - 150, loc.y + loc.height / 2 - 150);
-      frame.setVisible(true);
       new Thread(this).start();
     }
 
@@ -935,8 +942,8 @@ abstract class GRBLBase {
         ex.printStackTrace();
       }
       jPort.close();
-      frame.setVisible(false);
-      frame.dispose();
+      setVisible(false);
+      dispose();
     }
   }
 }
