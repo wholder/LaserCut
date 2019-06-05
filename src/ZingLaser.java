@@ -33,7 +33,7 @@ class ZingLaser implements LaserCut.OutputDevice {
 
   // Implemented for LaserCut.OutputDevice
   public String getName () {
-    return "Zing Laser";
+    return "Epilog Zing";
   }
 
   // Implemented for LaserCut.OutputDevice

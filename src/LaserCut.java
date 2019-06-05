@@ -133,7 +133,7 @@ public class LaserCut extends JFrame {
   private void showPreferencesBox () {
     String device = Integer.toString(prefs.getInt("outputDevice", 1));
     Map<String,ParameterDialog.ParmItem> items = new LinkedHashMap<>();
-    items.put("outputDevice", new ParameterDialog.ParmItem("Output Device:None|0:Zing|1:Mini Laser|2:Micro Laser|3:MiniCNC|4", device));
+    items.put("outputDevice", new ParameterDialog.ParmItem("Output Device:None|0:Epilog Zing|1:Mini Laser|2:Micro Laser|3:MiniCNC|4", device));
     items.put("useMouseWheel", new ParameterDialog.ParmItem("Mouse Wheel Scrolling", prefs.getBoolean("useMouseWheel", false)));
     items.put("useDblClkZoom", new ParameterDialog.ParmItem("Double-click Zoom{Dbl click to Zoom 2x, Shift + dbl click to unZoom}",
         prefs.getBoolean("useDblClkZoom", false)));
@@ -1319,30 +1319,26 @@ public class LaserCut extends JFrame {
         menu.setToolTipText("Use 'Preferences' menu to change output device");
       }
     } catch (Throwable ex) {
-      if (showWarningDialog("Unable to initialize JSSCPort serial port for " + device + "\n" +
-          "Note; use the Preferences dialog box to renable the " + device + ".\n" +
-          "Do you want to view the error message ?")) {
-        // Disable output device for future restarts
-        prefs.putInt("outputDevice", 0);
-      }
-      // Save stack trace for "Error" menu
-      ByteArrayOutputStream bout = new ByteArrayOutputStream();
-      PrintWriter pout = new PrintWriter(bout);
-      ex.printStackTrace(pout);
-      try {
-        pout.close();
-        bout.close();
-      } catch (Exception ex2) {
-        ex.printStackTrace();
-      }
-      String errorMsg = device + " Error:\n" + bout.toString();
       ex.printStackTrace();
-      // Add Error Menu for device
-      JMenu errorMenu = new JMenu(device);
-      JMenuItem eItem = new JMenuItem("View Error Stacktrace");
-      errorMenu.add(eItem);
-      eItem.addActionListener(ev -> showScrollingDialog(errorMsg));
-      return errorMenu;
+      if (showWarningDialog("Unable to initialize JSSCPort serial port to the " + device + " so it will be disabled.\n" +
+          "Note: you can use the Preferences dialog box to renable output to the " + device + ".\n" +
+          "Do you want to view the error message ?")) {
+        // Save stack trace for "Error" menu
+        ByteArrayOutputStream bout = new ByteArrayOutputStream();
+        PrintWriter pout = new PrintWriter(bout);
+        ex.printStackTrace(pout);
+        try {
+          pout.close();
+          bout.close();
+        } catch (Exception ex2) {
+        }
+        String errorMsg = device + " Error:\n" + bout.toString();
+        ex.printStackTrace();
+        showScrollingDialog(errorMsg);
+      }
+      // Disable output device for future restarts
+      prefs.putInt("outputDevice", 0);
+      return null;
     }
     return menu;
   }
