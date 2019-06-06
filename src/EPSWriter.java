@@ -24,36 +24,38 @@ public class EPSWriter {
   }
 
   String getEPS () {
-    double pad = 10;
-    double xOff = bounds.getMinX();
-    double yOff = bounds.getMinY();
-    double width = bounds.getWidth() + pad * 2;
-    double height = bounds.getHeight() + pad * 2;
     StringBuilder buf = new StringBuilder();
     append(buf, "%!PS-Adobe-3.0 EPSF-3.0");
     append(buf, "%%Creator: LaserCut");
     append(buf, "%%Title: " + title);
     append(buf, "%%CreationDate: " + new Date());
-    append(buf, "%%BoundingBox: 0 0 " + (int) width + " " + (int) height);
-    append(buf, "%%HiResBoundingBox: 0.0 0.0 " + width + " " + height);
-    append(buf, "%%DocumentData: Clean7Bit");
-    append(buf, "%%DocumentProcessColors: Black");
-    append(buf, "%%ColorUsage: Color");
-    append(buf, "%%Origin: 0 0");
-    append(buf, "%%Pages: 1");
-    append(buf, "%%Page: 1 1");
-    append(buf, "%%EndComments\n");
-    append(buf, "gsave");
-    //append(buf, xOff + " " + (yOff - height) + " translate");
-    append(buf, (-xOff + pad) + " " + (height + yOff - pad)  + " translate");
-    append(buf, "1 -1 scale");
-    append(buf, "0.0 0.0 0.0 setrgbcolor");
-    append(buf, "1 setlinewidth");
-    append(buf, "1 setmiterlimit");
-    append(buf, "0 setlinejoin");                // 0 = Miter join, 1 = Round join, 2 = Bevel join
-    append(buf, "2 setlinecap");
-    append(buf, "[ ] 0 setdash");
-    buf.append(doc);
+    if (bounds != null) {
+      double pad = 10;
+      double xOff = bounds.getMinX();
+      double yOff = bounds.getMinY();
+      double width = bounds.getWidth() + pad * 2;
+      double height = bounds.getHeight() + pad * 2;
+      append(buf, "%%BoundingBox: 0 0 " + (int) width + " " + (int) height);
+      append(buf, "%%HiResBoundingBox: 0.0 0.0 " + width + " " + height);
+      append(buf, "%%DocumentData: Clean7Bit");
+      append(buf, "%%DocumentProcessColors: Black");
+      append(buf, "%%ColorUsage: Color");
+      append(buf, "%%Origin: 0 0");
+      append(buf, "%%Pages: 1");
+      append(buf, "%%Page: 1 1");
+      append(buf, "%%EndComments\n");
+      append(buf, "gsave");
+      //append(buf, xOff + " " + (yOff - height) + " translate");
+      append(buf, (-xOff + pad) + " " + (height + yOff - pad) + " translate");
+      append(buf, "1 -1 scale");
+      append(buf, "0.0 0.0 0.0 setrgbcolor");
+      append(buf, "1 setlinewidth");
+      append(buf, "1 setmiterlimit");
+      append(buf, "0 setlinejoin");                // 0 = Miter join, 1 = Round join, 2 = Bevel join
+      append(buf, "2 setlinecap");
+      append(buf, "[ ] 0 setdash");
+      buf.append(doc);
+    }
     if (!closed) {
       append(buf, "grestore");
       append(buf, "showpage");

@@ -197,21 +197,145 @@ public class LaserCut extends JFrame {
     }
   }
 
+  abstract class FileChooserMenu extends JMenuItem {
+    JFileChooser fileChooser;
+
+    FileChooserMenu (String type, String ext, boolean save) {
+      super(save ? "Export to " + type + " File" :  "Import " + type + " File");
+      fileChooser = new JFileChooser();
+      buildInterface(type, ext, save);
+    }
+
+    void buildInterface (String type, String ext, boolean save) {
+      addActionListener(ev -> {
+        fileChooser.setDialogTitle(save ? "Export " + type + " File" :  "Import " + type + " File");
+        fileChooser.setDialogType(save ? JFileChooser.SAVE_DIALOG : JFileChooser.OPEN_DIALOG);
+        FileNameExtensionFilter nameFilter = new FileNameExtensionFilter(type + " files (*." + ext + ")", ext);
+        fileChooser.addChoosableFileFilter(nameFilter);
+        fileChooser.setFileFilter(nameFilter);
+        fileChooser.setSelectedFile(new File(prefs.get("default." + ext + ",dir", "/")));
+        if (openDialog(save)) {
+          File sFile = fileChooser.getSelectedFile();
+          prefs.put("default." + ext + ",dir", sFile.getAbsolutePath());
+          if (save && !sFile.exists()) {
+            String fPath = sFile.getPath();
+            if (!fPath.contains(".")) {
+              sFile = new File(fPath + "." + ext);
+            }
+          }
+          try {
+            if (!save || (!sFile.exists() || showWarningDialog("Overwrite Existing file?"))) {
+              processFile(sFile);
+            }
+          } catch (Exception ex) {
+            showErrorDialog(save ? "Unable to save file" : "Unable to open file");
+            ex.printStackTrace();
+          }
+          prefs.put("default." + ext, sFile.getAbsolutePath());
+        }
+      });
+    }
+
+    private boolean openDialog (boolean save) {
+      if (save) {
+        return fileChooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION;
+      } else {
+        return fileChooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION;
+      }
+    }
+
+    abstract void processFile (File sFile) throws Exception;
+
+    // Override in subclass
+    void addPanel () {}
+  }
+
+  abstract class DxfFileChooserMenu extends FileChooserMenu {
+    private List<JCheckBox> checkboxes;
+    private String          selected, dUnits;
+
+    DxfFileChooserMenu (String type, String ext, boolean save, String dUnits) {
+      super(type, ext, save);
+      this.dUnits = dUnits;
+    }
+
+    @Override
+    void buildInterface (String type, String ext, boolean save){
+      super.buildInterface(type, ext, save);
+      checkboxes = new ArrayList<>();
+      // Widen JChooser by 25%
+      Dimension dim = getPreferredSize();
+      setPreferredSize(new Dimension((int) (dim.width * 1.25), dim.height));
+      String[] units = {"Inches:in", "Centimeters:cm", "Millimeters:mm"};
+      JPanel unitsPanel = new JPanel(new GridLayout(0, 1));
+      ButtonGroup group = new ButtonGroup();
+      for (String unit : units) {
+        String[] parts = unit.split(":");
+        JRadioButton button = new JRadioButton(parts[0]);
+        if (parts[1].equals(dUnits)){
+          button.setSelected(true);
+          selected = parts[1];
+        }
+        group.add(button);
+        unitsPanel.add(button);
+        button.addActionListener(ev -> selected = parts[1]);
+      }
+      JPanel panel = new JPanel(new GridLayout(0, 1));
+      panel.add(getPanel(save ? "File Units:" : "Default Units:", unitsPanel));
+      if (save) {
+        panel.add(new JPanel());
+      } else {
+        String[] options = {"TEXT", "MTEXT", "DIMENSION"};
+        JPanel importPanel = new JPanel(new GridLayout(0, 1));
+        for (String option : options) {
+          JCheckBox checkbox = new JCheckBox(option);
+          importPanel.add(checkbox);
+          checkboxes.add(checkbox);
+        }
+        panel.add(getPanel("Include:", importPanel));
+      }
+      fileChooser.setAccessory(panel);
+    }
+
+    private JPanel getPanel (String heading, JComponent guts) {
+      JPanel panel = new JPanel(new BorderLayout());
+      panel.setBackground(Color.WHITE);
+      JLabel label = new JLabel(heading, JLabel.CENTER);
+      label.setBorder(BorderFactory.createLineBorder(Color.BLACK));
+      panel.add(label, BorderLayout.NORTH);
+      panel.add(guts, BorderLayout.CENTER);
+      return panel;
+    }
+
+    String getSelectedUnits () {
+      return selected;
+    }
+
+    boolean isOptionSelected (String name) {
+      for (JCheckBox checkbox : checkboxes) {
+        if (checkbox.getText().equals(name)) {
+          return checkbox.isSelected();
+        }
+      }
+      return false;
+    }
+  }
+
   /**
    * Custom file choose for DXF files that allows selective import of TEXT, MTEXT and DIMENSION elements
    */
 
-  public class DxfFileChooser extends JFileChooser {
+  class DxfFileChooser extends JFileChooser {
     private List<JCheckBox> checkboxes = new ArrayList<>();
     private String          selected;
 
-    public DxfFileChooser (String dUnits, boolean export) {
-      setDialogTitle(export ? "Export DXF File" : "Import DXF File");
-      setDialogType(export ? JFileChooser.SAVE_DIALOG : JFileChooser.OPEN_DIALOG);
+    public DxfFileChooser (String dUnits, boolean save) {
+      setDialogTitle(save ? "Export DXF File" : "Import DXF File");
+      setDialogType(save ? JFileChooser.SAVE_DIALOG : JFileChooser.OPEN_DIALOG);
       FileNameExtensionFilter nameFilter = new FileNameExtensionFilter("AutoCad DXF files (*.dxf)", "dxf");
       addChoosableFileFilter(nameFilter);
-      Dimension dim = getPreferredSize();
       // Widen JChooser by 25%
+      Dimension dim = getPreferredSize();
       setPreferredSize(new Dimension((int) (dim.width * 1.25), dim.height));
       setFileFilter(nameFilter);
       setAcceptAllFileFilterUsed(true);
@@ -230,8 +354,8 @@ public class LaserCut extends JFrame {
         button.addActionListener(ev -> selected = parts[1]);
       }
       JPanel panel = new JPanel(new GridLayout(0, 1));
-      panel.add(getPanel(export ? "File Units:" : "Default Units:", unitsPanel));
-      if (export) {
+      panel.add(getPanel(save ? "File Units:" : "Default Units:", unitsPanel));
+      if (save) {
         panel.add(new JPanel());
       } else {
         String[] options = {"TEXT", "MTEXT", "DIMENSION"};
@@ -846,192 +970,131 @@ public class LaserCut extends JFrame {
       }
     });
     importMenu.add(importObj);
+
     //
     // Add "Import SVG File" menu item
     //
-    JMenuItem svgRead = new JMenuItem("Import SVG File");
-    svgRead.addActionListener(ev -> {
-      JFileChooser fileChooser = new JFileChooser();
-      fileChooser.setDialogTitle("Select a SVG File");
-      fileChooser.setDialogType(JFileChooser.OPEN_DIALOG);
-      FileNameExtensionFilter nameFilter = new FileNameExtensionFilter("Scalable Vector Graphics files (*.svg)", "svg");
-      fileChooser.addChoosableFileFilter(nameFilter);
-      fileChooser.setFileFilter(nameFilter);
-      fileChooser.setSelectedFile(new File(prefs.get("default.svg.dir", "/")));
-      if (fileChooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
-        try {
-          File tFile = fileChooser.getSelectedFile();
-          prefs.put("default.svg.dir", tFile.getAbsolutePath());
-          SVGParser parser = new SVGParser();
-          parser.setPxDpi(pxDpi);
-          //parser.enableDebug(true);
-          Shape[] shapes = parser.parseSVG(tFile);
-          shapes = SVGParser.removeOffset(shapes);
-          Shape shape = SVGParser.combinePaths(shapes);
-          Rectangle2D bounds = BetterBoundingBox.getBounds(shape);
-          double offX = bounds.getWidth() / 2;
-          double offY = bounds.getHeight() / 2;
-          AffineTransform at = AffineTransform.getTranslateInstance(-offX, -offY);
-          shape = at.createTransformedShape(shape);
-          CADShape shp = new CADScaledShape(shape, offX, offY, 0, false, 100.0);
-          if (shp.placeParameterDialog(surface, displayUnits)) {
-            surface.placeShape(shp);
-          }
-        } catch (Exception ex) {
-          showErrorDialog("Unable to load SVG file");
-          ex.printStackTrace(System.out);
+    importMenu.add(new FileChooserMenu("SVG", "svg", false) {
+      void processFile (File sFile) throws Exception {
+        SVGParser parser = new SVGParser();
+        parser.setPxDpi(pxDpi);
+        //parser.enableDebug(true);
+        Shape[] shapes = parser.parseSVG(sFile);
+        shapes = SVGParser.removeOffset(shapes);
+        Shape shape = SVGParser.combinePaths(shapes);
+        Rectangle2D bounds = BetterBoundingBox.getBounds(shape);
+        double offX = bounds.getWidth() / 2;
+        double offY = bounds.getHeight() / 2;
+        AffineTransform at = AffineTransform.getTranslateInstance(-offX, -offY);
+        shape = at.createTransformedShape(shape);
+        CADShape shp = new CADScaledShape(shape, offX, offY, 0, false, 100.0);
+        if (shp.placeParameterDialog(surface, displayUnits)) {
+          surface.placeShape(shp);
         }
       }
     });
-    importMenu.add(svgRead);
     //
     // Add "Import DXF File" menu item
     //
-    JMenuItem dxfRead = new JMenuItem("Import DXF File");
-    dxfRead.addActionListener(ev -> {
-      DxfFileChooser fileChooser = new DxfFileChooser(displayUnits, false);
-      fileChooser.setSelectedFile(new File(prefs.get("default.dxf.dir", "/")));
-      if (fileChooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
-        try {
-          File tFile = fileChooser.getSelectedFile();
-          prefs.put("default.dxf.dir", tFile.getAbsolutePath());
-          String importUnits = fileChooser.getSelectedUnits();
-          DXFReader dxf = new DXFReader(importUnits);
-          if (fileChooser.isOptionSelected("TEXT")) {
-            dxf.enableText(true);
-          }
-          if (fileChooser.isOptionSelected("MTEXT")) {
-            dxf.enableMText(true);
-          }
-          if (fileChooser.isOptionSelected("DIMENSION")) {
-            dxf.enableDimen(true);
-          }
-          Shape[] shapes = dxf.parseFile(tFile, 12, 0);
-          shapes = SVGParser.removeOffset(shapes);
-          CADShapeGroup group = new CADShapeGroup();
-          List<CADShape> gShapes = new ArrayList<>();
-          for (Shape shape : shapes) {
-            Rectangle2D sBnds = shape.getBounds2D();
-            double xLoc = sBnds.getX();
-            double yLoc = sBnds.getY();
-            double wid = sBnds.getWidth();
-            double hyt = sBnds.getHeight();
-            AffineTransform at = AffineTransform.getTranslateInstance(-xLoc - (wid / 2), -yLoc - (hyt / 2));
-            shape = at.createTransformedShape(shape);
-            CADShape cShape = new CADShape(shape, xLoc, yLoc, 0, false);
-            group.addToGroup(cShape);
-            gShapes.add(cShape);
-          }
-          surface.placeShapes(gShapes);
-        } catch (Exception ex) {
-          showErrorDialog("Unable to load DXF file");
-          ex.printStackTrace(System.out);
+    importMenu.add(new DxfFileChooserMenu("DXF", "dxf", false, displayUnits) {
+      void processFile (File sFile) throws Exception {
+        String importUnits = getSelectedUnits();
+        DXFReader dxf = new DXFReader(importUnits);
+        if (isOptionSelected("TEXT")) {
+          dxf.enableText(true);
         }
+        if (isOptionSelected("MTEXT")) {
+          dxf.enableMText(true);
+        }
+        if (isOptionSelected("DIMENSION")) {
+          dxf.enableDimen(true);
+        }
+        Shape[] shapes = dxf.parseFile(sFile, 12, 0);
+        shapes = SVGParser.removeOffset(shapes);
+        CADShapeGroup group = new CADShapeGroup();
+        List<CADShape> gShapes = new ArrayList<>();
+        for (Shape shape : shapes) {
+          Rectangle2D sBnds = shape.getBounds2D();
+          double xLoc = sBnds.getX();
+          double yLoc = sBnds.getY();
+          double wid = sBnds.getWidth();
+          double hyt = sBnds.getHeight();
+          AffineTransform at = AffineTransform.getTranslateInstance(-xLoc - (wid / 2), -yLoc - (hyt / 2));
+          shape = at.createTransformedShape(shape);
+          CADShape cShape = new CADShape(shape, xLoc, yLoc, 0, false);
+          group.addToGroup(cShape);
+          gShapes.add(cShape);
+        }
+        surface.placeShapes(gShapes);
       }
     });
-    importMenu.add(dxfRead);
     //
     // Add "Import Gerber Zip" menu item
     //
-    gerberZip = new JMenuItem("Import Gerber Zip");
-    gerberZip.setVisible(prefs.getBoolean("gerber.import", false));
-    gerberZip.addActionListener((ActionEvent ev) -> {
-      JFileChooser fileChooser = new JFileChooser();
-      fileChooser.setDialogTitle("Select a Zip-encoded Gerber File");
-      fileChooser.setDialogType(JFileChooser.OPEN_DIALOG);
-      FileNameExtensionFilter nameFilter = new FileNameExtensionFilter("Gerber .zip files (*.zip)", "zip");
-      fileChooser.addChoosableFileFilter(nameFilter);
-      fileChooser.setFileFilter(nameFilter);
-      fileChooser.setSelectedFile(new File(prefs.get("default.zip.dir", "/")));
-      if (fileChooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
-        try {
-          File tFile = fileChooser.getSelectedFile();
-          prefs.put("default.zip.dir", tFile.getAbsolutePath());
-          GerberZip gerber = new GerberZip(tFile);
-          List<GerberZip.ExcellonHole> holes = gerber.parseExcellon();
-          List<List<Point2D.Double>> outlines = gerber.parseOutlines();
-          Rectangle2D.Double bounds = GerberZip.getBounds(outlines);
-          // System.out.println("PCB Size: " + bounds.getWidth() + " inches, " + bounds.getHeight() + " inches");
-          double yBase = bounds.getHeight();
-          List<CADShape> gShapes = new ArrayList<>();
-          for (GerberZip.ExcellonHole hole : holes) {
-            gShapes.add(new CADOval(hole.xLoc, yBase - hole.yLoc, hole.diameter, hole.diameter, 0, true));
-          }
-          // Build shapes for all outlines
-          for (List<Point2D.Double> points : outlines) {
-            Path2D.Double path = new Path2D.Double();
-            boolean first = true;
-            for (Point2D.Double point : points) {
-              if (first) {
-                path.moveTo(point.getX() - bounds.width / 2, yBase - point.getY() - bounds.height / 2);
-                first = false;
-              } else {
-                path.lineTo(point.getX() - bounds.width / 2, yBase - point.getY() - bounds.height / 2);
-              }
-            }
-            CADShape outline = new CADShape(path, 0, 0, 0, false);
-            gShapes.add(outline);
-          }
-          CADShapeGroup group = new CADShapeGroup();
-          for (CADShape cShape : gShapes) {
-            group.addToGroup(cShape);
-          }
-          surface.placeShapes(gShapes);
-        } catch (Exception ex) {
-          showErrorDialog("Unable to load Gerber file");
-          ex.printStackTrace(System.out);
+    importMenu.add(new FileChooserMenu("Gerber Zip", "zip", false) {
+      void processFile (File sFile) throws Exception {
+        GerberZip gerber = new GerberZip(sFile);
+        List<GerberZip.ExcellonHole> holes = gerber.parseExcellon();
+        List<List<Point2D.Double>> outlines = gerber.parseOutlines();
+        Rectangle2D.Double bounds = GerberZip.getBounds(outlines);
+        // System.out.println("PCB Size: " + bounds.getWidth() + " inches, " + bounds.getHeight() + " inches");
+        double yBase = bounds.getHeight();
+        List<CADShape> gShapes = new ArrayList<>();
+        for (GerberZip.ExcellonHole hole : holes) {
+          gShapes.add(new CADOval(hole.xLoc, yBase - hole.yLoc, hole.diameter, hole.diameter, 0, true));
         }
+        // Build shapes for all outlines
+        for (List<Point2D.Double> points : outlines) {
+          Path2D.Double path = new Path2D.Double();
+          boolean first = true;
+          for (Point2D.Double point : points) {
+            if (first) {
+              path.moveTo(point.getX() - bounds.width / 2, yBase - point.getY() - bounds.height / 2);
+              first = false;
+            } else {
+              path.lineTo(point.getX() - bounds.width / 2, yBase - point.getY() - bounds.height / 2);
+            }
+          }
+          CADShape outline = new CADShape(path, 0, 0, 0, false);
+          gShapes.add(outline);
+        }
+        CADShapeGroup group = new CADShapeGroup();
+        for (CADShape cShape : gShapes) {
+          group.addToGroup(cShape);
+        }
+        surface.placeShapes(gShapes);
       }
     });
-    importMenu.add(gerberZip);
     /*
      *  Add "Import Notes to MusicBox Strip" Menu
      */
-    JMenuItem musicBox = new JMenuItem("Import Notes to MusicBox Strip");
-    musicBox.addActionListener(ev -> {
-      JFileChooser fileChooser = new JFileChooser();
-      fileChooser.setDialogTitle("Select a Text File with Notes");
-      fileChooser.setDialogType(JFileChooser.OPEN_DIALOG);
-      FileNameExtensionFilter nameFilter = new FileNameExtensionFilter(".txt files (*.txt)", "txt");
-      fileChooser.addChoosableFileFilter(nameFilter);
-      fileChooser.setFileFilter(nameFilter);
-      File selFile = new File(prefs.get("default.notes.dir", "/"));
-      fileChooser.setSelectedFile(selFile);
-      fileChooser.ensureFileIsVisible(selFile);
-      if (fileChooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
-        try {
-          File tFile = fileChooser.getSelectedFile();
-          prefs.put("default.notes.dir", tFile.getAbsolutePath());
-          Scanner lines = new Scanner(new FileInputStream(tFile));
-          List<String[]> cols = new ArrayList<>();
-          int col = 0;
-          while (lines.hasNextLine()) {
-            Scanner line = new Scanner(lines.nextLine().trim());
-            int time = line.nextInt();
-            List<String> notes = new ArrayList<>();
-            while (line.hasNext()) {
-              String item = line.next();
-              item = item.endsWith(",") ? item.substring(0, item.length() - 1) : item;
-              notes.add(item);
-            }
-            while (time-- > 0) {
-              cols.add(notes.toArray(new String[0]));
-              notes = new ArrayList<>();
-            }
+    importMenu.add(new FileChooserMenu("Notes to MusicBox Strip Text", "txt", false) {
+      void processFile (File sFile) throws Exception {
+        Scanner lines = new Scanner(new FileInputStream(sFile));
+        List<String[]> cols = new ArrayList<>();
+        int col = 0;
+        while (lines.hasNextLine()) {
+          Scanner line = new Scanner(lines.nextLine().trim());
+          int time = line.nextInt();
+          List<String> notes = new ArrayList<>();
+          while (line.hasNext()) {
+            String item = line.next();
+            item = item.endsWith(",") ? item.substring(0, item.length() - 1) : item;
+            notes.add(item);
           }
-          String[][] song = cols.toArray(new String[cols.size()][0]);
-          CADMusicStrip mStrip = new CADMusicStrip();
-          mStrip.setNotes(song);
-          if (mStrip.placeParameterDialog(surface, displayUnits)) {
-            surface.placeShape(mStrip);
+          while (time-- > 0) {
+            cols.add(notes.toArray(new String[0]));
+            notes = new ArrayList<>();
           }
-        } catch (Exception ex) {
-          showErrorDialog("Unable to load MusicBox Notes file");
-          ex.printStackTrace(System.out);
+        }
+        String[][] song = cols.toArray(new String[cols.size()][0]);
+        CADMusicStrip mStrip = new CADMusicStrip();
+        mStrip.setNotes(song);
+        if (mStrip.placeParameterDialog(surface, displayUnits)) {
+          surface.placeShape(mStrip);
         }
       }
     });
-    importMenu.add(musicBox);
     menuBar.add(importMenu);
     /*
      *  Add "Export" Menu
@@ -1040,90 +1103,38 @@ public class LaserCut extends JFrame {
     //
     // Add "Export to PDF File" Menu Item
     //
-    JMenuItem pdfOutput = new JMenuItem("Export to PDF File");
-    pdfOutput.addActionListener(ev -> {
-      JFileChooser fileChooser = new JFileChooser();
-      fileChooser.setDialogTitle("Export to PDF File");
-      fileChooser.setDialogType(JFileChooser.SAVE_DIALOG);
-      FileNameExtensionFilter nameFilter = new FileNameExtensionFilter("PDF files (*.pdf)", "pdf");
-      fileChooser.addChoosableFileFilter(nameFilter);
-      fileChooser.setFileFilter(nameFilter);
-      fileChooser.setSelectedFile(new File(prefs.get("default.pdf", "/")));
-      if (fileChooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
-        File sFile = fileChooser.getSelectedFile();
-        String fPath = sFile.getPath();
-        if (!fPath.contains(".")) {
-          sFile = new File(fPath + ".pdf");
-        }
-        try {
-          if (!sFile.exists() || showWarningDialog("Overwrite Existing file?")) {
-            PDFTools.writePDF(surface.getDesign(), surface.getWorkSize(), sFile);
-          }
-        } catch (Exception ex) {
-          showErrorDialog("Unable to save file");
-          ex.printStackTrace();
-        }
-        prefs.put("default.pdf", sFile.getAbsolutePath());
+    exportMenu.add(new FileChooserMenu("PDF", "pdf", true) {
+      void processFile (File sFile) throws Exception {
+        PDFTools.writePDF(surface.getDesign(), surface.getWorkSize(), sFile);
       }
     });
-    exportMenu.add(pdfOutput);
     //
     // Add "Export to SVG File"" Menu Item
     //
-    JMenuItem svgOutput = new JMenuItem("Export to SVG File");
-    svgOutput.addActionListener(ev -> {
-      JFileChooser fileChooser = new JFileChooser();
-      fileChooser.setDialogTitle("Export to SVG File");
-      fileChooser.setDialogType(JFileChooser.SAVE_DIALOG);
-      FileNameExtensionFilter nameFilter = new FileNameExtensionFilter("SVG files (*.svg)", "svg");
-      fileChooser.addChoosableFileFilter(nameFilter);
-      fileChooser.setFileFilter(nameFilter);
-      fileChooser.setSelectedFile(new File(prefs.get("default.svg", "/")));
-      if (fileChooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
-        File sFile = fileChooser.getSelectedFile();
-        String fPath = sFile.getPath();
-        if (!fPath.contains(".")) {
-          sFile = new File(fPath + ".svg");
+    exportMenu.add(new FileChooserMenu("SVG", "svg", true) {
+      void processFile (File sFile) throws Exception {
+        List<Shape> sList = new ArrayList<>();
+        for (CADShape item : surface.getDesign()) {
+          if (item instanceof CADReference)
+            continue;
+          Shape shape = item.getWorkspaceTranslatedShape();
+          sList.add(shape);
         }
-        try {
-          if (!sFile.exists() || showWarningDialog("Overwrite Existing file?")) {
-            List<Shape> sList = new ArrayList<>();
-            for (CADShape item : surface.getDesign()) {
-              if (item instanceof CADReference)
-                continue;
-              Shape shape = item.getWorkspaceTranslatedShape();
-              sList.add(shape);
-            }
-            Shape[] shapes = sList.toArray(new Shape[0]);
-            String xml = SVGParser.shapesToSVG(shapes, surface.getWorkSize(), pxDpi);
-            FileOutputStream out = new FileOutputStream(sFile);
-            out.write(xml.getBytes(StandardCharsets.UTF_8));
-            out.close();
-          }
-        } catch (Exception ex) {
-          showErrorDialog("Unable to save file");
-          ex.printStackTrace();
-        }
-        prefs.put("default.svg", sFile.getAbsolutePath());
+        Shape[] shapes = sList.toArray(new Shape[0]);
+        String xml = SVGParser.shapesToSVG(shapes, surface.getWorkSize(), pxDpi);
+        FileOutputStream out = new FileOutputStream(sFile);
+        out.write(xml.getBytes(StandardCharsets.UTF_8));
+        out.close();
       }
     });
-    exportMenu.add(svgOutput);
     //
     // Add "Export to DXF File"" Menu Item
     // Based on: https://jsevy.com/wordpress/index.php/java-and-android/jdxf-java-dxf-library/
     //  by Jonathan Sevy (released under the MIT License; https://choosealicense.com/licenses/mit/)
     //
-    JMenuItem dxfOutput = new JMenuItem("Export to DXF File");
-    dxfOutput.addActionListener(ev -> {
-      DxfFileChooser fileChooser = new DxfFileChooser(displayUnits, true);
-      fileChooser.setSelectedFile(new File(prefs.get("default.dxf", "/")));
-      if (fileChooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
-        File sFile = fileChooser.getSelectedFile();
-        String fPath = sFile.getPath();
-        if (!fPath.contains(".")) {
-          sFile = new File(fPath + ".dxf");
-        }
-        String units = fileChooser.getSelectedUnits();
+    exportMenu.add(new DxfFileChooserMenu("DXF", "dxf", true, displayUnits) {
+      void processFile (File sFile) throws Exception {
+        String units = getSelectedUnits();
         AffineTransform atExport = null;
         int dxfUnitCode = 1;
         if ("cm".equals(units)) {
@@ -1133,79 +1144,48 @@ public class LaserCut extends JFrame {
           atExport = AffineTransform.getScaleInstance(25.4, 25.4);
           dxfUnitCode = 4;
         }
-        try {
-          if (!sFile.exists() || showWarningDialog("Overwrite Existing file?")) {
-            List<Shape> sList = new ArrayList<>();
-            for (CADShape item : surface.getDesign()) {
-              if (item instanceof CADReference)
-                continue;
-              Shape shape = item.getWorkspaceTranslatedShape();
-              if (atExport != null) {
-                shape = atExport.createTransformedShape(shape);
-              }
-              sList.add(shape);
-            }
-            DXFDocument dxfDocument = new DXFDocument("Exported from LaserCut " + VERSION);
-            dxfDocument.setUnits(dxfUnitCode);
-            DXFGraphics dxfGraphics = dxfDocument.getGraphics();
-            for (Shape shape : sList) {
-              dxfGraphics.draw(shape);
-            }
-            String dxfText = dxfDocument.toDXFString();
-            FileWriter fileWriter = new FileWriter(sFile);
-            fileWriter.write(dxfText);
-            fileWriter.flush();
-            fileWriter.close();
+        List<Shape> sList = new ArrayList<>();
+        for (CADShape item : surface.getDesign()) {
+          if (item instanceof CADReference)
+            continue;
+          Shape shape = item.getWorkspaceTranslatedShape();
+          if (atExport != null) {
+            shape = atExport.createTransformedShape(shape);
           }
-        } catch (Exception ex) {
-          showErrorDialog("Unable to save file");
-          ex.printStackTrace();
+          sList.add(shape);
         }
-        prefs.put("default.dxf", sFile.getAbsolutePath());
+        DXFDocument dxfDocument = new DXFDocument("Exported from LaserCut " + VERSION);
+        dxfDocument.setUnits(dxfUnitCode);
+        DXFGraphics dxfGraphics = dxfDocument.getGraphics();
+        for (Shape shape : sList) {
+          dxfGraphics.draw(shape);
+        }
+        String dxfText = dxfDocument.toDXFString();
+        FileWriter fileWriter = new FileWriter(sFile);
+        fileWriter.write(dxfText);
+        fileWriter.flush();
+        fileWriter.close();
       }
     });
-    exportMenu.add(dxfOutput);
     //
     // Add "Export to EPS File"" Menu Item
     //
-    JMenuItem epsOutput = new JMenuItem("Export to EPS File");
-    epsOutput.addActionListener(ev -> {
-      JFileChooser fileChooser = new JFileChooser();
-      fileChooser.setDialogTitle("Export to EPS File");
-      fileChooser.setDialogType(JFileChooser.SAVE_DIALOG);
-      FileNameExtensionFilter nameFilter = new FileNameExtensionFilter("EPS files (*.eps)", "eps");
-      fileChooser.addChoosableFileFilter(nameFilter);
-      fileChooser.setFileFilter(nameFilter);
-      fileChooser.setSelectedFile(new File(prefs.get("default.eps", "/")));
-      if (fileChooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
-        File sFile = fileChooser.getSelectedFile();
-        String fPath = sFile.getPath();
-        if (!fPath.contains(".")) {
-          sFile = new File(fPath + ".svg");
+    exportMenu.add(new FileChooserMenu("EPS", "eps", true) {
+      void processFile (File sFile) throws Exception {
+        List<Shape> sList = new ArrayList<>();
+        AffineTransform scale = AffineTransform.getScaleInstance(72.0, 72.0);
+        Dimension workArea = surface.getWorkSize();
+        EPSWriter eps = new EPSWriter("LaserCut: " + sFile.getName());
+        for (CADShape item : surface.getDesign()) {
+          if (item instanceof CADReference)
+            continue;
+          Shape shape = item.getWorkspaceTranslatedShape();
+          shape = scale.createTransformedShape(shape);
+          eps.draw(shape);
         }
-        try {
-          if (!sFile.exists() || showWarningDialog("Overwrite Existing file?")) {
-            List<Shape> sList = new ArrayList<>();
-            AffineTransform scale = AffineTransform.getScaleInstance(72.0, 72.0);
-            Dimension workArea = surface.getWorkSize();
-            EPSWriter eps = new EPSWriter("LaserCut: " + sFile.getName());
-            for (CADShape item : surface.getDesign()) {
-              if (item instanceof CADReference)
-                continue;
-              Shape shape = item.getWorkspaceTranslatedShape();
-              shape = scale.createTransformedShape(shape);
-              eps.draw(shape);
-            }
-            eps.writeEPS(sFile);
-          }
-        } catch (Exception ex) {
-          showErrorDialog("Unable to save file");
-          ex.printStackTrace();
-        }
-        prefs.put("default.eps", sFile.getAbsolutePath());
+        eps.writeEPS(sFile);
       }
     });
-    exportMenu.add(epsOutput);
     menuBar.add(exportMenu);
 
     /*
