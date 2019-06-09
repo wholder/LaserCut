@@ -19,6 +19,8 @@ import java.awt.font.GlyphVector;
 import java.awt.font.TextAttribute;
 import java.awt.geom.*;
 import java.awt.image.*;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.io.*;
 import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
@@ -133,7 +135,8 @@ public class LaserCut extends JFrame {
   private void showPreferencesBox () {
     String device = Integer.toString(prefs.getInt("outputDevice", 1));
     Map<String,ParameterDialog.ParmItem> items = new LinkedHashMap<>();
-    items.put("outputDevice", new ParameterDialog.ParmItem("Output Device:None|0:Epilog Zing|1:Mini Laser|2:Micro Laser|3:MiniCNC|4", device));
+    items.put("outputDevice", new ParameterDialog.ParmItem("Output Device:None|0:Epilog Zing|1:Mini Laser|2:" +
+                                                           "Micro Laser|3:MiniCNC|4:Silhouette|5", device));
     items.put("useMouseWheel", new ParameterDialog.ParmItem("Mouse Wheel Scrolling", prefs.getBoolean("useMouseWheel", false)));
     items.put("useDblClkZoom", new ParameterDialog.ParmItem("Double-click Zoom{Dbl click to Zoom 2x, Shift + dbl click to unZoom}",
         prefs.getBoolean("useDblClkZoom", false)));
@@ -198,7 +201,8 @@ public class LaserCut extends JFrame {
   }
 
   abstract class FileChooserMenu extends JMenuItem {
-    JFileChooser fileChooser;
+    JFileChooser  fileChooser;
+    String        currentPath;
 
     FileChooserMenu (String type, String ext, boolean save) {
       super(save ? "Export to " + type + " File" :  "Import " + type + " File");
@@ -213,10 +217,20 @@ public class LaserCut extends JFrame {
         FileNameExtensionFilter nameFilter = new FileNameExtensionFilter(type + " files (*." + ext + ")", ext);
         fileChooser.addChoosableFileFilter(nameFilter);
         fileChooser.setFileFilter(nameFilter);
-        fileChooser.setSelectedFile(new File(prefs.get("default." + ext + ",dir", "/")));
+        fileChooser.setCurrentDirectory(new File(currentPath = prefs.get("default." + ext + ".dir", "/")));
+        currentPath = fileChooser.getCurrentDirectory().getPath();
+        fileChooser.addPropertyChangeListener(new PropertyChangeListener() {
+          @Override
+          public void propertyChange (PropertyChangeEvent evt) {
+            String path = fileChooser.getCurrentDirectory().getPath();
+            if (!path.equals(currentPath)) {
+              currentPath = path;
+              prefs.put("default." + ext + ".dir", currentPath = path);
+            }
+          }
+        });
         if (openDialog(save)) {
           File sFile = fileChooser.getSelectedFile();
-          prefs.put("default." + ext + ",dir", sFile.getAbsolutePath());
           if (save && !sFile.exists()) {
             String fPath = sFile.getPath();
             if (!fPath.contains(".")) {
@@ -247,7 +261,7 @@ public class LaserCut extends JFrame {
     abstract void processFile (File sFile) throws Exception;
 
     // Override in subclass
-    void addPanel () {}
+    void addAccessory () {}
   }
 
   abstract class DxfFileChooserMenu extends FileChooserMenu {
@@ -516,10 +530,10 @@ public class LaserCut extends JFrame {
     JMenuItem newObj = new MyMenuItem("New", KeyEvent.VK_N, cmdMask);
     newObj.addActionListener(ev -> {
       if (surface.hasData()) {
-        if (!showWarningDialog("Discard current design?"))
+        if (!showWarningDialog("Discard current design?")) {
           return;
+        }
         surface.clear();
-        //surface.setZoomFactor(1);
         savedCrc = surface.getDesignChecksum();
         setTitle("LaserCut");
       }
@@ -546,7 +560,6 @@ public class LaserCut extends JFrame {
         try {
           File tFile = fileChooser.getSelectedFile();
           surface.setDesign(loadDesign(tFile));
-          //surface.setZoomFactor(1);
           savedCrc = surface.getDesignChecksum();
           prefs.put("default.dir", tFile.getAbsolutePath());
           setTitle("LaserCut - (" + tFile + ")");
@@ -595,7 +608,7 @@ public class LaserCut extends JFrame {
     });
     fileMenu.add(saveAs);
     //
-    // Add "Save As" Item to File menu
+    // Add "Save Selected As" Item to File menu
     //
     JMenuItem saveSelected = new JMenuItem("Save Selected As");
     saveSelected.setEnabled(false);
@@ -1031,7 +1044,7 @@ public class LaserCut extends JFrame {
     //
     // Add "Import Gerber Zip" menu item
     //
-    importMenu.add(new FileChooserMenu("Gerber Zip", "zip", false) {
+    importMenu.add(gerberZip = new FileChooserMenu("Gerber Zip", "zip", false) {
       void processFile (File sFile) throws Exception {
         GerberZip gerber = new GerberZip(sFile);
         List<GerberZip.ExcellonHole> holes = gerber.parseExcellon();
@@ -1228,7 +1241,7 @@ public class LaserCut extends JFrame {
     setLocation(prefs.getInt("window.x", 10), prefs.getInt("window.y", 10));
     pack();
     setVisible(true);
-    if (outputDevice instanceof ZingLaser) {
+    if (outputDevice instanceof ZingLaser || outputDevice instanceof Silhouette) {
       /*
        * * * * * * * * * * * * * * * * * * *
        * Add some test shapes to DrawSurface
@@ -1270,6 +1283,13 @@ public class LaserCut extends JFrame {
     savedCrc = surface.getDesignChecksum();   // Allow quit if unchanged
   }
 
+  void updateWorkspace () {
+    if (outputDevice != null) {
+      surface.setZoomFactor(outputDevice.getZoomFactor());
+      surface.setSurfaceSize(outputDevice.getWorkspaceSize());
+    }
+  }
+
   private JMenu getOutputDeviceMenu () {
     String device = "";
     JMenu menu = null;
@@ -1287,6 +1307,9 @@ public class LaserCut extends JFrame {
         case 4:
           outputDevice = new MiniCNC(this);
           break;
+        case 5:
+          outputDevice = new Silhouette(this);
+          break;
         default:
           outputDevice = null;
           break;
@@ -1300,7 +1323,7 @@ public class LaserCut extends JFrame {
       }
     } catch (Throwable ex) {
       ex.printStackTrace();
-      if (showWarningDialog("Unable to initialize JSSCPort serial port to the " + device + " so it will be disabled.\n" +
+      if (showWarningDialog("Unable to initialize the " + device + " so it will be disabled.\n" +
           "Note: you can use the Preferences dialog box to renable output to the " + device + ".\n" +
           "Do you want to view the error message ?")) {
         // Save stack trace for "Error" menu

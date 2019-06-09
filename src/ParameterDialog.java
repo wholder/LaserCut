@@ -52,6 +52,24 @@ class ParameterDialog extends JDialog {
         String[] parts = name.split(":");
         name = parts[0];
         valueType = Arrays.copyOfRange(parts, 1, parts.length);
+      } else if (name.contains("[")  &&  name.contains("]")) {
+        int ii = name.indexOf("[");
+        int jj = name.indexOf("]");
+        String range = name.substring(ii + 1, jj);
+        String[] parts = range.split("-");
+        name = name.substring(0, ii);
+        if (parts.length == 2) {
+          int first = Integer.parseInt(parts[0]);
+          int last = Integer.parseInt(parts[1]);
+          int[] vals = new int[last - first + 1];
+          for (int qq = 0; qq < vals.length; qq++) {
+            vals[qq] = first + qq;
+          }
+          valueType = vals;
+          this.value = value;
+        } else {
+          throw new IllegalArgumentException("ParmItem: " + name);
+        }
       } else {
         this.valueType = value;
       }
@@ -109,7 +127,7 @@ class ParameterDialog extends JDialog {
 
     // Return true if invalid value
     private boolean setValueAndValidate (String newValue, String dUnits) {
-      if (valueType instanceof Integer) {
+      if (valueType instanceof Integer || valueType instanceof int[]) {
         try {
           this.value = Integer.parseInt(newValue);
         } catch (NumberFormatException ex) {
@@ -216,6 +234,14 @@ class ParameterDialog extends JDialog {
     return tmp;
   }
 
+  static String[] intToString (int[] vals) {
+    String[] strs = new String[vals.length];
+    for (int ii = 0; ii < vals.length; ii++) {
+      strs[ii] = Integer.toString(vals[ii]);
+    }
+    return strs;
+  }
+
   boolean wasPressed () {
     return !cancelled;
   }
@@ -276,7 +302,16 @@ class ParameterDialog extends JDialog {
           String[] labels = getLabels((String[]) parm.valueType);
           JComboBox<String> select = parm.name.equals("fontName") ? new FontList(labels) : new JComboBox<>(labels);
           String[] values = getValues((String[]) parm.valueType);
-          select.setSelectedIndex(Arrays.asList(values).indexOf((String) parm.value));
+          if (parm.value instanceof Integer) {
+            select.setSelectedIndex(Arrays.asList(values).indexOf(Integer.toString((Integer) parm.value)));
+          } else {
+            select.setSelectedIndex(Arrays.asList(values).indexOf((String) parm.value));
+          }
+          fields.add(parm.field = select, getGbc(1, jj));
+        } else if (parm.valueType instanceof int[]) {
+          String[] vals = intToString((int[]) parm.valueType);
+          JComboBox<String> select = new JComboBox<>(vals);
+          select.setSelectedItem(Integer.toString((Integer) parm.value));
           fields.add(parm.field = select, getGbc(1, jj));
         } else if (parm.value instanceof JComponent) {
           fields.add(parm.field = (JComponent) parm.value, getGbc(1, jj));
@@ -401,6 +436,9 @@ class ParameterDialog extends JDialog {
                 if (parm.valueType instanceof String[]) {
                   String[] values = getValues((String[]) parm.valueType);
                   parm.setValueAndValidate(values[sel.getSelectedIndex()], dUnits);
+                } else if (parm.valueType instanceof int[]) {
+                  String val = (String) sel.getSelectedItem();
+                  parm.setValueAndValidate(val, dUnits);
                 }
               }
             }
@@ -460,6 +498,7 @@ class ParameterDialog extends JDialog {
 
   public static void main (String... args) {
     ParmItem[] parmSet = {
+        new ParmItem("Pressure[1-33]", 6),
         new ParmItem("X Offset|in", 2.0),
         new ParmItem("Y Offset|in", 3.0),
         new ParmItem("Ready|boolean", "1"),

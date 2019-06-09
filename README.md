@@ -61,6 +61,7 @@ LaserCut uses the Java Language's reflection and object serialization features t
   - **5/21/2019** - Added PathPlanner class to optimize laser cutting paths (still in development)
   - **5/31/2019** - MiniLaser now supports engraving raster images (with optional rotation)
   - **6/4/2019** - Extensive rewrite of GRBL code and how serial ports are managed.  Now, only one output device can be active at one time, whicih prevents conflicts due to many USB serial interfaces, especially those based on cloned chipsets, showing identical USB device names.
+  - **6/9/2019** - Added support for Silhouette craft cutters (currently only tested with Curio)
 ## Under Development
 - Support for a user-extendable library of specialized cutout shapes, such as for mounting RC Servos (to replace and extend the current Nema Stepper code)
 - Import vector shapes from EPS (Encapsulated PostScript®) files
