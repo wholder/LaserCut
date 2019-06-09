@@ -45,9 +45,13 @@ class Silhouette implements LaserCut.OutputDevice {
       this.mats = mats;
     }
 
-    Rectangle2D.Double getWorkspaceSize (int idx) {
+    Rectangle2D.Double getWorkspaceSize (int idx, boolean landscape) {
       Mat mat = mats[idx];
-      return new Rectangle2D.Double(0, 0, mat.wid, mat.hyt);          // Size in Landscape mode
+      if (landscape) {
+        return new Rectangle2D.Double(0, 0, mat.wid, mat.hyt);          // Size in Landscape mode
+      } else {
+        return new Rectangle2D.Double(0, 0, mat.hyt, mat.wid);          // Size in Portrait mode
+      }
     }
   }
 
@@ -96,7 +100,7 @@ class Silhouette implements LaserCut.OutputDevice {
     speed = getInt("speed", 5);                         // Drawing speed (value times 10 is centimeters/second)
     pressure = getInt("pressure", 10);                  // Tool pressure (multiplied by 7 to get grams of force, or 7-230 grams)
     Cutter cutter = devices.get(device);
-    workspaceSize = cutter.getWorkspaceSize(0);
+    workspaceSize = cutter.getWorkspaceSize(0, landscape == 1);
   }
 
   // Implement for GRBLBase to define Preferences prefix, such as "mini.laser."
@@ -190,10 +194,10 @@ class Silhouette implements LaserCut.OutputDevice {
       if (ParameterDialog.showSaveCancelParameterDialog(parmSet, dUnits, laserCut)) {
         int idx = 0;
         putString("device", device = (String) parmSet[idx++].value);
-        Cutter cutter = devices.get(device);
-        workspaceSize = cutter.getWorkspaceSize(0);
-        laserCut.updateWorkspace();
         putInt("landscape", landscape = Integer.parseInt((String) parmSet[idx++].value));
+        Cutter cutter = devices.get(device);
+        workspaceSize = cutter.getWorkspaceSize(0, landscape == 1);
+        laserCut.updateWorkspace();
         putInt("action", action = Integer.parseInt((String) parmSet[idx++].value));
         putInt("pen", pen = Integer.parseInt((String) parmSet[idx++].value));
         putInt("speed", speed = (Integer) parmSet[idx++].value);
