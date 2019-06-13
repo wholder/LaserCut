@@ -815,6 +815,7 @@ abstract class GRBLBase {
     final class Lock { }
 
     GRBLSender (String[] cmds, String[] abortCmds) throws SerialPortException, IOException {
+      //super(laserCut, ModalityType.APPLICATION_MODAL);
       setTitle("G-Code Monitor");
       setLocationRelativeTo(laserCut);
       add(progress = new JProgressBar(), BorderLayout.NORTH);

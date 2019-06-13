@@ -14,11 +14,12 @@ class ParameterDialog extends JDialog {
   private Point                 mouseLoc;
 
   static class ParmItem {
-    JLabel      label;
-    String      name, units = "", hint, key;
-    Object      value, valueType;
-    JComponent  field;
-    boolean     readOnly, lblValue;
+    JLabel          label;
+    JComponent      field;
+    ActionListener  listener;
+    String          name, units = "", hint, key;
+    Object          value, valueType;
+    boolean         readOnly, lblValue, enabled = true;
 
     ParmItem (String name, Map<String,String> map, String key, String[] fields) {
       this(name, new BField(fields, Integer.parseInt(map.get(key))));
@@ -95,6 +96,29 @@ class ParameterDialog extends JDialog {
       } else {
         tf.setBackground(Color.white);
       }
+    }
+
+    void setEnabled (boolean enabled) {
+      if (field != null) {
+        field.setEnabled(enabled);
+        if (field instanceof JComboBox){
+          ((JComboBox) field).setSelectedIndex(0);
+        }
+      }
+      this.enabled = enabled;
+    }
+
+    void addActionListener (ActionListener listener) {
+      this.listener = listener;
+    }
+
+    private void hookActionListener () {
+      if (listener != null) {
+        if (field instanceof JComboBox){
+          ((JComboBox) field).addActionListener(listener);
+        }
+      }
+      setEnabled(enabled);
     }
 
     void setValue (Object value) {
@@ -388,6 +412,7 @@ class ParameterDialog extends JDialog {
         }
         jj++;
       }
+      parm.hookActionListener();
     }
     // Define a custion action button so we can catch and save the screen coordinates where the "Place" button was clicked...
     // Yeah, it's a lot of weird code but it avoids having the placed object not show up until the mouse is moved.

@@ -4,6 +4,7 @@ import javax.swing.*;
 import javax.swing.text.DefaultCaret;
 import java.awt.*;
 import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.geom.*;
 import java.text.DecimalFormat;
 import java.util.*;
@@ -24,7 +25,7 @@ class Silhouette implements LaserCut.OutputDevice {
   private static List<Cutter>         cutters = new LinkedList<>();
   private static Map<String,Cutter>   devices = new HashMap<>();
   private static String               device = "Curio";
-  private static int                  action, pen, speed, pressure, media, landscape;
+  private static int                  action, pen, pens, speed, pressure, media, landscape;
   private LaserCut                    laserCut;
   private String                      dUnits;
   private Rectangle2D.Double          workspaceSize;
@@ -37,6 +38,13 @@ class Silhouette implements LaserCut.OutputDevice {
     int     pens;
     Mat[]   mats;
 
+    /**
+     * Silhouette, or Graphtec device Id and capabilities
+     * @param name Product name
+     * @param prod USB Product Id
+     * @param pens Number of pens/tools supported
+     * @param mats Array of standard mat sizes available
+     */
     Cutter (String name, short prod, int pens, Mat[] mats) {
       this.name = name;
       this.prod = prod;
@@ -66,13 +74,12 @@ class Silhouette implements LaserCut.OutputDevice {
 
   static {
     //                      Name                  Prod Id            Standard Mat Sizes
-    cutters.add(new Cutter("Curio",       (short) 0x112C, 2, new Mat[] {new Mat(8.5, 6.0), new Mat(8.5, 12.0)}));
-    // Values for the devices below are not verified and are included only as placeholders until they are
-    cutters.add(new Cutter("Portrait",    (short) 0x1123, 1, new Mat[] {new Mat(8.0, 12.0)}));
-    cutters.add(new Cutter("Portrait 2",  (short) 0x1132, 1, new Mat[] {new Mat(8.0, 12.0)}));
+    cutters.add(new Cutter("Curio",       (short) 0x112C, 2, new Mat[] {new Mat(8.5, 6.0), new Mat(8.5, 12.0)}));       // Tested
     cutters.add(new Cutter("Cameo",       (short) 0x1121, 1, new Mat[] {new Mat(12.0, 12.0), new Mat(12.0, 24.0)}));
     cutters.add(new Cutter("Cameo 2",     (short) 0x112B, 1, new Mat[] {new Mat(12.0, 12.0), new Mat(12.0, 24.0)}));
-    cutters.add(new Cutter("Cameo 3",     (short) 0x112F, 2, new Mat[] {new Mat(12.0, 12.0), new Mat(12.0, 24.0)}));
+    cutters.add(new Cutter("Cameo 3",     (short) 0x112F, 2, new Mat[] {new Mat(12.0, 12.0), new Mat(12.0, 24.0)}));    // Tested
+    cutters.add(new Cutter("Portrait",    (short) 0x1123, 1, new Mat[] {new Mat(8.0, 12.0)}));
+    cutters.add(new Cutter("Portrait 2",  (short) 0x1132, 1, new Mat[] {new Mat(8.0, 12.0)}));
     cutters.add(new Cutter("SD-1",        (short) 0x111C, 1, new Mat[] {new Mat(7.4, 10.0)}));
     cutters.add(new Cutter("SD-2",        (short) 0x111D, 1, new Mat[] {new Mat(7.4, 10.0)}));
     cutters.add(new Cutter("CC200-20",    (short) 0x110A, 1, new Mat[] {new Mat(7.4, 10.0)}));
@@ -91,16 +98,17 @@ class Silhouette implements LaserCut.OutputDevice {
   Silhouette (LaserCut laserCut) {
     this.laserCut = laserCut;
     this.dUnits = laserCut.displayUnits;
-    // Setup default Silhouette Device selection and its parameters
+    // Setup currently selected, or default Silhouette Device and its parameters
     device = getString("device", cutters.get(0).name);
+    Cutter cutter = devices.get(device);
+    pens = cutter.pens;                                 // Number of pens supported by selected device
     landscape = getInt("landscape", 1);                 // Set Orientation (0 = Portrait, 1 = Landscape)
+    workspaceSize = cutter.getWorkspaceSize(0, landscape == 1);
     action = getInt("action", 0);                       // Set Offset for Tool 1 (18 = cutter, 0 = pen)
     media = getInt("media", 300);                       // 300 = Custom Media
-    pen = getInt("pen", 1);                             // 1 selects left pen, 2 selects right pen
+    pen = getInt("pen", Math.min(1, pens));             // 1 selects left pen, 2 selects right pen
     speed = getInt("speed", 5);                         // Drawing speed (value times 10 is centimeters/second)
-    pressure = getInt("pressure", 10);                  // Tool pressure (multiplied by 7 to get grams of force, or 7-230 grams)
-    Cutter cutter = devices.get(device);
-    workspaceSize = cutter.getWorkspaceSize(0, landscape == 1);
+    pressure = getInt("pressure", 10);                  // Tool pressure (value times 7 is grams of force, or 7-230 grams)
   }
 
   // Implement for GRBLBase to define Preferences prefix, such as "mini.laser."
@@ -160,9 +168,9 @@ class Silhouette implements LaserCut.OutputDevice {
         }
         cmds.add("FC" + action);                                    // Set Offset for Tool 1 (18 = cutter, 0 = pen)
         cmds.add("FW" + Math.min(Math.max(media, 100), 300));       // 300 = Custom Media
-        cmds.add("FX" + Math.min(Math.max(pressure, 1), 33));       // Tool pressure (multiplied by 7 to get grams of force, or 7-230 grams)
+        cmds.add("FX" + Math.min(Math.max(pressure, 1), 33));       // Tool pressure (value times 7 is grams of force, or 7-230 grams)
         cmds.add("!" + Math.min(Math.max(speed, 1), 10));           // Drawing speed (value times 10 is centimeters/second)
-        cmds.add("J" + pen);                                        // 1 selects left pen, 2 selects right pen
+        cmds.add("J" + Math.min(pen, pens));                        // 1 selects left pen, 2 selects right pen
         List<LaserCut.CADShape> cadShapes = laserCut.surface.selectLaserItems(true, false);
         for (LaserCut.CADShape cadShape : cadShapes) {
           if (!(cadShape instanceof LaserCut.CADRasterImage)) {
@@ -186,11 +194,16 @@ class Silhouette implements LaserCut.OutputDevice {
           new ParameterDialog.ParmItem("Device" + getDeviceNames(), device),
           new ParameterDialog.ParmItem("Orientation:Portrait|0:Landscape|1", landscape),
           new ParameterDialog.ParmItem("Action:Draw|0:Cut|18", action),
-          new ParameterDialog.ParmItem("Pen:Left|1:Right|2", pen),
+          new ParameterDialog.ParmItem("Pen:Left|1:Right|2", Math.min(pen, pens)),
           new ParameterDialog.ParmItem("Speed[1-10]", speed),
           new ParameterDialog.ParmItem("Pressure[1-33]", pressure),
-
       };
+      parmSet[3].setEnabled(devices.get(device).pens > 1);
+      parmSet[0].addActionListener(ev1 -> {
+        String device = (String) ((JComboBox) ev1.getSource()).getSelectedItem();
+        Cutter cutter = devices.get(device);
+        parmSet[3].setEnabled(cutter.pens > 1);
+      });
       if (ParameterDialog.showSaveCancelParameterDialog(parmSet, dUnits, laserCut)) {
         int idx = 0;
         putString("device", device = (String) parmSet[idx++].value);
@@ -198,6 +211,7 @@ class Silhouette implements LaserCut.OutputDevice {
         Cutter cutter = devices.get(device);
         workspaceSize = cutter.getWorkspaceSize(0, landscape == 1);
         laserCut.updateWorkspace();
+        pens = cutter.pens;
         putInt("action", action = Integer.parseInt((String) parmSet[idx++].value));
         putInt("pen", pen = Integer.parseInt((String) parmSet[idx++].value));
         putInt("speed", speed = (Integer) parmSet[idx++].value);
@@ -337,7 +351,7 @@ class Silhouette implements LaserCut.OutputDevice {
               usb.send(buf.toString().getBytes());
               buf.setLength(0);
             } else {
-              buf.append(cmd + "\u0003");
+              buf.append(cmd).append("\u0003");
             }
           }
           progress.setValue(ii);
