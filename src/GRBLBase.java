@@ -815,7 +815,7 @@ abstract class GRBLBase {
     final class Lock { }
 
     GRBLSender (String[] cmds, String[] abortCmds) throws SerialPortException, IOException {
-      //super(laserCut, ModalityType.APPLICATION_MODAL);
+      super(laserCut, false);
       setTitle("G-Code Monitor");
       setLocationRelativeTo(laserCut);
       add(progress = new JProgressBar(), BorderLayout.NORTH);
@@ -833,28 +833,6 @@ abstract class GRBLBase {
       setSize(400, 300);
       setLocation(loc.x + loc.width / 2 - 150, loc.y + loc.height / 2 - 150);
       validate();
-      setVisible(true);
-      grbl.setText("Connecting");
-      paint(getGraphics());       // Kludge to get JTextArea to update
-      // Connect tp device and start sending gcode
-      jPort.open(this);
-      int timeout = 100 * 10;
-      // Wait for startup response from GRBL
-      while (!ready) {
-        if (--timeout <= 0) {
-          throw new IOException("Serial port timeout");
-        }
-        try {
-          Thread.sleep(100);
-          grbl.append(".");
-          paint(getGraphics());   // Kludge to get JTextArea to update
-        } catch (InterruptedException ex) {
-          ex.printStackTrace();
-        }
-      }
-      grbl.append("\nConnected\n");
-      paint(getGraphics());     // Kludge to get JTextArea to update
-      response.setLength(0);
       this.cmds = cmds;
       this.abortCmds = abortCmds;
       new Thread(this).start();
@@ -902,6 +880,26 @@ abstract class GRBLBase {
     public void run () {
       cmdQueue = 0;
       try {
+        setVisible(true);
+        grbl.setText("Connecting");
+        // Connect tp device and start sending gcode
+        jPort.open(this);
+        int timeout = 100 * 10;
+        // Wait for startup response from GRBL
+        while (!ready) {
+          if (--timeout <= 0) {
+            throw new IOException("Serial port timeout");
+          }
+          try {
+            Thread.sleep(100);
+            grbl.append(".");
+          } catch (InterruptedException ex) {
+            ex.printStackTrace();
+          }
+        }
+        grbl.append("\nConnected\n");
+        paint(getGraphics());     // Kludge to get JTextArea to update
+        response.setLength(0);
         for (int ii = 0; (ii < cmds.length) && !doAbort; ii++) {
           String gcode = cmds[ii].trim();
           grbl.append(gcode + '\n');
