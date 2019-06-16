@@ -151,7 +151,6 @@ class MiniLaser extends GRBLBase implements LaserCut.OutputDevice {
                       cmds.add((dynamicLaser ? "M04" : "M03") + "G01X" + x2 + "Y" + y2);      // Draw Line to x2 y2
                       first = false;
                     } else {
-                      boolean laserOn = false;
                       if (lastX != line.x1 || lastY != line.y1) {
                         cmds.add("M05G00X" + x1 + "Y" + y1);                                  // Move to x1 y1 with laser off
                         cmds.add((dynamicLaser ? "M04" : "M03") + "G01X" + x2 + "Y" + y2);    // Draw Line to x2 y2
@@ -298,7 +297,7 @@ class MiniLaser extends GRBLBase implements LaserCut.OutputDevice {
             double xLoc = xx * xStep;
             loc.setLocation(xLoc, yLoc);
             at.transform(loc, loc);
-            int grey = 255 - data.getElem(yy * imgHyt + xx);                                // Read pixel and convert to greyscale
+            int grey = 255 - data.getElem(yy * imgWid + xx);                                // Read pixel and convert to greyscale
             grey = map(grey, 0, 255, settings.laserMin, settings.laserMax);                 // Map 8 bit range to Laser Power Level range
             if (grey != prevValue) {                                                        // Only send Command if power has changed
               buf.add("S" + grey + "G01X" + fmt.format(loc.x) + "Y" + fmt.format(loc.y));   // G01Xn.nYn.n ; Set Laser Power and start draw
@@ -319,7 +318,7 @@ class MiniLaser extends GRBLBase implements LaserCut.OutputDevice {
             double xLoc = xx * xStep;
             loc.setLocation(xLoc, yLoc);
             at.transform(loc, loc);
-            int grey = 255 - data.getElem(yy * imgHyt + xx);                                // Read pixel and convert to greyscale
+            int grey = 255 - data.getElem(yy * imgWid + xx);                                // Read pixel and convert to greyscale
             grey = map(grey, 0, 255, settings.laserMin, settings.laserMax);                 // Map 8 bit range to Laser Power Level range
             if (grey != prevValue) {                                                        // Only send Command if power has changed
               buf.add("S" + grey + "G01X" + fmt.format(loc.x) + "Y" + fmt.format(loc.y));   // G01Xn.nYn.n ; Set Laser Power and start draw
@@ -345,7 +344,7 @@ class MiniLaser extends GRBLBase implements LaserCut.OutputDevice {
           buf.add("G00Y" + fmt.format(yLoc));                                               // G00Yn.n
           for (int xx = 0; xx < imgWid; xx++) {
             double xLoc = xOff + xx * xStep;
-            int grey = 255 - data.getElem(yy * imgHyt + xx);                                // Read pixel and convert to greyscale
+            int grey = 255 - data.getElem(yy * imgWid + xx);                                // Read pixel and convert to greyscale
             grey = map(grey, 0, 255, settings.laserMin, settings.laserMax);                 // Map 8 bit range to Laser Power Level range
             if (grey != prevValue) {                                                        // Only send Command if power has changed
               buf.add("S" + grey + "G01X" + fmt.format(xLoc));                              // Sn ; Set Laser Power and start draw
@@ -359,7 +358,7 @@ class MiniLaser extends GRBLBase implements LaserCut.OutputDevice {
           buf.add("G00Y" + fmt.format(yLoc));                                               // G00Yn.n
           for (int xx = imgWid - 1; xx >= 0; xx--) {
             double xLoc = xOff + xx * xStep;
-            int grey = 255 - data.getElem(yy * imgHyt + xx);                                // Read pixel and convert to greyscale
+            int grey = 255 - data.getElem(yy * imgWid + xx);                                // Read pixel and convert to greyscale
             grey = map(grey, 0, 255, settings.laserMin, settings.laserMax);                 // Map 8 bit range to Laser Power Level range
             if (grey != prevValue) {                                                        // Only send Command if power has changed
               buf.add("S" + grey + "G01X" + fmt.format(xLoc));                              // Sn ; Set Laser Power and start draw
