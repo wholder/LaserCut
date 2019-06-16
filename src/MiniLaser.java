@@ -12,6 +12,8 @@ import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
 
+  // https://www.cnccookbook.com/g-code-basics-program-format-structure-blocks/
+
 import static javax.swing.JOptionPane.*;
 
 class MiniLaser extends GRBLBase implements LaserCut.OutputDevice {
@@ -103,7 +105,6 @@ class MiniLaser extends GRBLBase implements LaserCut.OutputDevice {
           DecimalFormat fmt = new DecimalFormat("#.#####");
           int lastSpeed = -1;
           int lastPower = -1;
-          boolean laserOn = false;
           for (LaserCut.CADShape shape : shapes) {
             if (shape instanceof LaserCut.CADRasterImage) {
               RasterSettings settings = new RasterSettings(engraveDpi, engraveSpeed, 1, engravePower);
@@ -112,7 +113,6 @@ class MiniLaser extends GRBLBase implements LaserCut.OutputDevice {
               cmds.addAll(rList);
               lastSpeed = -1;
               lastPower = -1;
-              laserOn = false;
             } else {
               String cmd = "";
               if (shape.engrave) {
@@ -148,32 +148,23 @@ class MiniLaser extends GRBLBase implements LaserCut.OutputDevice {
                     String y2 = fmt.format(line.y2);
                     if (first) {
                       cmds.add("M05G00X" + x1 + "Y" + y1);                                    // Move to x1 y1 with laser off
-                      if (!laserOn && lastPower > 0) {
-                        cmds.add(dynamicLaser ? "M04" : "M03");                               // Set Laser On
-                        laserOn = true;                                                       // Leave Laser On
-                      }
-                      cmds.add("G01X" + x2 + "Y" + y2);                                       // Draw Line to x2 y2
+                      cmds.add((dynamicLaser ? "M04" : "M03") + "G01X" + x2 + "Y" + y2);      // Draw Line to x2 y2
                       first = false;
                     } else {
+                      boolean laserOn = false;
                       if (lastX != line.x1 || lastY != line.y1) {
                         cmds.add("M05G00X" + x1 + "Y" + y1);                                  // Move to x1 y1 with laser off
-                        laserOn = false;                                                      // Leave Laser Off
+                        cmds.add((dynamicLaser ? "M04" : "M03") + "G01X" + x2 + "Y" + y2);    // Draw Line to x2 y2
+                      } else {
+                        cmds.add("G01X" + x2 + "Y" + y2);                                     // Draw Line to x2 y2
                       }
-                      if (!laserOn && lastPower > 0) {
-                        cmds.add(dynamicLaser ? "M04" : "M03");                               // Set Laser On
-                        laserOn = true;                                                       // Leave Laser On
-                      }
-                      cmds.add("G01X" + x2 + "Y" + y2);                                       // Draw Line to x2 y2
                     }
                     lastX = line.x2;
                     lastY = line.y2;
                   }
                 }
               }
-              if (laserOn) {
-                cmds.add("M05");                                                              // Set Laser Off
-                laserOn = false;
-              }
+              cmds.add("M05");                                                                // Set Laser Off
             }
           }
           // Add ending G-codes

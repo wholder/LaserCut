@@ -117,8 +117,8 @@ class ParameterDialog extends JDialog {
         if (field instanceof JComboBox){
           ((JComboBox) field).addActionListener(listener);
         }
+        setEnabled(enabled);
       }
-      setEnabled(enabled);
     }
 
     void setValue (Object value) {

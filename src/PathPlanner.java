@@ -1,7 +1,6 @@
+import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 /**
  * PathPlanner: This class tries to organize the cutting order of CADShape objects so that interior
@@ -14,6 +13,7 @@ import java.util.List;
  * shapes nested inside the outermost shape.
  *
  * todo: add code to minimize travel time when cutting shapes in the same level in a Trie
+ * See:
  *
  * Ref: https://en.wikipedia.org/wiki/Trie
  */
@@ -47,11 +47,13 @@ public class PathPlanner {
       return false;
     }
 
-    void unravel (List<LaserCut.CADShape> list) {
+    Point2D.Double unravel (List<LaserCut.CADShape> list, Point2D.Double startPos) {
+      startPos = reorderGroups(startPos, items);
       for (PathTrie item : items) {
-        item.unravel(list);
+        item.unravel(list, startPos);
       }
       list.add(cadShape);
+      return startPos;
     }
   }
 
@@ -68,6 +70,30 @@ public class PathPlanner {
     public int compareTo (ShapeArea obj) {
       return Double.compare(this.area, ((ShapeArea) obj).area);
     }
+  }
+
+  private static Point2D.Double reorderGroups (Point2D.Double startPos, List<PathTrie> inList) {
+    List<PathTrie> oldItems = new ArrayList<>(inList);
+    List<PathTrie>  newItems = new ArrayList<>();
+    while (oldItems.size() > 0) {
+      PathTrie closest = null;
+      double minDist = Double.MAX_VALUE;
+      for (PathTrie item : oldItems) {
+        LaserCut.CADShape cadShape = item.cadShape;
+        Point2D.Double pnt = cadShape.getStartCoords();
+        double dist = startPos.distance(pnt);
+        if (dist < minDist) {
+          minDist = dist;
+          closest = item;
+        }
+      }
+      newItems.add(closest);
+      oldItems.remove(closest);
+      startPos = closest.cadShape.getStartCoords();
+    }
+    inList.clear();
+    inList.addAll(newItems);
+    return startPos;
   }
 
   static List<LaserCut.CADShape> optimize (List<LaserCut.CADShape> shapes) {
@@ -92,26 +118,45 @@ public class PathPlanner {
       }
     }
     List<LaserCut.CADShape> output = new ArrayList<>();
+    Point2D.Double startPos = new Point2D.Double(0, 0);
+    startPos = reorderGroups(startPos, groups);
     for (PathTrie group : groups) {
-      group.unravel(output);
+      startPos = group.unravel(output, startPos);
     }
     return output;
+  }
+
+  private static Map<LaserCut.CADShape,String> map = new HashMap<>();
+
+  private static LaserCut.CADShape add (String name, LaserCut.CADShape val) {
+    map.put(val, name);
+    return val;
   }
 
   public static void main (String[] args) {
     // A nests in E, B nests in F and D, D, E & F nest in G
     List<LaserCut.CADShape> shapes = new ArrayList<>();
-    shapes.add(new LaserCut.CADRectangle(15, 15, 5, 5, 0, 0, false));   // A
-    shapes.add(new LaserCut.CADRectangle(35, 15, 5, 5, 0, 0, false));   // B
-    shapes.add(new LaserCut.CADRectangle(50, 10, 5, 5, 0, 0, false));   // C
-    shapes.add(new LaserCut.CADRectangle(50, 20, 5, 5, 0, 0, false));   // D
-    shapes.add(new LaserCut.CADRectangle(10, 10, 15, 15, 0, 0, false)); // E
-    shapes.add(new LaserCut.CADRectangle(30, 10, 15, 15, 0, 0, false)); // F
-    shapes.add(new LaserCut.CADRectangle(5, 5, 55, 25, 0, 0, false));   // G
+    if (false) {
+      shapes.add(add("A", new LaserCut.CADRectangle(9, 5, 1, 1, 0, 0, false)));
+      shapes.add(add("B", new LaserCut.CADRectangle(7, 3, 1, 1, 0, 0, false)));
+      shapes.add(add("C", new LaserCut.CADRectangle(5, 2, 1, 1, 0, 0, false)));
+      shapes.add(add("D", new LaserCut.CADRectangle(3, 2, 1, 1, 0, 0, false)));
+      shapes.add(add("E", new LaserCut.CADRectangle(1, 1, 1, 1, 0, 0, false)));
+      shapes.add(add("F", new LaserCut.CADRectangle(2, 4, 1, 1, 0, 0, false)));
+      shapes.add(add("G", new LaserCut.CADRectangle(4, 5, 1, 1, 0, 0, false)));
+    } else {
+      shapes.add(add("A", new LaserCut.CADRectangle(15, 15, 5, 5, 0, 0, false)));
+      shapes.add(add("B", new LaserCut.CADRectangle(35, 15, 5, 5, 0, 0, false)));
+      shapes.add(add("C", new LaserCut.CADRectangle(50, 10, 5, 5, 0, 0, false)));
+      shapes.add(add("D", new LaserCut.CADRectangle(50, 20, 5, 5, 0, 0, false)));
+      shapes.add(add("E", new LaserCut.CADRectangle(10, 10, 15, 15, 0, 0, false)));
+      shapes.add(add("F", new LaserCut.CADRectangle(30, 10, 15, 15, 0, 0, false)));
+      shapes.add(add("G", new LaserCut.CADRectangle(5, 5, 55, 25, 0, 0, false)));
+    }
     List<LaserCut.CADShape>  oShapes = optimize(shapes);
     for (LaserCut.CADShape shape : oShapes) {
       Rectangle2D bnds = shape.getShapeBounds();
-      System.out.println(bnds.getX() + ", " + bnds.getY() + " (" + bnds.getWidth() + ", " + bnds.getHeight() + ")");
+      System.out.println(map.get(shape) + ": " + bnds.getX() + ", " + bnds.getY() + " (" + bnds.getWidth() + ", " + bnds.getHeight() + ")");
     }
   }
 }

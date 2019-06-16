@@ -1694,6 +1694,18 @@ public class LaserCut extends JFrame {
     }
 
     /**
+     * Use PathIterator to find coordinates where drawing will start for this shape
+     * Note: used by PathPlanner to optimise overall cutting path
+     * @return starting location for cut
+     */
+    Point2D.Double getStartCoords () {
+      PathIterator pi = getWorkspaceTranslatedShape().getPathIterator(new AffineTransform());
+      double[] coords = new double[4];
+      pi.currentSegment(coords);
+      return new Point2D.Double(coords[0], coords[1]);
+    }
+
+    /**
      * Uses FlatteningPathIterator to convert the Shape into List of arrays of lines.  The size input Shape
      * is assumed to be defined in inches, but the AffineTransform parameter can be used to scale up to the
      * final render resolution.  Note: cubic and quadratic bezier curves calculate an approximaiton of the
@@ -2002,7 +2014,8 @@ public class LaserCut extends JFrame {
         String name = parmNames.get(ii);
         try {
           parmSet[ii] = new ParameterDialog.ParmItem(name, null);
-          parmSet[ii].setValue(this.getClass().getField(parmSet[ii].name).get(this));
+          Object val = this.getClass().getField(parmSet[ii].name).get(this);
+          parmSet[ii].setValue(val);
         } catch (Exception ex) {
           ex.printStackTrace();
         }
@@ -2283,6 +2296,15 @@ public class LaserCut extends JFrame {
       width = rawWid * ratio;
       height = rawHyt * ratio;
       scale = ratio * 100;
+    }
+
+    @Override
+    void updateStateAfterParameterEdit () {
+      double rawWid = (double) img.getWidth() / ppi.width;
+      double rawHyt = (double) img.getHeight() / ppi.height;
+      double ratio = scale / 100.0;
+      width = rawWid * ratio;
+      height = rawHyt * ratio;
     }
 
     @Override
