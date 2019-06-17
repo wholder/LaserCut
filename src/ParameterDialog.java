@@ -384,7 +384,7 @@ class ParameterDialog extends JDialog {
               ImageIcon icon = new ImageIcon(getClass().getResource("/images/info.png"));
               JButton iBut = new JButton(icon);
               Dimension dim = iBut.getPreferredSize();
-              iBut.setPreferredSize(new Dimension(dim.width - 4, dim.height - 4));
+              iBut.setPreferredSize(new Dimension(dim.width - 8, dim.height - 8));
               fields.add(iBut, getGbc(col++, jj));
               iBut.addActionListener(ev -> {
                 JTextArea textArea = new JTextArea(15, 40);
