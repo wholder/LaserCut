@@ -431,7 +431,16 @@ class ParameterDialog extends JDialog {
       }
     });
     Object[] buts = new Object[] {button, buttons[1]};
-    JOptionPane optionPane = new JOptionPane(fields, JOptionPane.PLAIN_MESSAGE, JOptionPane.YES_NO_OPTION, null, buts, buts[0]);
+    JComponent parmPanel = fields;
+    Dimension dim = parmPanel.getPreferredSize();
+    Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+    if (dim.height > screenSize.height - (int) (screenSize.height * 0.2)) {
+      JScrollPane sPane = new JScrollPane(fields);
+      dim = sPane.getPreferredSize();
+      sPane.setPreferredSize(new Dimension(dim.width + 50, screenSize.height - (int) (screenSize.height * 0.2)));
+      parmPanel = sPane;
+    }
+    JOptionPane optionPane = new JOptionPane(parmPanel, JOptionPane.PLAIN_MESSAGE, JOptionPane.YES_NO_OPTION, null, buts, buts[0]);
     setContentPane(optionPane);
     setDefaultCloseOperation(DISPOSE_ON_CLOSE);
     optionPane.addPropertyChangeListener(ev -> {
