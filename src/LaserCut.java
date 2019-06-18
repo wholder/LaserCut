@@ -2349,9 +2349,11 @@ public class LaserCut extends JFrame {
       double ratioX = newWid / rawWid;
       double ratioY = newHyt / rawHyt;
       double ratio = Math.min(ratioX, ratioY);
-      width = rawWid * ratio;
-      height = rawHyt * ratio;
-      scale = ratio * 100;
+      if (rawWid * ratio >= .2 && rawHyt * ratio >= .2) {
+        width = rawWid * ratio;
+        height = rawHyt * ratio;
+        scale = ratio * 100;
+      }
     }
 
     @Override
@@ -2763,8 +2765,8 @@ public class LaserCut extends JFrame {
 
     // Implement Resizable interface
     public void resize (double dx, double dy) {
-      width = centered ? dx * 2 : dx;
-      height = centered ? dy * 2 : dy;
+      width = Math.max(centered ? dx * 2 : dx, .1);
+      height = Math.max(centered ? dy * 2 : dy, .1);
     }
 
     @Override
@@ -2811,8 +2813,8 @@ public class LaserCut extends JFrame {
 
     // Implement Resizable interface
     public void resize (double dx, double dy) {
-      width = centered ? dx * 2 : dx;
-      height = centered ? dy * 2 : dy;
+      width = Math.max(centered ? dx * 2 : dx, .1);
+      height = Math.max(centered ? dy * 2 : dy, .1);
     }
 
     @Override
@@ -2855,7 +2857,7 @@ public class LaserCut extends JFrame {
 
     // Implement Resizable interface
     public void resize (double dx, double dy) {
-      diameter = Math.sqrt(dx * dx + dy + dy);
+      diameter = Math.max(Math.sqrt(dx * dx + dy + dy), .1);
     }
 
     @Override
@@ -3176,7 +3178,7 @@ public class LaserCut extends JFrame {
           changed = true;
         }
       } else {
-        while ((wid = getSWid(--newPnts)) > width) {
+        while (newPnts > 8 &&(wid = getSWid(--newPnts)) > width) {
           fontSize = newPnts;
           changed = true;
         }
