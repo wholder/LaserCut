@@ -258,7 +258,7 @@ class ParameterDialog extends JDialog {
     return tmp;
   }
 
-  static String[] intToString (int[] vals) {
+  private static String[] intToString (int[] vals) {
     String[] strs = new String[vals.length];
     for (int ii = 0; ii < vals.length; ii++) {
       strs[ii] = Integer.toString(vals[ii]);

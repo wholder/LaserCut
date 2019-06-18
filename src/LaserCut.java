@@ -2147,19 +2147,23 @@ public class LaserCut extends JFrame {
     public void resizeOrRotateShape (Point2D.Double newLoc, Dimension workSize, boolean doRotate) {
       double x = Math.max(Math.min(newLoc.x, workSize.width / SCREEN_PPI), 0);
       double y = Math.max(Math.min(newLoc.y, workSize.height / SCREEN_PPI), 0);
-      // Counter rotate mouse loc into cadShape's coordinate space to measure stretch/shrink
-      Point2D.Double grab = rotateAroundPoint(getAnchorPoint(), new Point2D.Double(x, y), -rotation);
-      double dx = grab.x - xLoc;
-      double dy = grab.y - yLoc;
       if (doRotate || (this instanceof Rotatable && !(this instanceof Resizable))) {
         if (this instanceof Rotatable) {
-          double angle = Math.toDegrees(Math.atan2(dy, dx)) - 45;
+          Point2D.Double rp = getAnchorPoint();
+          Point2D.Double lr = getLRPoint();
+          double angle1 = Math.toDegrees(Math.atan2(rp.y - newLoc.y, rp.x - newLoc.x)) + 135;
+          double angle2 = Math.toDegrees(Math.atan2(rp.y - lr.y, rp.x - lr.x)) + 135;
+          double angle = angle1 - angle2;
           // Change angle in even, 1 degree steps
-          rotation += Math.floor( ( angle / 1 ) + 0.5 ) * 1;
+          rotation = Math.floor( ( angle / 1 ) + 0.5 ) * 1;
           rotation = rotation >= 360 ? rotation - 360 : rotation < 0 ? rotation + 360 : rotation;
         }
       } else {
         if (this instanceof Resizable) {
+          // Counter rotate mouse loc into cadShape's coordinate space to measure stretch/shrink
+          Point2D.Double grab = rotateAroundPoint(getAnchorPoint(), new Point2D.Double(x, y), -rotation);
+          double dx = grab.x - xLoc;
+          double dy = grab.y - yLoc;
           ((Resizable) this).resize(dx, dy);
         }
       }
@@ -3029,7 +3033,7 @@ public class LaserCut extends JFrame {
     }
   }
 
-  static class CADText extends CADShape implements Serializable {
+  static class CADText extends CADShape implements Serializable, Rotatable {
     private static final long serialVersionUID = 4314642313295298841L;
     public String   text, fontName, fontStyle;
     public int      fontSize;
@@ -3106,6 +3110,12 @@ public class LaserCut extends JFrame {
       this.fontSize = fontSize;
       this.tracking = tracking;
       setLocationAndOrientation(xLoc, yLoc, rotation, centered);
+    }
+
+    // Implement Resizable interface
+    public void resize (double dx, double dy) {
+      //width = centered ? dx * 2 : dx;
+      //height = centered ? dy * 2 : dy;
     }
 
     @Override
