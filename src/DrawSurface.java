@@ -401,7 +401,7 @@ public class DrawSurface extends JPanel {
     });
   }
 
-  private void setInfoText (String text) {
+  void setInfoText (String text) {
     if (infoText != null) {
       infoText.setText(text);
     }

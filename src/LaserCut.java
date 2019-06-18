@@ -1003,6 +1003,8 @@ public class LaserCut extends JFrame {
         CADShape shp = new CADScaledShape(shape, offX, offY, 0, false, 100.0);
         if (shp.placeParameterDialog(surface, displayUnits)) {
           surface.placeShape(shp);
+        } else {
+          surface.setInfoText("Import cancelled");
         }
       }
     });
@@ -1105,6 +1107,8 @@ public class LaserCut extends JFrame {
         mStrip.setNotes(song);
         if (mStrip.placeParameterDialog(surface, displayUnits)) {
           surface.placeShape(mStrip);
+        } else {
+          surface.setInfoText("Import cancelled");
         }
       }
     });
@@ -1569,6 +1573,8 @@ public class LaserCut extends JFrame {
     void createAndPlace (DrawSurface surface, LaserCut laserCut) {
       if (placeParameterDialog(surface, laserCut.displayUnits)) {
         surface.placeShape(this);
+      } else {
+        surface.setInfoText("Place " + getName() + " cancelled");
       }
     }
 
@@ -2001,7 +2007,7 @@ public class LaserCut extends JFrame {
     }
 
     // Override in subclass to attach Parameter listeners
-    void hookParameters (Map<String,ParameterDialog.ParmItem> pNames, ParameterDialog.ParmItem[] parmSet) {
+    void hookParameters (Map<String,ParameterDialog.ParmItem> pNames) {
       // Does nothing by default
     }
 
@@ -2029,7 +2035,7 @@ public class LaserCut extends JFrame {
       for (ParameterDialog.ParmItem parm : parmSet) {
         pNames.put(parm.name, parm);
       }
-      hookParameters(pNames, parmSet);
+      hookParameters(pNames);
       ParameterDialog dialog = (new ParameterDialog(parmSet, new String[] {actionButton, "Cancel"}, dUnits));
       dialog.setLocationRelativeTo(surface.getParent());
       boolean wasCentered = centered;
@@ -2286,6 +2292,7 @@ public class LaserCut extends JFrame {
                 placed = true;
               }
             } else {
+              surface.setInfoText("Image load cancelled");
               break;
             }
           } while (!placed);
@@ -2309,7 +2316,8 @@ public class LaserCut extends JFrame {
       return Arrays.asList("*width|in", "*height|in", "*imagePpi", "rotation|deg", "scale|%", "centered", "engrave", "engrave3D");
     }
 
-    void hookParameters (Map<String,ParameterDialog.ParmItem> pNames, ParameterDialog.ParmItem[] parmSet) {
+    @Override
+    void hookParameters (Map<String,ParameterDialog.ParmItem> pNames) {
       pNames.get("scale").addParmListener(parm -> {
         String val = ((JTextField) parm.field).getText();
         JTextField wid =  (JTextField) pNames.get("width").field;
