@@ -2000,6 +2000,11 @@ public class LaserCut extends JFrame {
       return displayShapeParameterDialog(surface, new ArrayList<>(getEditFields()), "Save", dUnits);
     }
 
+    // Override in subclass to attach Parameter listeners
+    void hookParameters (Map<String,ParameterDialog.ParmItem> pNames, ParameterDialog.ParmItem[] parmSet) {
+      // Does nothing by default
+    }
+
     /**
      * Bring up editable parameter dialog box do user can edit fields using reflection to read and update parameter values.
      * @param surface parent Component for Dialog
@@ -2020,6 +2025,11 @@ public class LaserCut extends JFrame {
           ex.printStackTrace();
         }
       }
+      Map<String,ParameterDialog.ParmItem> pNames = new HashMap<>();
+      for (ParameterDialog.ParmItem parm : parmSet) {
+        pNames.put(parm.name, parm);
+      }
+      hookParameters(pNames, parmSet);
       ParameterDialog dialog = (new ParameterDialog(parmSet, new String[] {actionButton, "Cancel"}, dUnits));
       dialog.setLocationRelativeTo(surface.getParent());
       boolean wasCentered = centered;
@@ -2260,9 +2270,25 @@ public class LaserCut extends JFrame {
           img = ImageIO.read(imgFile);
           width = (double) img.getWidth() / ppi.width;
           height = (double) img.getHeight() / ppi.height;
-          if (placeParameterDialog(surface, laserCut.displayUnits)) {
-            surface.placeShape(this);
-          }
+          boolean placed = false;
+          do {
+            if (placeParameterDialog(surface, laserCut.displayUnits)) {
+              // Make sure image will fit in work area
+              Dimension dim = surface.getWorkSize();
+              if (width > dim.width / SCREEN_PPI || height > dim.height / SCREEN_PPI) {
+                if (showConfirmDialog(laserCut, "Image is too large for work area\nPlace anyway?", "Caution",
+                                      YES_NO_OPTION, PLAIN_MESSAGE) == OK_OPTION) {
+                  surface.placeShape(this);
+                  placed = true;
+                }
+              } else {
+                surface.placeShape(this);
+                placed = true;
+              }
+            } else {
+              break;
+            }
+          } while (!placed);
         } catch (Exception ex) {
           laserCut.showErrorDialog("Unable to load file");
           ex.printStackTrace(System.out);
@@ -2280,7 +2306,25 @@ public class LaserCut extends JFrame {
 
     @Override
     protected List<String> getPlaceFields () {
-      return Arrays.asList("*imagePpi", "rotation|deg", "scale|%", "centered", "engrave", "engrave3D");
+      return Arrays.asList("*width|in", "*height|in", "*imagePpi", "rotation|deg", "scale|%", "centered", "engrave", "engrave3D");
+    }
+
+    void hookParameters (Map<String,ParameterDialog.ParmItem> pNames, ParameterDialog.ParmItem[] parmSet) {
+      pNames.get("scale").addParmListener(parm -> {
+        String val = ((JTextField) parm.field).getText();
+        JTextField wid =  (JTextField) pNames.get("width").field;
+        JTextField hyt =  (JTextField) pNames.get("height").field;
+        try {
+          double ratio = Double.parseDouble(val) / 100.0;
+          double rawWid = (double) img.getWidth() / ppi.width;
+          double rawHyt = (double) img.getHeight() / ppi.height;
+          wid.setText(df.format(rawWid * ratio));
+          hyt.setText(df.format(rawHyt * ratio));
+        } catch (NumberFormatException ex) {
+          wid.setText("-");
+          hyt.setText("-");
+        }
+      });
     }
 
     @Override

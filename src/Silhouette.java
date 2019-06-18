@@ -4,7 +4,6 @@ import javax.swing.*;
 import javax.swing.text.DefaultCaret;
 import java.awt.*;
 import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.awt.geom.*;
 import java.text.DecimalFormat;
 import java.util.*;
@@ -199,8 +198,8 @@ class Silhouette implements LaserCut.OutputDevice {
           new ParameterDialog.ParmItem("Pressure[1-33]", pressure),
       };
       parmSet[3].setEnabled(devices.get(device).pens > 1);
-      parmSet[0].addActionListener(ev1 -> {
-        String device = (String) ((JComboBox) ev1.getSource()).getSelectedItem();
+      parmSet[0].addParmListener(parm -> {
+        String device = (String) ((JComboBox) parm.field).getSelectedItem();
         Cutter cutter = devices.get(device);
         parmSet[3].setEnabled(cutter.pens > 1);
       });

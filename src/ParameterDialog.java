@@ -4,6 +4,8 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.Properties;
 import javax.swing.*;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import javax.swing.plaf.basic.BasicComboBoxRenderer;
 
 import static javax.swing.JOptionPane.showMessageDialog;
@@ -13,10 +15,14 @@ class ParameterDialog extends JDialog {
   private boolean               cancelled = true;
   private Point                 mouseLoc;
 
+  interface ParmListener {
+    void parmEvent (ParmItem parm);
+  }
+
   static class ParmItem {
     JLabel          label;
     JComponent      field;
-    ActionListener  listener;
+    ParmListener    parmListener;
     String          name, units = "", hint, key;
     Object          value, valueType;
     boolean         readOnly, lblValue, enabled = true;
@@ -63,8 +69,8 @@ class ParameterDialog extends JDialog {
           int first = Integer.parseInt(parts[0]);
           int last = Integer.parseInt(parts[1]);
           int[] vals = new int[last - first + 1];
-          for (int qq = 0; qq < vals.length; qq++) {
-            vals[qq] = first + qq;
+          for (int kk = 0; kk < vals.length; kk++) {
+            vals[kk] = first + kk;
           }
           valueType = vals;
           this.value = value;
@@ -108,14 +114,31 @@ class ParameterDialog extends JDialog {
       this.enabled = enabled;
     }
 
-    void addActionListener (ActionListener listener) {
-      this.listener = listener;
+    void addParmListener (ParmListener listener) {
+      parmListener = listener;
     }
 
     private void hookActionListener () {
-      if (listener != null) {
+      if (parmListener != null) {
         if (field instanceof JComboBox){
-          ((JComboBox) field).addActionListener(listener);
+          ((JComboBox) field).addActionListener(ev -> {
+            parmListener.parmEvent(this);
+          });
+        } else if (field instanceof JTextField) {
+          ((JTextField) field).getDocument().addDocumentListener(new DocumentListener() {
+            @Override
+            public void insertUpdate (DocumentEvent e) {
+              parmListener.parmEvent(ParmItem.this);
+            }
+
+            @Override
+            public void removeUpdate (DocumentEvent e) {
+              parmListener.parmEvent(ParmItem.this);
+            }
+
+            @Override
+            public void changedUpdate (DocumentEvent e) { }
+          });
         }
         setEnabled(enabled);
       }
