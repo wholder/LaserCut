@@ -3033,7 +3033,7 @@ public class LaserCut extends JFrame {
     }
   }
 
-  static class CADText extends CADShape implements Serializable, Rotatable {
+  static class CADText extends CADShape implements Serializable, Rotatable, Resizable {
     private static final long serialVersionUID = 4314642313295298841L;
     public String   text, fontName, fontStyle;
     public int      fontSize;
@@ -3112,10 +3112,35 @@ public class LaserCut extends JFrame {
       setLocationAndOrientation(xLoc, yLoc, rotation, centered);
     }
 
-    // Implement Resizable interface
+    // Todo: Implement Resizable interface
     public void resize (double dx, double dy) {
-      //width = centered ? dx * 2 : dx;
-      //height = centered ? dy * 2 : dy;
+      double width = centered ? dx * 2 : dx;
+      int newPnts = fontSize;
+      boolean changed = false;
+      double wid;
+      double sWid = getSWid(fontSize);
+      if (sWid < width) {
+        while ((wid = getSWid(++newPnts)) < width) {
+          fontSize = newPnts;
+          changed = true;
+        }
+      } else {
+        while ((wid = getSWid(--newPnts)) > width) {
+          fontSize = newPnts;
+          changed = true;
+        }
+      }
+      if (changed) {
+        buildShape();
+      }
+    }
+
+    private double getSWid (int points) {
+      BufferedImage bi = new BufferedImage(5, 5, BufferedImage.TYPE_INT_RGB);
+      Graphics gg = bi.getGraphics();
+      Font fnt = new Font(fontName, styles.get(fontStyle), points);
+      FontMetrics fm = gg.getFontMetrics(fnt);
+      return (double) fm.stringWidth(text) / 72.0;
     }
 
     @Override
