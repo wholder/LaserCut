@@ -3112,7 +3112,6 @@ public class LaserCut extends JFrame {
       setLocationAndOrientation(xLoc, yLoc, rotation, centered);
     }
 
-    // Todo: Implement Resizable interface
     public void resize (double dx, double dy) {
       double width = centered ? dx * 2 : dx;
       int newPnts = fontSize;
