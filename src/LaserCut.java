@@ -3362,6 +3362,10 @@ public class LaserCut extends JFrame {
       return super.isShapeClicked(point, zoomFactor) || isPositionClicked(point, zoomFactor);
     }
 
+    boolean isPathClosed () {
+      return closePath;
+    }
+
     /**
      * See if we clicked on an existing Catmull-Rom Control Point other than origin
      * @param surface Reference to DrawSurface

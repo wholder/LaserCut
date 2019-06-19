@@ -2,13 +2,14 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.geom.*;
+import java.awt.image.BufferedImage;
 import java.io.*;
 import java.util.*;
 import java.util.List;
 import java.util.prefs.Preferences;
 import java.util.zip.CRC32;
 
-public class DrawSurface extends JPanel {
+public class DrawSurface extends JPanel implements Runnable {
   private Preferences                         prefs;
   private Dimension                           workSize;
   private JTextField                          infoText;
@@ -32,6 +33,11 @@ public class DrawSurface extends JPanel {
   private LinkedList<byte[]>                  redoStack = new LinkedList<>();
   private boolean                             pushedToStack, showMeasure, doSnap, showGrid;
   private String                              dUnits;
+  private int                                 tipTimer;
+  private boolean                             mouseDown = false;
+  private Point2D.Double                      tipLoc;
+  private String                              tipText;
+
 
   static class Placer {
     private List<LaserCut.CADShape> shapes;
@@ -75,6 +81,8 @@ public class DrawSurface extends JPanel {
     addMouseListener(new MouseAdapter() {
       @Override
       public void mousePressed (MouseEvent ev) {
+        mouseDown = true;
+        cancelTip();
         requestFocus();
         Point2D.Double newLoc = new Point2D.Double(ev.getX() / getScreenScale(), ev.getY() / getScreenScale());
         if (placer != null) {
@@ -276,6 +284,8 @@ public class DrawSurface extends JPanel {
 
       @Override
       public void mouseReleased (MouseEvent ev) {
+        mouseDown = false;
+        cancelTip();
         dragged = null;
         resizeOrRotate = null;
         scrollPoint = null;
@@ -369,6 +379,7 @@ public class DrawSurface extends JPanel {
       public void mouseMoved (MouseEvent ev) {
         super.mouseMoved(ev);
         Point2D.Double newLoc = new Point2D.Double(ev.getX() / getScreenScale(), ev.getY() / getScreenScale());
+        tipTracker(newLoc);
         if (placer != null) {
           placer.setPosition(newLoc);
           repaint();
@@ -399,6 +410,8 @@ public class DrawSurface extends JPanel {
         }
       }
     });
+    // Start tip timer
+    new Thread(this).start();
   }
 
   void setInfoText (String text) {
@@ -1041,6 +1054,78 @@ public class DrawSurface extends JPanel {
     return cullShapes;
   }
 
+  private void cancelTip () {
+    if (tipText != null) {
+      repaint();
+    }
+    tipText = null;
+    tipTimer = 0;
+  }
+
+  private void tipTracker (Point2D.Double loc) {
+    if (tipText != null) {
+      if (tipLoc.distance(loc) * LaserCut.SCREEN_PPI > 3) {
+        cancelTip();
+      }
+    } else {
+      tipLoc = new Point2D.Double(loc.x, loc.y);
+      cancelTip();
+    }
+  }
+
+  /**
+   * Timer thread that handles checking or pop up tooltips for Shape controls
+   */
+  public void run () {
+    while (true) {
+      try {
+        Thread.sleep(100);
+        if (tipTimer < 10) {
+          tipTimer++;
+        } else if (tipTimer == 10) {
+          if (!mouseDown) {
+            tipTimer++;
+            if (selected != null) {
+              if (selected.isPositionClicked(tipLoc, getZoomFactor())) {
+                tipText = "Click and drag to\nreposition the " + selected.getName() + ".";
+              } else if (selected.isResizeOrRotateClicked(tipLoc, getZoomFactor())) {
+                if (selected instanceof LaserCut.Resizable && selected instanceof LaserCut.Rotatable) {
+                  tipText = "Click and drag to resize the " + selected.getName() + ".\n" +
+                            "Hold shift and drag to rotate it.";
+                } else if (selected instanceof LaserCut.Rotatable) {
+                  tipText = "Click and drag to rotate the " + selected.getName() + ".";
+                }
+              } else if (selected.isShapeClicked(tipLoc, getZoomFactor())) {
+                StringBuilder buf = new StringBuilder();
+                if (selected instanceof LaserCut.CADShapeSpline) {
+                  LaserCut.CADShapeSpline spline = (LaserCut.CADShapeSpline) selected;
+                  if (spline.isPathClosed()) {
+                    buf.append("Click and drag to move a control point, or\n" +
+                               "click on outline to add new control point.\n - - \n");
+                  } else {
+                    buf.append("Click and drag to move a control point, or\n" +
+                               "click anywhere else to add new one.\n - - \n");
+                  }
+                }
+                buf.append("Click outline of " + selected.getName() + " to select it, or click\n" +
+                            "anywhere else to deselect it.\n - - \n" +
+                            "Click another shape's outline while Shift is\n" +
+                            "down to group or ungroup with any already\n" +
+                            "selected shapes.");
+                tipText = buf.toString();
+              }
+              if (tipText != null) {
+                repaint();
+              }
+            }
+          }
+        }
+      } catch (InterruptedException ex) {
+        ex.printStackTrace();
+      }
+    }
+  }
+
   public void paint (Graphics g) {
     Dimension d = getSize();
     Graphics2D g2 = (Graphics2D) g;
@@ -1102,6 +1187,26 @@ public class DrawSurface extends JPanel {
       g2.fill(getArrow(measure1.x, maxY, measure2.x, maxY, true));
       g2.fill(getArrow(maxX, measure1.y, maxX, measure2.y, false));
       g2.fill(getArrow(maxX, measure1.y, maxX, measure2.y, true));
+    }
+    if (tipText != null && tipLoc != null) {
+      // todo: need code to reposition tooltip when near lower, or right edges
+      JTextArea tip = new JTextArea();
+      tip.setFont(new Font("Ariel", Font.PLAIN, 16));
+      tip.setText(tipText);
+      tip.validate();
+      Dimension dim = tip.getPreferredSize();
+      tip.setSize(dim);
+      BufferedImage img = new BufferedImage(dim.width + 14, dim.height + 14, BufferedImage.TYPE_INT_RGB);
+      Graphics gg = img.createGraphics();
+      gg.setColor(Color.white);
+      gg.fillRect(0, 0, img.getWidth(), img.getHeight());
+      gg.setColor(Color.black);
+      gg.drawRect(0, 0, img.getWidth() - 1, img.getHeight() - 1);
+      gg.translate(7, 7);
+      tip.paint(gg);
+      gg.dispose();
+      double scale = getScreenScale();
+      g2.drawImage(img, (int) (tipLoc.x * scale) + 7, (int) (tipLoc.y * scale) + 7, null);
     }
     if (placer != null) {
       g2.setColor(Color.black);
