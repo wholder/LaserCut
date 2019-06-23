@@ -16,6 +16,7 @@ public class DrawSurface extends JPanel implements Runnable {
   private List<LaserCut.CADShape>             shapes = new ArrayList<>();
   private LaserCut.CADShape                   selected, dragged, resizeOrRotate;
   private Placer                              placer;
+  private PlacerListener                      placerListener;
   private double                              gridSpacing;
   private int                                 gridMajor;
   private double[]                            zoomFactors = {1, 2, 4, 8, 16};
@@ -69,6 +70,20 @@ public class DrawSurface extends JPanel implements Runnable {
     }
   }
 
+  interface PlacerListener {
+    void placeActive (boolean placing);
+  }
+
+  void addPlacerListener (PlacerListener listener) {
+    placerListener = listener;
+  }
+
+  void setPlacerActive (boolean placing) {
+    if (placerListener != null)  {
+      placerListener.placeActive(placing);
+    }
+  }
+
   DrawSurface (Preferences prefs, JScrollPane scrollPane) {
     super(true);
     this.prefs = prefs;
@@ -95,6 +110,7 @@ public class DrawSurface extends JPanel implements Runnable {
             placer.setPosition(newLoc);
             placer.addToSurface(thisSurface);
             placer = null;
+            setPlacerActive(false);
             if (selected instanceof LaserCut.StateMessages) {
               setInfoText(((LaserCut.StateMessages) selected).getStateMsg());
             } else {
@@ -403,6 +419,7 @@ public class DrawSurface extends JPanel implements Runnable {
         if (key == KeyEvent.VK_ESCAPE) {
           if (placer != null) {
             placer = null;
+            setPlacerActive(false);
             setSelected(null);
             setInfoText("Place cadShape cancelled");
             repaint();
@@ -667,6 +684,7 @@ public class DrawSurface extends JPanel implements Runnable {
     shape.setPosition(0, 0);
     placer = new Placer(items);
     placer.setPosition(newLoc);
+    setPlacerActive(true);
     requestFocus();
     setInfoText("Click to place " + shape.getName());
     repaint();
@@ -680,6 +698,7 @@ public class DrawSurface extends JPanel implements Runnable {
         shape.movePosition(new Point2D.Double(-bounds.getX(), -bounds.getY()));
       }
       placer = new Placer(shapes);
+      setPlacerActive(true);
       requestFocus();
       setInfoText("Click to place imported Shapes");
     }

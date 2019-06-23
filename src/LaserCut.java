@@ -499,6 +499,14 @@ public class LaserCut extends JFrame {
     });
     // Add Menu Bar to Window
     setJMenuBar(menuBar);
+    surface.addPlacerListener(new DrawSurface.PlacerListener() {
+      @Override
+      public void placeActive (boolean placing) {
+        for (int ii = 0; ii < menuBar.getMenuCount(); ii++) {
+          menuBar.getMenu(ii).setEnabled(!placing);
+        }
+      }
+    });
     /*
      *  Add "File" Menu
      */
