@@ -814,7 +814,7 @@ abstract class GRBLBase {
 
     final class Lock { }
 
-    GRBLSender (String[] cmds, String[] abortCmds) throws SerialPortException, IOException {
+    GRBLSender (String[] cmds, String[] abortCmds) {
       super(laserCut, false);
       setTitle("G-Code Monitor");
       setLocationRelativeTo(laserCut);
@@ -882,7 +882,7 @@ abstract class GRBLBase {
       try {
         setVisible(true);
         grbl.setText("Connecting");
-        // Connect tp device and start sending gcode
+        // Connect to device and start sending gcode
         jPort.open(this);
         int timeout = 100 * 10;
         // Wait for startup response from GRBL

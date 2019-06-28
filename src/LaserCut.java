@@ -136,7 +136,7 @@ public class LaserCut extends JFrame {
     String device = Integer.toString(prefs.getInt("outputDevice", 1));
     Map<String,ParameterDialog.ParmItem> items = new LinkedHashMap<>();
     items.put("outputDevice", new ParameterDialog.ParmItem("Output Device:None|0:Epilog Zing|1:Mini Laser|2:" +
-                                                           "Micro Laser|3:MiniCNC|4:Silhouette|5", device));
+                                                           "Micro Laser|3:MiniCNC|4:Silhouette|5:Mini Cutter|6", device));
     items.put("useMouseWheel", new ParameterDialog.ParmItem("Mouse Wheel Scrolling", prefs.getBoolean("useMouseWheel", false)));
     items.put("useDblClkZoom", new ParameterDialog.ParmItem("Double-click Zoom{Dbl click to Zoom 2x, Shift + dbl click to unZoom}",
         prefs.getBoolean("useDblClkZoom", false)));
@@ -1253,7 +1253,7 @@ public class LaserCut extends JFrame {
     setLocation(prefs.getInt("window.x", 10), prefs.getInt("window.y", 10));
     pack();
     setVisible(true);
-    if (outputDevice instanceof ZingLaser || outputDevice instanceof Silhouette) {
+    if (outputDevice instanceof ZingLaser) {
       /*
        * * * * * * * * * * * * * * * * * * *
        * Add some test shapes to DrawSurface
@@ -1321,6 +1321,9 @@ public class LaserCut extends JFrame {
           break;
         case 5:
           outputDevice = new Silhouette(this);
+          break;
+        case 6:
+          outputDevice = new GCodeMiniCutter(this);
           break;
         default:
           outputDevice = null;

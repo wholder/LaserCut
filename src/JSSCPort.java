@@ -71,7 +71,7 @@ public class JSSCPort implements SerialPortEventListener {
         break;
     }
     portName = prefs.get(prefix + "serial.port", null);
-    baudRate = prefs.getInt(prefix + "serial.baud", 115200);
+    baudRate = prefs.getInt(prefix + "serial.baud", SerialPort.BAUDRATE_115200);
   }
 
   boolean hasSerial () {
