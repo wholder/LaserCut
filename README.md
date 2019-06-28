@@ -78,30 +78,46 @@ GRBL-based devices, such as the Mini Laser also have a Jog control panel for mov
   - **6/9/2019** - Added support for Silhouette™ craft cutters (currently tested with Curio and Cameo 3)
   - **6/18/2019** - Can now use mouse to resize and rotate Text and enforce resizing Resizable shapes to a minimum size
   - **6/27/2019** - Added experimental new code to support a Cricut™ Mini Modified to run [TeensyCNC](https://github.com/seishuku/TeensyCNC) by Matt Williams
+  
 ## Under Development
 - Support for a user-extendable library of specialized cutout shapes, such as for mounting RC Servos (to replace and extend the current Nema Stepper code)
 - Import vector shapes from EPS (Encapsulated PostScript®) files
 - Get a certificate so I can sign the JAR file (costs $$$, sigh)
+
 ## Basic Operations
 I'm working on more comprehensive documentation to be built into the code but, in the meantime, here are some basic operations you can do:
 - Select a shape from the "**Shapes**" menu, fill in the parameters, as needed, press "**Place**" and then click the mouse point where you want the shape to be located.  Note: select "centered" for the origin of the shape to be its center, otherwise it will the the upper left point.
 - Click the outline of a shape to select it (shape outline turns blue) and display the origin as a small (+)
-- Click and drag the (+) origin to reposition a shape
-- Click and drag around a set of shapes to select them
-- Click with Shift down to add, or remove a shape from a selected set
-- With one shape selected, press and hold down the shift key while you click on the outline of another shape to group the two objects together (both outlines show as blue).  Shift click again to ungroup a shape.
-- Click one shape in a group to display its origin and then reposition the whole group by clicking and dragging its (+) origin.
-- Select a shape and select **Edit->Edit Selected** (or press the **CMD-E** shortcut key) to bring up the shape parameter dialog.
-- Select a shape and select **Edit->Move Selected** (or press the **CMD-M** shortcut key) to reposition a shape, or a group of shapes.
-- Select a shape and select **Edit->Delete Selected** (or press the **CMD-X** shortcut key) to delete a shape, or a group of shapes.
+- Select a shape and select **Edit->Edit Selected** (or press the **CMD-E** shortcut key) to bring up the shape parameter dialog
+- Select a shape and select **Edit->Move Selected** (or press the **CMD-M** shortcut key) to reposition a shape, or a group of shapes
+- Select a shape and select **Edit->Delete Selected** (or press the **CMD-X** shortcut key) to delete a shape, or a group of shapes
 - Select a shape and select **Edit->Duplicate Selected** (or press the **CMD-D** shortcut key) to create a duplicate shape you can then reposition.
+- Click and drag the (+) origin to reposition a shape
+- With the Shift up (not pressed), click and drag the small square in the lower right corner of a shape's bounding box to resize the shape.
+- With the Shift down (pressed), click and drag the small square, or circle in the lower right corner of a shape's bounding box to rotate the shape about the (+) origin point.
+- Click and drag around a set of shapes to select them (purple color)
+- Or, hold down Shift and click another shape to add it to the set of selected shapes
+- Or, hold down Shift and click one of the selected shapes to remove it from the selected set
+- With two, or more shapes selected (purple color), choose **Edit->Group Selected** to add these shapes to a group.  Note: grouped shapes (blue color) can still be individually selected to edit paramaters, but moving any shape will move the entire group
+- To ungroup grouped shapes, select the group (blue color when selected) the choose **Edit->Ungroup Selected**
+
+## Constructive Geometry on Grouped Shapes
+- Grouped shapes can be combined into new shapes by using constructive geometry.  For example, create two, overlapping rectangles and group them.  The, with the group selected (blue color) choose **Edit->Add Grouped Shape(s) to Selected Shape** to add other grouped shapes to the selected shape (the one showing the (+) move control).  For example:
+<p align="center"><img src="https://github.com/wholder/LaserCut/blob/master/images/Add.png"></p>
+
+- Or, choose **Edit->Subtract Grouped Shape(s) to Selected Shape** to subtract the othe grouped shapes from the selected shape.  For example:
+<p align="center"><img src="https://github.com/wholder/LaserCut/blob/master/images/Subtract.png"></p>
+
+Note: you may need to experiment with these options to get the hang of how they work, but they can be used to create very complex shape outlines.
 - Double Click with Meta Down to zoom in on location clicked, Shift-Double Click with Meta Down to zoom out.
-- Spline Shapes
+
+## Drawing a Spline Shape
   - Select `Spline Curve` from the `Shapes` menu then click to place the origin of the shape (does not create a point on the curve)
   - Click again to place first control point then again to place another (repeat to trace out curve.)
   - Click on first control point placed to complete and close curve.
   - Click and drag on an already placed control point to move it.
   - Click and drag on the origin to move the entire spline shape
+  
 ## Credits
 LaserCut uses the following Java code to perform some of its functions:
 - [LibLaserCut](https://github.com/t-oster/LibLaserCut) (used to control the Zing Laser)
