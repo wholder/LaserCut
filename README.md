@@ -42,7 +42,13 @@ LaserCut uses the Java Language's reflection and object serialization features t
 - Export vector designs to EPS files
 - Freeform drawing of shapes (Beta) using [Catmull-Rom Splines](https://en.wikipedia.org/wiki/Centripetal_Catmull–Rom_spline) and then automatically convert them into [Bézier Curve](https://en.wikipedia.org/wiki/Bézier_curve)-based shapes.
 - Raster images which can be engraved on Zing or used as tracing templates for spline shapes.  Also supports full rotation of raster images as well as control over DPI of of engraved images.
+
+## Selecting the Output Device
+To select the current output device, choose "Preferences" in the "File" menu then select the device and the press "Save".  LaserCut will remember this selection the next time the program is launched.
+<p align="center"><img src="https://github.com/wholder/LaserCut/blob/master/images/Preferences%20Dialog.png"></p>
+
 ## Jog Controls
+GRBL-based devices, such as the Mini Laser also have a Jog control panel for moving the laser head around and selecting the origin.
 <p align="center"><img src="https://github.com/wholder/LaserCut/blob/master/images/Jog%20Dialog.png"></p>
 
 ## New Additions
