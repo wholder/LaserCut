@@ -92,10 +92,10 @@ I'm working on more comprehensive documentation to be built into the code but, i
 - Select a shape and select **Edit->Move Selected** (or press the **CMD-M** shortcut key) to reposition a shape, or a group of shapes
 - Select a shape and select **Edit->Delete Selected** (or press the **CMD-X** shortcut key) to delete a shape, or a group of shapes
 - Select a shape and select **Edit->Duplicate Selected** (or press the **CMD-D** shortcut key) to create a duplicate shape you can then reposition.
-- Click and drag the (+) origin to reposition a shape
-- With the Shift up (not pressed), click and drag the small square in the lower right corner of a shape's bounding box to resize the shape.
-- With the Shift down (pressed), click and drag the small square, or circle in the lower right corner of a shape's bounding box to rotate the shape about the (+) origin point.
-- Click and drag around a set of shapes to select them (purple color)
+- Click and drag the (+) origin on a selected shape to reposition a shape
+- With the Shift up (not pressed), click and drag the small square in the lower right corner of a selected shape's bounding box to resize the shape.
+- With the Shift down (pressed), click and drag the small square, or circle in the lower right corner of a selected shape's bounding box to rotate the shape about the (+) origin point.
+- Click on empty space then hold down the mouse button and drag a bounding box around a set of shapes to select them (purple color)
 - Or, hold down Shift and click another shape to add it to the set of selected shapes
 - Or, hold down Shift and click one of the selected shapes to remove it from the selected set
 - With two, or more shapes selected (purple color), choose **Edit->Group Selected** to add these shapes to a group.  Note: grouped shapes (blue color) can still be individually selected to edit paramaters, but moving any shape will move the entire group
@@ -112,12 +112,15 @@ Note: you may need to experiment with these options to get the hang of how they 
 - Double Click with Meta Down to zoom in on location clicked, Shift-Double Click with Meta Down to zoom out.
 
 ## Drawing a Spline Shape
-  - Select `Spline Curve` from the `Shapes` menu then click to place the origin of the shape (does not create a point on the curve)
-  - Click again to place first control point then again to place another (repeat to trace out curve.)
-  - Click on first control point placed to complete and close curve.
-  - Click and drag on an already placed control point to move it.
-  - Click and drag on the origin to move the entire spline shape
+ - Select `Spline Curve` from the `Shapes` menu then click to place the origin of the shape (does not create a point on the curve)
+ - Click again to place first control point then again to place another (repeat to trace out curve.)
+ - Click on first control point placed to complete and close curve.
+ - Click and drag on an already placed control point to move it.
+ - Click and drag on the origin to move the entire spline shape
   
+## Raster Images
+ - Choose **Shapes->Raster Image** to import an image file (jpeg, png, gif, or bmp) and then place it onto the canvas.  Some devices can engrave raster images and they can also be used as a reference for drawing shapes.  Note: be careful to make sure the imporated image is scaled to fit within the bounds of the canvas.  Also, on slower computers, large images may draw sugglishly when placing, repositioning, or scaling the image using mouse controls.
+ 
 ## Credits
 LaserCut uses the following Java code to perform some of its functions:
 - [LibLaserCut](https://github.com/t-oster/LibLaserCut) (used to control the Zing Laser)
