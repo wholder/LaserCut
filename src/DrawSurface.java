@@ -1073,6 +1073,17 @@ public class DrawSurface extends JPanel implements Runnable {
     return cullShapes;
   }
 
+  List<LaserCut.CADShape> selectCutterItems (boolean planPath) {
+    // Cull out items that will not be cut or that don't match cutItems
+    ArrayList<LaserCut.CADShape> cullShapes = new ArrayList<>();
+    for (LaserCut.CADShape shape : getDesign()) {
+      if (!(shape instanceof LaserCut.CADNoDraw)) {
+        cullShapes.add(shape);
+      }
+    }
+    return planPath ? PathPlanner.optimize(cullShapes) : cullShapes;
+  }
+
   private void cancelTip () {
     if (tipText != null) {
       repaint();

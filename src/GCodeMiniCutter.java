@@ -51,6 +51,8 @@ import static javax.swing.JOptionPane.*;
  *
  *  Note: the g-code parser in TeensyCNC expects a space, or newline after each element of a command.  This means
  *  that TeensyCNC will not respond to "G00X1Y1\r\n".  Send as "G00 X1 Y1\r\n" instead.
+ *
+ *  Teeensy 3.2 VID = 0x2504, PID = 0x0300, JSSC Port Id is "cu.usbmodem4201"
  */
 
 class GCodeMiniCutter implements LaserCut.OutputDevice {
@@ -124,7 +126,7 @@ class GCodeMiniCutter implements LaserCut.OutputDevice {
           cmds.add("M05");                                                                    // Set Tool Head Up
           cmds.add("F" + cutSpeed);                                                           // Set feed rate (inches/min)
           // Process only cut items
-          List<LaserCut.CADShape> shapes = laserCut.surface.selectLaserItems(false, planPath);
+          List<LaserCut.CADShape> shapes = laserCut.surface.selectCutterItems(planPath);
           shapes.addAll(laserCut.surface.selectLaserItems(true, planPath));
           DecimalFormat fmt = new DecimalFormat("#.###");
           for (LaserCut.CADShape shape : shapes) {
