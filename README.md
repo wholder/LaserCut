@@ -47,6 +47,14 @@ LaserCut uses the Java Language's reflection and object serialization features t
 To select the current output device, choose "Preferences" in the "File" menu then select the device and the press "Save".  LaserCut will remember this selection the next time the program is launched.
 <p align="center"><img src="https://github.com/wholder/LaserCut/blob/master/images/Preferences%20Dialog.png"></p>
 
+Currently supported Output Devices devices include:
+ - Epilog™ Zing (requires Ethernet connection, as USB is not supprted)
+ - Mini Laser (small, Chinese-made laser engraver updated to run GRBL 1.1)
+ - Micro Laser (small engraver built from DVD/CD stepper assembiles and updated to run GRBL 1.1)
+ - Mini CNC (small, Chinese-made CNC Mill updated to run GRBL 1.1)
+ - Silhouette™ Craft Cutters (tested with Cameo™ 3 and Curio™ models, but should work with others)
+ - Cricut™ Mini Craft Cutter (running [Matt Williams' TeensyCNC firmware](https://github.com/seishuku/TeensyCNC))
+ 
 ## Jog Controls
 GRBL-based devices, such as the Mini Laser also have a Jog control panel for moving the laser head around and selecting the origin.
 <p align="center"><img src="https://github.com/wholder/LaserCut/blob/master/images/Jog%20Dialog.png"></p>
