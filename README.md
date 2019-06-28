@@ -29,7 +29,7 @@ LaserCut uses the Java Language's reflection and object serialization features t
   - Subtract/Remove one or more shapes from another shape to get a new shape
 - Zoom and Pan support
 - Generate Spur Gears of various sizes and parameters
-- All shapes can be set to be cut or engraved by the laser cutter (Zing only)
+- All shapes can be set to be cut or engraved by the laser cutter
 - Send jobs to an Eplilog™ Zing™ over an Ethernet connection (USB not supported)
 - Send jobs to a GRBL-based laser cutter with support for jogging position of laser head (experimental)
 - Path Optimzation laser cuts nested shapes, such as holes, before the shapes they are nested inside
@@ -100,6 +100,7 @@ I'm working on more comprehensive documentation to be built into the code but, i
 - Or, hold down Shift and click one of the selected shapes to remove it from the selected set
 - With two, or more shapes selected (purple color), choose **Edit->Group Selected** to add these shapes to a group.  Note: grouped shapes (blue color) can still be individually selected to edit paramaters, but moving any shape will move the entire group
 - To ungroup grouped shapes, select the group (blue color when selected) the choose **Edit->Ungroup Selected**
+- Double Click with Meta Down to zoom in on the location clicked, Shift-Double Click with Meta Down to zoom out.
 
 ## Constructive Geometry on Grouped Shapes
 - Grouped shapes can be combined into new shapes by using constructive geometry.  For example, create two, overlapping rectangles and group them.  The, with the group selected (blue color) choose **Edit->Add Grouped Shape(s) to Selected Shape** to add other grouped shapes to the selected shape (the one showing the (+) move control).  For example:
@@ -109,7 +110,6 @@ I'm working on more comprehensive documentation to be built into the code but, i
 <p align="center"><img src="https://github.com/wholder/LaserCut/blob/master/images/Subtract.png"></p>
 
 Note: you may need to experiment with these options to get the hang of how they work, but they can be used to create very complex shape outlines.
-- Double Click with Meta Down to zoom in on location clicked, Shift-Double Click with Meta Down to zoom out.
 
 ## Drawing a Spline Shape
  - Select `Spline Curve` from the `Shapes` menu then click to place the origin of the shape (does not create a point on the curve)
@@ -119,7 +119,7 @@ Note: you may need to experiment with these options to get the hang of how they 
  - Click and drag on the origin to move the entire spline shape
   
 ## Raster Images
- - Choose **Shapes->Raster Image** to import an image file (jpeg, png, gif, or bmp) and then place it onto the canvas.  Some devices can engrave raster images and they can also be used as a reference for drawing shapes.  Note: be careful to make sure the imporated image is scaled to fit within the bounds of the canvas.  Also, on slower computers, large images may draw sugglishly when placing, repositioning, or scaling the image using mouse controls.
+ - Choose **Shapes->Raster Image** to import an image file (jpeg, png, gif, or bmp) and then place it onto the canvas.  Some devices can engrave raster images and they can also be used as a reference for drawing shapes.  Note: be careful to make sure the imporated image is scaled to fit within the bounds of the canvas.  The DPI (dots/inch) used for engraving can be set independently from the imported image's DPI and it's scaled size on the canvas. Note: on slower computers, large images may draw sugglishly when placing, repositioning, or scaling the image using mouse controls.
  
 ## Credits
 LaserCut uses the following Java code to perform some of its functions:
