@@ -1,4 +1,3 @@
-import jssc.SerialPortException;
 
 import javax.swing.*;
 import javax.swing.text.DefaultCaret;
@@ -14,7 +13,7 @@ import java.util.List;
 
 import static javax.swing.JOptionPane.*;
 
-/*
+  /*
    *  GRBL 1.1 Pinouts and commands
    *     D2 - Step Pulse X-Axis Output
    *     D3 - Step Pulse Y-Axis Output
@@ -97,8 +96,8 @@ import static javax.swing.JOptionPane.*;
    *    $X                          Clear Alarm state
    *
    *  Probe responses:
-    *   [PRB:5.000,5.000,-6.000:1]  On probe contact
-    *   ALARM:4                     The probe is not in the expected initial state before starting probe cycle
+   *    [PRB:5.000,5.000,-6.000:1]  On probe contact
+   *    ALARM:4                     The probe is not in the expected initial state before starting probe cycle
    *    ALARM:5                     Probe fails to contact in within the programmed travel for G38.2 and G38.4
    *    error:9                     G-code locked out during alarm or jog state
    *

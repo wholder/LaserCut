@@ -87,8 +87,8 @@ public class DrawSurface extends JPanel implements Runnable {
   DrawSurface (Preferences prefs, JScrollPane scrollPane) {
     super(true);
     this.prefs = prefs;
-    gridSpacing = prefs.getDouble("gridSpacing", 0);
-    gridMajor = prefs.getInt("gridMajor", 0);
+    gridSpacing = prefs.getDouble("gridSpacing", 0.1);
+    gridMajor = prefs.getInt("gridMajor", 10);
     useDblClkZoom = prefs.getBoolean("useDblClkZoom", false);
     DrawSurface thisSurface = this;
     // Set JPanel size to a temprary default size
