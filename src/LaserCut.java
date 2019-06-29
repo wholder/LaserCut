@@ -133,7 +133,7 @@ public class LaserCut extends JFrame {
   }
 
   private void showPreferencesBox () {
-    String device = Integer.toString(prefs.getInt("outputDevice", 1));
+    String device = Integer.toString(prefs.getInt("outputDevice", 0));
     Map<String,ParameterDialog.ParmItem> items = new LinkedHashMap<>();
     items.put("outputDevice", new ParameterDialog.ParmItem("Output Device:None|0:Epilog Zing|1:Mini Laser|2:" +
                                                            "Micro Laser|3:MiniCNC|4:Silhouette|5:Mini Cutter|6", device));
