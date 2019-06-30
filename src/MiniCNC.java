@@ -71,35 +71,36 @@
 
     // Implement for LaserCut.OutputDevice
     public Rectangle2D.Double getWorkspaceSize () {
-      return new Rectangle2D.Double(0, 0, 6.0, 5.0);
+      return new Rectangle2D.Double(0, 0, getDouble("workwidth", 6.0), getDouble("workheight", 6.0));
+
     }
 
     // Implement for LaserCut.OutputDevice
     public double getZoomFactor () {
-      return 1.0;
+      return getDouble("workzoom", 1.0);
     }
 
     public JMenu getDeviceMenu () {
       JMenu miniCncMenu = new JMenu(getName());
-      jPort = new JSSCPort("mini.cnc.", laserCut.prefs);
+      jPort = new JSSCPort(getPrefix(), laserCut.prefs);
       // Add "Send to Mini Laser" Submenu Item
       JPanel panel = new JPanel(new GridLayout(1, 2));
       panel.add(new JLabel("Z Depth: ", JLabel.RIGHT));
       JTextField tf = new JTextField("1", 4);
       panel.add(tf);
-      JMenuItem sendToMiniCnc = new JMenuItem("Send GRBL to Mini CNC");
+      JMenuItem sendToMiniCnc = new JMenuItem("Send GRBL to " + getName());
       sendToMiniCnc.addActionListener((ActionEvent ev) -> {
         if (jPort.hasSerial()) {
-          if (showConfirmDialog(laserCut, panel, "Send GRBL to Mini CNC", YES_NO_OPTION, PLAIN_MESSAGE, null) == OK_OPTION) {
+          if (showConfirmDialog(laserCut, panel, "Send GRBL to " + getName(), YES_NO_OPTION, PLAIN_MESSAGE, null) == OK_OPTION) {
             double zDepth = Double.parseDouble(tf.getText());
             zDepth = zDepth > 0 ? -zDepth : zDepth;                         // Make sure Z depth is negative (move down)
             // Generate G_Code for GRBL 1.1
             List<String> cmds = new ArrayList<>();
             // Add starting G-codes
             cmds.add("G20");                                                // Set Inches as Units
-            int rpm = laserCut.prefs.getInt("mini.cnc.rpm", MINI_CNC_RPM_DEFAULT);
+            int rpm = getInt("rpm", MINI_CNC_RPM_DEFAULT);
             rpm = Math.min(1000, rpm);                                      // Max RPM == 1000
-            int feed = laserCut.prefs.getInt("mini.cnc.feed", MINI_CNC_FEED_DEFAULT);
+            int feed = getInt("feed", MINI_CNC_FEED_DEFAULT);
             feed = Math.max(1, feed);                                       // Min feed = 1 inches/min
             DecimalFormat fmt = new DecimalFormat("#.#####");
             for (LaserCut.CADShape shape : laserCut.surface.selectCncItems()) {
@@ -137,16 +138,26 @@
       });
       miniCncMenu.add(sendToMiniCnc);
       // Add "Mini CNC Settings" Submenu Item
-      JMenuItem miniLazerSettings = new JMenuItem("Mini CNC Settings");
+      JMenuItem miniLazerSettings = new JMenuItem(getName() + " Settings");
       miniLazerSettings.addActionListener(ev -> {
+        Rectangle2D.Double workspace = getWorkspaceSize();
         ParameterDialog.ParmItem[] parmSet = {
-          new ParameterDialog.ParmItem("Speed|RPM", laserCut.prefs.getInt("mini.cnc.rpm", MINI_CNC_FEED_DEFAULT)),
-          new ParameterDialog.ParmItem("Feed|inches/minute", laserCut.prefs.getInt("mini.cnc.feed", MINI_CNC_RPM_DEFAULT))
+          new ParameterDialog.ParmItem("Speed{RPM}", getInt("rpm", MINI_CNC_FEED_DEFAULT)),
+          new ParameterDialog.ParmItem("Feed{inches/minute}", getInt("feed", MINI_CNC_RPM_DEFAULT)),
+          new ParameterDialog.ParmItem(new JSeparator()),
+          new ParameterDialog.ParmItem("Workspace Zoom:1 ; 1|1:2 ; 1|2:4 ; 1|4:8 ; 1|8", Integer.toString((int) getZoomFactor())),
+          new ParameterDialog.ParmItem("Workspace Width{inches}", workspace.width),
+          new ParameterDialog.ParmItem("Workspace Height{inches}", workspace.height),
         };
         if (ParameterDialog.showSaveCancelParameterDialog(parmSet, dUnits, laserCut)) {
-          int ii = 0;
-          laserCut.prefs.putInt("mini.cnc.rpm", (Integer) parmSet[ii++].value);
-          laserCut.prefs.putInt("mini.cnc.feed", (Integer) parmSet[ii].value);
+          putInt("rpm", (Integer) parmSet[0].value);
+          putInt("feed", (Integer) parmSet[1].value);
+          // Separator
+          putDouble("workzoom", Double.parseDouble((String) parmSet[3].value));
+          laserCut.surface.setZoomFactor(getZoomFactor());
+          putDouble("workwidth", (Double) parmSet[4].value);
+          putDouble("workheight", (Double) parmSet[5].value);
+          laserCut.surface.setSurfaceSize(getWorkspaceSize());
         }
       });
       miniCncMenu.add(miniLazerSettings);
