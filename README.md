@@ -62,6 +62,7 @@ Currently supported Output Devices devices include:
 ## Jog Controls
 GRBL-based devices, such as the Mini Laser also have a Jog control panel for moving the laser head around and selecting the origin.
 <p align="center"><img src="https://github.com/wholder/LaserCut/blob/master/images/Jog%20Dialog.png"></p>
+Note: the slider is used to set the feed rate used by the Jog controls (lower settings move slower)
 
 ## Custom Device Settings
 You can use the Output Device's Settings menu to configure speed and power settings, as well as other options.  For example, this is the Settings menu for the Mini Laser:

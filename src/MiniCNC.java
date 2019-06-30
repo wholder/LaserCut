@@ -72,7 +72,6 @@
     // Implement for LaserCut.OutputDevice
     public Rectangle2D.Double getWorkspaceSize () {
       return new Rectangle2D.Double(0, 0, getDouble("workwidth", 6.0), getDouble("workheight", 6.0));
-
     }
 
     // Implement for LaserCut.OutputDevice
