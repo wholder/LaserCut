@@ -112,6 +112,30 @@ abstract class GRBLBase {
 
   abstract String getPrefix ();
 
+  boolean getBoolean(String name, boolean def) {
+    return laserCut.prefs.getBoolean(getPrefix() + name, def);
+  }
+
+  void putBoolean (String name, boolean value) {
+    laserCut.prefs.putBoolean(getPrefix() + name, value);
+  }
+
+  int getInt (String name, int def) {
+    return laserCut.prefs.getInt(getPrefix() + name, def);
+  }
+
+  void putInt (String name, int value) {
+    laserCut.prefs.putInt(getPrefix() + name, value);
+  }
+
+  double getDouble (String name, double def) {
+    return laserCut.prefs.getDouble(getPrefix() + name, def);
+  }
+
+  void putDouble (String name, double value) {
+    laserCut.prefs.putDouble(getPrefix() + name, value);
+  }
+
   GRBLBase (LaserCut laserCut) {
     this.laserCut = laserCut;
     this.dUnits = laserCut.displayUnits;

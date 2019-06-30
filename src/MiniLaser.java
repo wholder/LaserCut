@@ -41,28 +41,12 @@ class MiniLaser extends GRBLBase implements LaserCut.OutputDevice {
 
   // Implement for LaserCut.OutputDevice
   public Rectangle2D.Double getWorkspaceSize () {
-    return new Rectangle2D.Double(0, 0, 7.0, 8.0);
+    return new Rectangle2D.Double(0, 0, getDouble("workwidth", 7.0), getDouble("workheight", 8.0));
   }
 
   // Implement for LaserCut.OutputDevice
   public double getZoomFactor () {
-    return 1.0;
-  }
-
-  private boolean getBoolean(String name, boolean def) {
-    return laserCut.prefs.getBoolean(getPrefix() + name, def);
-  }
-
-  private void putBoolean (String name, boolean value) {
-    laserCut.prefs.putBoolean(getPrefix() + name, value);
-  }
-
-  private int getInt(String name, int def) {
-    return laserCut.prefs.getInt(getPrefix() + name, def);
-  }
-
-  private void putInt (String name, int value) {
-    laserCut.prefs.putInt(getPrefix() + name, value);
+    return getDouble("workzoom", 1.0);
   }
 
   int getGuidePower () {
@@ -185,6 +169,7 @@ class MiniLaser extends GRBLBase implements LaserCut.OutputDevice {
     // Add "Mini Lazer Settings" Submenu Item
     JMenuItem miniLazerSettings = new JMenuItem(getName() + " Settings");
     miniLazerSettings.addActionListener(ev -> {
+      Rectangle2D.Double workspace = getWorkspaceSize();
       ParameterDialog.ParmItem[] parmSet = {
           new ParameterDialog.ParmItem("Use Path Planner", getBoolean("pathplan", true)),
           new ParameterDialog.ParmItem("Guide Beam Power|%", Math.min(10, getInt("guide", 0))),
@@ -195,7 +180,11 @@ class MiniLaser extends GRBLBase implements LaserCut.OutputDevice {
           new ParameterDialog.ParmItem(new JSeparator()),
           new ParameterDialog.ParmItem("Engrave Power|%", Math.min(100, getInt("epower", MINI_EPOWER_DEFAULT))),
           new ParameterDialog.ParmItem("Engrave Speed{inches/minute}", getInt("espeed", MINI_ESPEED_DEFAULT)),
-          new ParameterDialog.ParmItem("Engrave DPI{dots/inch}", getInt("dpi", MINI_DPI_DEFAULT))
+          new ParameterDialog.ParmItem("Engrave DPI{dots/inch}", getInt("dpi", MINI_DPI_DEFAULT)),
+          new ParameterDialog.ParmItem(new JSeparator()),
+          new ParameterDialog.ParmItem("Workspace Zoom:1 ; 1|1:2 ; 1|2:4 ; 1|4:8 ; 1|8", Integer.toString((int) getZoomFactor())),
+          new ParameterDialog.ParmItem("Workspace Width{inches}", workspace.width),
+          new ParameterDialog.ParmItem("Workspace Height{inches}", workspace.height),
       };
       if (ParameterDialog.showSaveCancelParameterDialog(parmSet, dUnits, laserCut)) {
         putBoolean("pathplan", (Boolean) parmSet[0].value);
@@ -208,6 +197,12 @@ class MiniLaser extends GRBLBase implements LaserCut.OutputDevice {
         putInt("epower", Math.min(100, (Integer) parmSet[7].value));
         putInt("espeed", (Integer) parmSet[8].value);
         putInt("dpi", (Integer) parmSet[9].value);
+        // Separator
+        putDouble("workzoom", Double.parseDouble((String) parmSet[11].value));
+        laserCut.surface.setZoomFactor(getZoomFactor());
+        putDouble("workwidth", (Double) parmSet[12].value);
+        putDouble("workheight", (Double) parmSet[13].value);
+        laserCut.surface.setSurfaceSize(getWorkspaceSize());
       }
     });
     miniLaserMenu.add(miniLazerSettings);

@@ -63,6 +63,23 @@ Currently supported Output Devices devices include:
 GRBL-based devices, such as the Mini Laser also have a Jog control panel for moving the laser head around and selecting the origin.
 <p align="center"><img src="https://github.com/wholder/LaserCut/blob/master/images/Jog%20Dialog.png"></p>
 
+## Custom Device Settings
+You can use the Output Device's Settings menu to configure speed and power settings, as well as other options.  For example, this is the Settings menu for the Mini Laser:
+<p align="center"><img src="https://github.com/wholder/LaserCut/blob/master/images/Mini%20Laser%20Settings.png"></p>
+The function of the different fields is, as follows:
+
+ - **Use Path Planner** - if enabled, LaserCut tries to optimize the order of cuts so that interior paths, such as cutouts, or holes are cut before enclosing paths.  This help prevent miscutting caused by the work items shifting around on the cutting bed.
+ - **Guide Beam Power** - If non zero, the laser is turned on at this setting whenever you ue the Jog menu to move the cutting head.  Note: for safety, use the lowest setting that displays a visible beam (**Warning** do not use if the cutting laser's beam wavelength is not visible, such as with Infrared Lasers, as this creates an invisible eye safety hazard) 
+ - **Dynamic Laser** - This a feature of GRBL 1.1.  If enabled, it will automatically adjust laser power based on the current speed relative to the programmed rate.  Note: enabled by default when engraving.
+ - **Cut Power** - Sets the laser power used for shapes set to be cut (vs engraved)
+ - **Cut Speed** - Sets the feed rate (in inches/minute) used for shapes set to be cut (vs engraved)
+ - **Engrave Power** - Sets the laser power used for shapes set to be engraved (vs cut)
+ - **Engrave Speed** - Sets the feed rate (in inches/minute) used for shapes set to be engraved (vs cut)
+ - **Engrave DPI** - Sets the raster (in dots/inch) use when raster engraving an image
+ - **Workspace Zoom** - Used to set the default zoom factor used the workspace canvas (initial default is 1 : 1 for the Mini Laser)
+ - **Workspace Width** - Used to set width of the workspace canvas (initial default is 7 inches for the Mini Laser)
+ - **Workspace Height** - Used to set width of the workspace canvas (initial default is 8 inches for the Mini Laser)
+
 ## New Additions
   - **7/6/2018** - Added a Material Settings selection menu for Zing™ Laser.  Material settings are stored as text file in the resource fork of the Jar file.  Currently only two materials, _1/8" Baltic Birch Plywood_ and _1/8" Cast Acrylic Plastic_ are supported.  More work needed to add a decent library of materials settings.
   - **7/7/2018** - Added new "Units" menu to select either `inches`, or `millimeters` as the default units for offset and size measurements.  Note: can switch back and forth, as needed, and can override setting by adding "`in`" or "`mm`" as a suffix to an input value.  Caution: still not completely tested.

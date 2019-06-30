@@ -78,7 +78,7 @@ public class DrawSurface extends JPanel implements Runnable {
     placerListener = listener;
   }
 
-  void setPlacerActive (boolean placing) {
+  private void setPlacerActive (boolean placing) {
     if (placerListener != null)  {
       placerListener.placeActive(placing);
     }
@@ -483,6 +483,13 @@ public class DrawSurface extends JPanel implements Runnable {
       Dimension zoomSize = new Dimension((int) (workSize.getWidth() * zoomFactor), (int) (workSize.getHeight() * zoomFactor));
       setSize(zoomSize);
       repaint();
+      for (int ii = 0; ii < zoomFactors.length; ii++) {
+        if (zoom == zoomFactors[ii]) {
+          for (LaserCut.ZoomListener listener : zoomListeners) {
+            listener.setZoom(ii);
+          }
+        }
+      }
     }
   }
 

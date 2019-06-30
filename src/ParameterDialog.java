@@ -58,6 +58,9 @@ class ParameterDialog extends JDialog {
       if (name.contains(":")) {
         String[] parts = name.split(":");
         name = parts[0];
+        for (int ii = 1; ii < parts.length; ii++) {
+          parts[ii] = parts[ii].replace(';', ':');
+        }
         valueType = Arrays.copyOfRange(parts, 1, parts.length);
       } else if (name.contains("[")  &&  name.contains("]")) {
         int ii = name.indexOf("[");
@@ -348,6 +351,7 @@ class ParameterDialog extends JDialog {
         } else if (parm.valueType instanceof String[]) {
           String[] labels = getLabels((String[]) parm.valueType);
           JComboBox<String> select = parm.name.equals("fontName") ? new FontList(labels) : new JComboBox<>(labels);
+          ((JLabel)select.getRenderer()).setHorizontalAlignment(JLabel.CENTER);
           String[] values = getValues((String[]) parm.valueType);
           if (parm.value instanceof Integer) {
             select.setSelectedIndex(Arrays.asList(values).indexOf(Integer.toString((Integer) parm.value)));
@@ -358,6 +362,7 @@ class ParameterDialog extends JDialog {
         } else if (parm.valueType instanceof int[]) {
           String[] vals = intToString((int[]) parm.valueType);
           JComboBox<String> select = new JComboBox<>(vals);
+          ((JLabel)select.getRenderer()).setHorizontalAlignment(JLabel.CENTER);
           select.setSelectedItem(Integer.toString((Integer) parm.value));
           fields.add(parm.field = select, getGbc(1, jj));
         } else if (parm.value instanceof JComponent) {

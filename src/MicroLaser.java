@@ -1,4 +1,3 @@
-import java.awt.*;
 import java.awt.geom.Rectangle2D;
 
 public class MicroLaser extends MiniLaser{
@@ -20,12 +19,12 @@ public class MicroLaser extends MiniLaser{
   // Implement for LaserCut.OutputDevice
   @Override
   public Rectangle2D.Double getWorkspaceSize () {
-    return new Rectangle2D.Double(0, 0, 1.5, 1.5);
+    return new Rectangle2D.Double(0, 0, getDouble("workwidth", 1.5), getDouble("workheight", 1.5));
   }
 
   // Implement for LaserCut.OutputDevice
   @Override
   public double getZoomFactor () {
-    return 4.0;
+    return getDouble("workzoom", 4.0);
   }
 }
