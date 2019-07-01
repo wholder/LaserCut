@@ -50,7 +50,7 @@ class MiniLaser extends GRBLBase implements LaserCut.OutputDevice {
   }
 
   int getGuidePower () {
-    return Math.min(10, getInt("guide", 0));
+    return getInt("guide", 0);
   }
 
   public JMenu getDeviceMenu () {
@@ -70,13 +70,11 @@ class MiniLaser extends GRBLBase implements LaserCut.OutputDevice {
           // Cut Settings
           int cutSpeed = getInt("speed", MINI_CSPEED_DEFAULT);
           cutSpeed = Math.min(MINI_MAX_SPEED, cutSpeed);                                      // Min speed = 10 inches/min
-          int cutPower = getInt("power", MINI_CPOWER_DEFAULT);
-          cutPower = Math.min(MINI_MAX_POWER, (MINI_MAX_POWER * cutPower) / 100);             // Max power == 255
+          int cutPower = getInt("power", MINI_CPOWER_DEFAULT) * MINI_MAX_POWER / 100;         // Max power == 255
           // Engrave Settings
           int engraveSpeed = getInt("espeed", MINI_ESPEED_DEFAULT);
           engraveSpeed = Math.min(MINI_MAX_SPEED, engraveSpeed);                              // Min speed = 10 inches/min
-          int engravePower = getInt("epower", MINI_EPOWER_DEFAULT);
-          engravePower = Math.min(MINI_MAX_POWER, (MINI_MAX_POWER * engravePower) / 100);     // Max power == 255
+          int engravePower = getInt("epower", MINI_EPOWER_DEFAULT) * MINI_MAX_POWER / 100;    // Max power == 255
           int engraveDpi = getInt("dpi", MINI_DPI_DEFAULT);
           // Generate G_Code for GRBL 1.1
           List<String> cmds = new ArrayList<>();
@@ -172,13 +170,13 @@ class MiniLaser extends GRBLBase implements LaserCut.OutputDevice {
       Rectangle2D.Double workspace = getWorkspaceSize();
       ParameterDialog.ParmItem[] parmSet = {
           new ParameterDialog.ParmItem("Use Path Planner", getBoolean("pathplan", true)),
-          new ParameterDialog.ParmItem("Guide Beam Power|%", Math.min(10, getInt("guide", 0))),
+          new ParameterDialog.ParmItem("Guide Beam Power|%(0-10)", getInt("guide", 0)),
           new ParameterDialog.ParmItem(new JSeparator()),
           new ParameterDialog.ParmItem("Dynamic Laser", getBoolean("dynamic", true)),
-          new ParameterDialog.ParmItem("Cut Power|%", Math.min(100, getInt("power", MINI_CPOWER_DEFAULT))),
+          new ParameterDialog.ParmItem("Cut Power|%(0-100)", getInt("power", MINI_CPOWER_DEFAULT)),
           new ParameterDialog.ParmItem("Cut Speed{inches/minute}", getInt("speed", MINI_CSPEED_DEFAULT)),
           new ParameterDialog.ParmItem(new JSeparator()),
-          new ParameterDialog.ParmItem("Engrave Power|%", Math.min(100, getInt("epower", MINI_EPOWER_DEFAULT))),
+          new ParameterDialog.ParmItem("Engrave Power|%(0-100)", getInt("epower", MINI_EPOWER_DEFAULT)),
           new ParameterDialog.ParmItem("Engrave Speed{inches/minute}", getInt("espeed", MINI_ESPEED_DEFAULT)),
           new ParameterDialog.ParmItem("Engrave DPI{dots/inch}", getInt("dpi", MINI_DPI_DEFAULT)),
           new ParameterDialog.ParmItem(new JSeparator()),
@@ -188,13 +186,13 @@ class MiniLaser extends GRBLBase implements LaserCut.OutputDevice {
       };
       if (ParameterDialog.showSaveCancelParameterDialog(parmSet, dUnits, laserCut)) {
         putBoolean("pathplan", (Boolean) parmSet[0].value);
-        putInt("guide", Math.min(10, (Integer) parmSet[1].value));
+        putInt("guide", (Integer) parmSet[1].value);
         // Separator
         putBoolean("dynamic", (Boolean) parmSet[3].value);
-        putInt("power", Math.min(100, (Integer) parmSet[4].value));
+        putInt("power", (Integer) parmSet[4].value);
         putInt("speed", (Integer) parmSet[5].value);
         // Separator
-        putInt("epower", Math.min(100, (Integer) parmSet[7].value));
+        putInt("epower", (Integer) parmSet[7].value);
         putInt("espeed", (Integer) parmSet[8].value);
         putInt("dpi", (Integer) parmSet[9].value);
         // Separator

@@ -163,15 +163,15 @@ class ZingLaser implements LaserCut.OutputDevice {
           new ParameterDialog.ParmItem(new JSeparator()),
           new ParameterDialog.ParmItem(matMenu),
           new ParameterDialog.ParmItem(new JSeparator()),
-          new ParameterDialog.ParmItem("Cut Power|%", laserCut.prefs.getInt("zing.power", ZING_CUT_POWER_DEFAUlT)),
+          new ParameterDialog.ParmItem("Cut Power|%(0-100)", laserCut.prefs.getInt("zing.power", ZING_CUT_POWER_DEFAUlT)),
           new ParameterDialog.ParmItem("Cut Speed", laserCut.prefs.getInt("zing.speed", ZING_SPEED_DEFAUlT)),
           new ParameterDialog.ParmItem("Cut Freq|Hz", laserCut.prefs.getInt("zing.freq", ZING_FREQ_DEFAUlT)),
           new ParameterDialog.ParmItem(new JSeparator()),
-          new ParameterDialog.ParmItem("Engrave Power|%", laserCut.prefs.getInt("zing.epower", ZING_ENGRAVE_POWER_DEFAUlT)),
+          new ParameterDialog.ParmItem("Engrave Power|%(0-100)", laserCut.prefs.getInt("zing.epower", ZING_ENGRAVE_POWER_DEFAUlT)),
           new ParameterDialog.ParmItem("Engrave Speed", laserCut.prefs.getInt("zing.espeed", ZING_SPEED_DEFAUlT)),
           new ParameterDialog.ParmItem("Engrave Freq|Hz", laserCut.prefs.getInt("zing.efreq", ZING_FREQ_DEFAUlT)),
           new ParameterDialog.ParmItem(new JSeparator()),
-          new ParameterDialog.ParmItem("Raster Power|%", laserCut.prefs.getInt("zing.rpower", ZING_RASTER_POWER_DEFAUlT)),
+          new ParameterDialog.ParmItem("Raster Power|%(0-100)", laserCut.prefs.getInt("zing.rpower", ZING_RASTER_POWER_DEFAUlT)),
           new ParameterDialog.ParmItem("Raster Speed", laserCut.prefs.getInt("zing.rspeed", ZING_SPEED_DEFAUlT)),
           new ParameterDialog.ParmItem(new JSeparator()),
           new ParameterDialog.ParmItem("Use Path Planner", laserCut.prefs.getBoolean("zing.pathplan", true)),
@@ -208,7 +208,6 @@ class ZingLaser implements LaserCut.OutputDevice {
         laserCut.prefs.putInt("zing.rpower", (Integer) parmSet[12].value);
         laserCut.prefs.putInt("zing.rspeed", (Integer) parmSet[13].value);
         laserCut.prefs.putBoolean("zing.pathplan", (Boolean) parmSet[15].value);
-
       }
     });
     zingMenu.add(zingSettings);

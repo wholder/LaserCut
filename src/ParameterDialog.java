@@ -25,7 +25,8 @@ class ParameterDialog extends JDialog {
     ParmListener    parmListener;
     String          name, units = "", hint, key;
     Object          value, valueType;
-    boolean         readOnly, lblValue, enabled = true;
+    boolean         readOnly, lblValue, enabled = true, rangeCheck;
+    int             minVal = 0, maxVal = 100;
 
     ParmItem (String name, Map<String,String> map, String key, String[] fields) {
       this(name, new BField(fields, Integer.parseInt(map.get(key))));
@@ -87,8 +88,25 @@ class ParameterDialog extends JDialog {
       if (tmp.length == 1) {
         this.name = name;
       } else {
+        if (tmp[1].contains("(")  &&  tmp[1].contains(")")) {
+          int ii = tmp[1].indexOf("(");
+          int jj = tmp[1].indexOf(")");
+          this.units = tmp[1].substring(0, ii);
+          String[] range = tmp[1].substring(ii + 1, jj).split("-");
+          if (range.length == 2) {
+            minVal = Integer.parseInt(range[0].trim());
+            maxVal = Integer.parseInt(range[1].trim());
+          } else {
+            maxVal = Integer.parseInt(range[0].trim());
+          }
+          if (hint == null) {
+            hint = "range " + minVal + " - " + maxVal;
+          }
+          rangeCheck = true;
+        } else {
+          this.units = tmp[1].toLowerCase();
+        }
         this.name = tmp[0];
-        this.units = tmp[1].toLowerCase();
       }
       if ("boolean".equals(units)) {
         valueType = this.value = (boolean) "1".equals(value);
@@ -180,6 +198,9 @@ class ParameterDialog extends JDialog {
       if (valueType instanceof Integer || valueType instanceof int[]) {
         try {
           this.value = Integer.parseInt(newValue);
+          if (rangeCheck && "%".equals(units) && ((int) this.value > maxVal || (int) this.value < minVal)) {
+            return true;
+          }
         } catch (NumberFormatException ex) {
           return true;
         }
@@ -560,6 +581,7 @@ class ParameterDialog extends JDialog {
 
   public static void main (String... args) {
     ParmItem[] parmSet = {
+        new ParmItem("Cut Power|%(1-10)", 10),
         new ParmItem("Pressure[1-33]", 6),
         new ParmItem("X Offset|in", 2.0),
         new ParmItem("Y Offset|in", 3.0),
