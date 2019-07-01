@@ -7,7 +7,7 @@ import java.util.*;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
-// Crude Excellon Drill File Parser (just enough to DRILL.TXT from Osmond PCB Gerber files)
+// Crude Excellon Drill File Parser (just enough read the DRILL.TXT from Osmond PCB Gerber files)
   // See: https://web.archive.org/web/20071030075236/http://www.excellon.com/manuals/program.htm
 
 public class GerberZip {
@@ -43,7 +43,7 @@ public class GerberZip {
   }
 
   public static void main (String[] args) throws Exception {
-    GerberZip gerber = new GerberZip(new File("Test/archive.zip"));
+    GerberZip gerber = new GerberZip(new File("Test/Gerber Files/archive.zip"));
       List<ExcellonHole> holes = gerber.parseExcellon();
       for (ExcellonHole hole : holes) {
         System.out.println(hole.xLoc + "," + hole.yLoc + "," + hole.diameter);
@@ -52,7 +52,7 @@ public class GerberZip {
       System.out.println("PCB Size: " + bounds.getWidth() + " inches, " + bounds.getHeight() + " inches");
   }
 
-  public List<ExcellonHole> parseExcellon () {
+  List<ExcellonHole> parseExcellon () {
     int holeType = 0;
     Map<Integer,Double> tools = new TreeMap<>();
     List<ExcellonHole> holes = new ArrayList<>();
@@ -85,12 +85,13 @@ public class GerberZip {
     return holes;
   }
 
-  public List<List<Point2D.Double>> parseOutlines () {
+  List<List<Point2D.Double>> parseOutlines () {
     double lineWid = 0;
     Map<Integer,Double> apertures = new HashMap<>();
     StringTokenizer tok = new StringTokenizer(outline, "\n\r");
     List<List<Point2D.Double>> outlines = new ArrayList<>();
     List<Point2D.Double> points = new ArrayList<>();
+    double lastX = 0, lastY = 0;
     while (tok.hasMoreElements()) {
       String line = tok.nextToken();
       if (line.startsWith("%")) {
@@ -108,7 +109,6 @@ public class GerberZip {
         }
       } else {
         String[] items = line.split("\\*");
-        double lastX = 0, lastY = 0;
         for (String item : items) {
           if (item.startsWith("G01")) {
             item = item.substring(3);
