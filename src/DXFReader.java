@@ -1195,12 +1195,12 @@ public class DXFReader {
             for (int ii = 1; ii < points.length; ii += 3) {
               path.curveTo(points[ii].x, points[ii].y, points[ii + 1].x, points[ii + 1].y, points[ii + 2].x, points[ii + 2].y);
             }
-          }
-        } else if (degree == 2) {
-          Point2D.Double[] points = cPoints.toArray(new Point2D.Double[0]);
-          path.moveTo(points[0].x, points[0].y);
-          for (int ii = 1; ii < points.length; ii += 2) {
-            path.quadTo(points[ii].x, points[ii].y, points[ii + 1].x, points[ii + 1].y);
+          } else if (degree == 2) {
+            Point2D.Double[] points = cPoints.toArray(new Point2D.Double[0]);
+            path.moveTo(points[0].x, points[0].y);
+            for (int ii = 1; ii < points.length; ii += 2) {
+              path.quadTo(points[ii].x, points[ii].y, points[ii + 1].x, points[ii + 1].y);
+            }
           }
         }
       }

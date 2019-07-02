@@ -142,9 +142,7 @@ class ParameterDialog extends JDialog {
     private void hookActionListener () {
       if (parmListener != null) {
         if (field instanceof JComboBox){
-          ((JComboBox) field).addActionListener(ev -> {
-            parmListener.parmEvent(this);
-          });
+          ((JComboBox) field).addActionListener(ev -> parmListener.parmEvent(this));
         } else if (field instanceof JTextField) {
           ((JTextField) field).getDocument().addDocumentListener(new DocumentListener() {
             @Override
