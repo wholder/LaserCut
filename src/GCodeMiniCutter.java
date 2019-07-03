@@ -136,9 +136,9 @@ class GCodeMiniCutter implements LaserCut.OutputDevice {
                   boolean first = true;
                   for (Line2D.Double line : lines) {
                     String x1 = fmt.format(line.x1);
-                    String y1 = fmt.format(line.y1);
+                    String y1 = fmt.format(12 - line.y1);                                     // Invert Y Axis
                     String x2 = fmt.format(line.x2);
-                    String y2 = fmt.format(line.y2);
+                    String y2 = fmt.format(12 - line.y2);                                     // Invert Y Axis
                     if (first) {
                       cmds.add("M05");                                                        // Tool Up
                       cmds.add("G00 X" + x1 + " Y" + y1);                                     // Move to x1 y1 with laser off
@@ -193,13 +193,25 @@ class GCodeMiniCutter implements LaserCut.OutputDevice {
     miniCutterMenu.add(miniLazerSettings);
     // Add "Port" Submenu to MenuBar (baud not needed)
     miniCutterMenu.add(jPort.getPortMenu());
+    // Add "Load Mat" Menu item
+    JMenuItem load = new JMenuItem("Load Mat");
+    miniCutterMenu.add(load);
+    load.addActionListener(ev -> {
+      new GCodeSender(new String[]{"M39"}, new String[]{});
+    });
+    // Add "Unload Mat" Menu item
+    JMenuItem unload = new JMenuItem("Unload Mat");
+    miniCutterMenu.add(unload);
+    unload.addActionListener(ev -> {
+      new GCodeSender(new String[]{"M40"}, new String[]{});
+    });
     return miniCutterMenu;
   }
 
   class GCodeSender extends JDialog implements JSSCPort.RXEvent, Runnable {
     private StringBuilder   response = new StringBuilder();
     private String[]        cmds, abortCmds;
-    private JTextArea gcode;
+    private JTextArea       gcode;
     private JProgressBar    progress;
     private volatile long   cmdQueue;
     private final GCodeMiniCutter.GCodeSender.Lock lock = new GCodeMiniCutter.GCodeSender.Lock();
