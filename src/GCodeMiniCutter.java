@@ -127,7 +127,6 @@ class GCodeMiniCutter implements LaserCut.OutputDevice {
           cmds.add("F" + cutSpeed);                                                           // Set feed rate (inches/min)
           // Process only cut items
           List<LaserCut.CADShape> shapes = laserCut.surface.selectCutterItems(planPath);
-          shapes.addAll(laserCut.surface.selectLaserItems(true, planPath));
           DecimalFormat fmt = new DecimalFormat("#.###");
           for (LaserCut.CADShape shape : shapes) {
             if (!(shape instanceof LaserCut.CADRasterImage)) {
@@ -168,7 +167,7 @@ class GCodeMiniCutter implements LaserCut.OutputDevice {
           cmds.add("M5");                                                                     // Set Tool Head Up
           cmds.add("G00 X0 Y0");                                                              // Move back to Origin
           try {
-            new GCodeSender(cmds.toArray(new String[0]), new String[]{"M5", "G28"});          // Abort commands
+            new GCodeSender(cmds.toArray(new String[0]), new String[]{"M5", "G28", "M2"});    // Abort commands
           } catch (Exception ex) {
             ex.printStackTrace();
             showMessageDialog(laserCut, "Error sending commands", "Error", PLAIN_MESSAGE);
@@ -291,8 +290,11 @@ class GCodeMiniCutter implements LaserCut.OutputDevice {
           cmdWait();
         }
         if (doAbort) {
+          cmdQueue = 0;
           doAbort = false;
+          this.gcode.append("-abort-\n");
           for (String cmd : abortCmds) {
+            this.gcode.append(cmd + '\n');
             jPort.sendString(cmd + "\n\r");     // Set abort command
             synchronized (lock) {
               cmdQueue++;
