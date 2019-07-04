@@ -164,10 +164,10 @@ class GCodeMiniCutter implements LaserCut.OutputDevice {
             }
           }
           // Add ending G-codes
-          cmds.add("M5");                                                                     // Set Tool Head Up
+          cmds.add("M05");                                                                    // Set Tool Head Up
           cmds.add("G00 X0 Y0");                                                              // Move back to Origin
           try {
-            new GCodeSender(cmds.toArray(new String[0]), new String[]{"M5", "G28", "M2"});    // Abort commands
+            new GCodeSender(cmds.toArray(new String[0]), new String[]{"M05", "G28", "M02"});  // Abort commands
           } catch (Exception ex) {
             ex.printStackTrace();
             showMessageDialog(laserCut, "Error sending commands", "Error", PLAIN_MESSAGE);
