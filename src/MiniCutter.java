@@ -52,17 +52,17 @@ import static javax.swing.JOptionPane.*;
  *  Note: the g-code parser in TeensyCNC expects a space, or newline after each element of a command.  This means
  *  that TeensyCNC will not respond to "G00X1Y1\r\n".  Send as "G00 X1 Y1\r\n" instead.
  *
- *  Teeensy 3.2 VID = 0x2504, PID = 0x0300, JSSC Port Id is "cu.usbmodem4201"
+ *  Teeensy 3.2 VID = 0x16C0, PID = 0x0483, JSSC Port Id is "/dev/cu.usbmodem4201"
  */
 
-class GCodeMiniCutter implements LaserCut.OutputDevice {
+class MiniCutter implements LaserCut.OutputDevice {
   private static final int      MINI_PAPER_CUTTER_DEFAULT_SPEED = 90;           // Max feed rate (inches/min)
   private static final int      MINI_PAPER_CUTTER_MAX_SPEED = 200;              // Max feed rate (inches/min)
   private JSSCPort              jPort;
   private LaserCut              laserCut;
   private String                dUnits;
 
-  GCodeMiniCutter (LaserCut laserCut) {
+  MiniCutter (LaserCut laserCut) {
     this.laserCut = laserCut;
     this.dUnits = laserCut.displayUnits;
     jPort = new JSSCPort(getPrefix(), laserCut.prefs);
@@ -193,6 +193,7 @@ class GCodeMiniCutter implements LaserCut.OutputDevice {
     miniCutterMenu.add(miniLazerSettings);
     // Add "Port" Submenu to MenuBar (baud not needed)
     miniCutterMenu.add(jPort.getPortMenu());
+    miniCutterMenu.addSeparator();
     // Add "Load Mat" Menu item
     JMenuItem load = new JMenuItem("Load Mat");
     miniCutterMenu.add(load);
@@ -205,6 +206,12 @@ class GCodeMiniCutter implements LaserCut.OutputDevice {
     unload.addActionListener(ev -> {
       new GCodeSender(new String[]{"M40"}, new String[]{});
     });
+    // Add "TeensyCNC Info" Menu item
+    JMenuItem info = new JMenuItem("TeensyCNC Info");
+    miniCutterMenu.add(info);
+    info.addActionListener(ev -> {
+      new GCodeSender(new String[]{"M115", "G04 P10"}, new String[]{}, true);
+    });
     return miniCutterMenu;
   }
 
@@ -214,13 +221,18 @@ class GCodeMiniCutter implements LaserCut.OutputDevice {
     private JTextArea       gcode;
     private JProgressBar    progress;
     private volatile long   cmdQueue;
-    private final GCodeMiniCutter.GCodeSender.Lock lock = new GCodeMiniCutter.GCodeSender.Lock();
-    private boolean         doAbort;
+    private final MiniCutter.GCodeSender.Lock lock = new MiniCutter.GCodeSender.Lock();
+    private boolean         doAbort, printInfo;
 
     final class Lock { }
 
-    GCodeSender (String[] cmds, String[] abortCmds) {
+    GCodeSender (String[] cmds, String[] abortCmd) {
+      this(cmds, abortCmd, false);
+    }
+
+    GCodeSender (String[] cmds, String[] abortCmds, boolean printInfo) {
       super(laserCut, false);
+      this.printInfo = printInfo;
       setTitle("G-Code Monitor");
       setLocationRelativeTo(laserCut);
       add(progress = new JProgressBar(), BorderLayout.NORTH);
@@ -246,19 +258,27 @@ class GCodeMiniCutter implements LaserCut.OutputDevice {
     public void rxChar (byte cc) {
       if (cc == '\n') {
         String rsp = response.toString();
-        if (!rsp.startsWith("*") && rsp.length() > 0) {
-          if (rsp.toLowerCase().contains("ok")) {
-            synchronized (lock) {
-              cmdQueue--;
-              //System.out.println(rsp + "\t" + cmdQueue);
+        if (rsp.length() > 0) {
+          if (!rsp.startsWith("*")) {
+            if (rsp.toLowerCase().contains("ok")) {
+              synchronized (lock) {
+                cmdQueue--;
+                //System.out.println(rsp + "\t" + cmdQueue);
+              }
+            } else {
+              gcode.append(rsp);
+              gcode.append("\n");
             }
+            response.setLength(0);
+          } else if (rsp.startsWith("*") && printInfo) {
+            if (rsp.contains("TeensyCNC")) {
+              gcode.append(rsp.substring(2));
+              gcode.append("\nBy: Matt Williams\n");
+            }
+            response.setLength(0);
           } else {
-            gcode.append(rsp);
-            gcode.append("\n");
+            response.setLength(0);
           }
-          response.setLength(0);
-        } else {
-          response.setLength(0);
         }
       } else if (cc != '\r'){
         response.append((char) cc);
@@ -288,7 +308,9 @@ class GCodeMiniCutter implements LaserCut.OutputDevice {
         response.setLength(0);
         for (int ii = 0; (ii < cmds.length) && !doAbort; ii++) {
           String gcode = cmds[ii].trim();
-          this.gcode.append(gcode + '\n');
+          if (!printInfo) {
+            this.gcode.append(gcode + '\n');
+          }
           // Ignore blank lines
           if (gcode.length() == 0) {
             continue;

@@ -1323,7 +1323,7 @@ public class LaserCut extends JFrame {
           outputDevice = new Silhouette(this);
           break;
         case 6:
-          outputDevice = new GCodeMiniCutter(this);
+          outputDevice = new MiniCutter(this);
           break;
         default:
           outputDevice = null;
