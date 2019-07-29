@@ -197,21 +197,15 @@ class MiniCutter implements LaserCut.OutputDevice {
     // Add "Load Mat" Menu item
     JMenuItem load = new JMenuItem("Load Mat");
     miniCutterMenu.add(load);
-    load.addActionListener(ev -> {
-      new GCodeSender(new String[]{"M39"}, new String[]{});
-    });
+    load.addActionListener(ev -> new GCodeSender(new String[]{"M39"}, new String[]{}));
     // Add "Unload Mat" Menu item
     JMenuItem unload = new JMenuItem("Unload Mat");
     miniCutterMenu.add(unload);
-    unload.addActionListener(ev -> {
-      new GCodeSender(new String[]{"M40"}, new String[]{});
-    });
+    unload.addActionListener(ev -> new GCodeSender(new String[]{"M40"}, new String[]{}));
     // Add "TeensyCNC Info" Menu item
     JMenuItem info = new JMenuItem("TeensyCNC Info");
     miniCutterMenu.add(info);
-    info.addActionListener(ev -> {
-      new GCodeSender(new String[]{"M115", "G04 P10"}, new String[]{}, true);
-    });
+    info.addActionListener(ev -> new GCodeSender(new String[]{"M115", "G04 P10"}, new String[]{}, true));
     return miniCutterMenu;
   }
 

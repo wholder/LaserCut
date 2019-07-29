@@ -152,4 +152,5 @@ LaserCut uses the following Java code to perform some of its functions:
 - [Apache commons-logging 1.2](https://commons.apache.org/proper/commons-logging/) (needed by Apache PDFBox)
 - [Gear Shapes based on "Java Gear Generator: Involute and Fillet"](http://printobjects.me/catalogue/ujava-gear-generator-involute-and-fillet_520801/) by brush701
 - [JDXF](https://jsevy.com/wordpress/index.php/java-and-android/jdxf-java-dxf-library/) by Jonathan Sevy (used to implement the "Export DXF" feature)
+- [Usb4Java](http://usb4java.org) is used to control the Silhouette Cutters
 - [IntelliJ IDEA from JetBrains](https://www.jetbrains.com/idea/) (my favorite development environment for Java coding. Thanks JetBrains!)

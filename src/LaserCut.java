@@ -47,6 +47,9 @@ import static javax.swing.JOptionPane.*;
   Bézier Curves:
     https://pomax.github.io/bezierinfo/
 
+  Fun with Java2D - Strokes:
+    http://www.jhlabs.com/java/java2d/strokes/
+
   Engraving with G-Code:
     https://github.com/nebarnix/img2gco/
     https://github.com/magdesign/Raster2Gcode
@@ -122,11 +125,11 @@ public class LaserCut extends JFrame {
     }
     showMessageDialog(this,
         "By: Wayne Holder\n" +
-            "  Java Version: " + System.getProperty("java.version") + "\n" +
-            "  LibLaserCut " + com.t_oster.liblasercut.LibInfo.getVersion() + "\n" +
-            (jsscInfo != null ? jsscInfo : "") +
-            "  Apache PDFBox " + org.apache.pdfbox.util.Version.getVersion() + "\n" +
-            "  Screen PPI " + SCREEN_PPI,
+        "  Java Version: " + System.getProperty("java.version") + "\n" +
+        "  LibLaserCut " + com.t_oster.liblasercut.LibInfo.getVersion() + "\n" +
+        (jsscInfo != null ? jsscInfo : "") +
+        "  Apache PDFBox " + org.apache.pdfbox.util.Version.getVersion() + "\n" +
+        "  Screen PPI " + SCREEN_PPI,
         "LaserCut " + VERSION,
         INFORMATION_MESSAGE,
         icon);
