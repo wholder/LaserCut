@@ -11,7 +11,8 @@ import java.util.List;
 import static javax.swing.JOptionPane.*;
 
 /**
- *  This code implements a driver for TeensyCNC by Matt Williams (https://github.com/seishuku/TeensyCNC)
+ *  This code implements a driver for TeensyCNC2 (https://github.com/wholder/TeensyCNC2)
+ *  which is derived from TeensyCNC by Matt Williams (https://github.com/seishuku/TeensyCNC)
  *
  *  G Codes Implemented by TeensyCNC:
  *    G00 - Rapid positioning
@@ -20,7 +21,7 @@ import static javax.swing.JOptionPane.*;
  *    G03 - Circular interpolation, counterclockwise
  *    G04 - Set Dwell (in seconds)
  *    G20 - Set Units to Inches
- *    G21 - Set Units to Millimaters
+ *    G21 - Set Units to Millimeters
  *    G28 - Go home
  *    G30 - Go home in two steps
  *    G90 - Set Absolute Mode (default)
@@ -29,28 +30,34 @@ import static javax.swing.JOptionPane.*;
  *
  *  M Codes Implemented by TeensyCNC:
  *    M2  - End of program
- *    M30 - End of program with reset
  *    M3  - Tool Down
  *    M4  - Tool Down
- *    M7  - Tool Down
  *    M5  - Tool Up
+ *    M7  - Tool Down
  *    M8  - Tool Up
+ *    M30 - End of program
  *    M39 - Load Paper
  *    M40 - Eject Paper
  *
  *  Special M Codes
- *    M111 - Report Job Mode (example response: "* Job mode: CUT\r\nok\r\n")
  *    M112 - Emergency stop / Enter bootloader
- *    M115 - Prints Info and Macro Commands available
+ *    M115 - Prints Build Info
+ *
+ *  Supported Parameters
+ *    Fn.n - Feed Rate
+ *    Pn.n - Pause in seconds (used by G4 command)
+ *    Xn.n - X Coord
+ *    Yn.n - Y Coord
+ *    Zn.n - Z Coord
+ *    In.n - I Coord (arc center X for arc segments)
+ *    Jn.n - J Coord (arc center Y for arc segments)
  *
  *  Responses (terminated by "\r\n")
- *    ok      Normal response
- *    huh? G  Unknown "Gnn" code
- *    huh?    Error response
- *    * --    Info Response
- *
- *  Note: the g-code parser in TeensyCNC expects a space, or newline after each element of a command.  This means
- *  that TeensyCNC will not respond to "G00X1Y1\r\n".  Send as "G00 X1 Y1\r\n" instead.
+ *    ok        Normal response
+ *    cancelled Job cancelled
+ *    huh? G    Unknown "Gnn" code
+ *    huh? M    Unknown "Mnn" code
+ *    * --      Info Response
  *
  *  Teeensy 3.2 VID = 0x16C0, PID = 0x0483, JSSC Port Id is "/dev/cu.usbmodem4201"
  */
@@ -58,6 +65,7 @@ import static javax.swing.JOptionPane.*;
 class MiniCutter implements LaserCut.OutputDevice {
   private static final int      MINI_PAPER_CUTTER_DEFAULT_SPEED = 90;           // Max feed rate (inches/min)
   private static final int      MINI_PAPER_CUTTER_MAX_SPEED = 200;              // Max feed rate (inches/min)
+  private static final boolean  INVERT_Y_AXIS = false;
   private JSSCPort              jPort;
   private LaserCut              laserCut;
   private String                dUnits;
@@ -136,19 +144,19 @@ class MiniCutter implements LaserCut.OutputDevice {
                   boolean first = true;
                   for (Line2D.Double line : lines) {
                     String x1 = fmt.format(line.x1);
-                    String y1 = fmt.format(12 - line.y1);                                     // Invert Y Axis
+                    String y1 = fmt.format(INVERT_Y_AXIS ? 12 - line.y1 : line.y1);
                     String x2 = fmt.format(line.x2);
-                    String y2 = fmt.format(12 - line.y2);                                     // Invert Y Axis
+                    String y2 = fmt.format(INVERT_Y_AXIS ? 12 - line.y2 : line.y2);
                     if (first) {
                       cmds.add("M05");                                                        // Tool Up
-                      cmds.add("G00 X" + x1 + " Y" + y1);                                     // Move to x1 y1 with laser off
+                      cmds.add("G00 X" + x1 + " Y" + y1);                                     // Move to x1 y1 with tool up
                       cmds.add("M03");                                                        // Tool Down
                       cmds.add("G01 X" + x2 + " Y" + y2);                                     // Draw Line to x2 y2
                       first = false;
                     } else {
                       if (lastX != line.x1 || lastY != line.y1) {
                         cmds.add("M05");                                                      // Tool Up
-                        cmds.add("G00 X" + x1 + " Y" + y1);                                   // Move to x1 y1 with laser off
+                        cmds.add("G00 X" + x1 + " Y" + y1);                                   // Move to x1 y1 with tool up
                         cmds.add("M03");                                                      // Tool Down
                         cmds.add("G01 X" + x2 + " Y" + y2);                                   // Draw Line to x2 y2
                       } else {
@@ -165,7 +173,7 @@ class MiniCutter implements LaserCut.OutputDevice {
           }
           // Add ending G-codes
           cmds.add("M05");                                                                    // Set Tool Head Up
-          cmds.add("G00 X0 Y0");                                                              // Move back to Origin
+          cmds.add("G00 X0 Y0");                                                              // Move back close to Origin
           try {
             new GCodeSender(cmds.toArray(new String[0]), new String[]{"M05", "G28", "M02"});  // Abort commands
           } catch (Exception ex) {
@@ -253,6 +261,7 @@ class MiniCutter implements LaserCut.OutputDevice {
       if (cc == '\n') {
         String rsp = response.toString();
         if (rsp.length() > 0) {
+          //System.out.println(rsp + "\t");
           if (!rsp.startsWith("*")) {
             if (rsp.toLowerCase().contains("ok")) {
               synchronized (lock) {
@@ -266,8 +275,7 @@ class MiniCutter implements LaserCut.OutputDevice {
             response.setLength(0);
           } else if (rsp.startsWith("*") && printInfo) {
             if (rsp.contains("TeensyCNC")) {
-              gcode.append(rsp.substring(2));
-              gcode.append("\nBy: Matt Williams\n");
+              gcode.append(rsp.substring(2).replace('|', '\n'));
             }
             response.setLength(0);
           } else {
@@ -302,6 +310,7 @@ class MiniCutter implements LaserCut.OutputDevice {
         response.setLength(0);
         for (int ii = 0; (ii < cmds.length) && !doAbort; ii++) {
           String gcode = cmds[ii].trim();
+          //System.out.println(gcode);
           if (!printInfo) {
             this.gcode.append(gcode + '\n');
           }

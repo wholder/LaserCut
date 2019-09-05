@@ -48,7 +48,7 @@ LaserCut uses the Java Language's reflection and object serialization features t
 - Raster images which can be engraved on Zing or used as tracing templates for spline shapes.  Also supports full rotation of raster images as well as control over DPI of of engraved images.
 
 ## Selecting the Output Device
-To select the current output device, choose "Preferences" in the "File" menu then select the device and the press "Save".  LaserCut will remember this selection the next time the program is launched.
+To select the current output device, choose "Preferences" in the "File" menu then select the device and the press "Save".  LaserCut will remember this selection the next time the program is launched.  Note: you can only have one Output Device active at any one time.
 <p align="center"><img src="https://github.com/wholder/LaserCut/blob/master/images/Preferences%20Dialog.png"></p>
 
 Currently supported Output Devices devices include:
@@ -57,7 +57,7 @@ Currently supported Output Devices devices include:
  - Micro Laser (small engraver built from DVD/CD stepper assembiles and updated to run GRBL 1.1)
  - Mini CNC (small, Chinese-made CNC Mill updated to run GRBL 1.1)
  - Silhouette™ Craft Cutters (tested with Cameo™ 3 and Curio™ models, but should work with others)
- - Cricut™ Mini Craft Cutter (running [Matt Williams' TeensyCNC firmware](https://github.com/seishuku/TeensyCNC))
+ - Cricut™ Mini Craft Cutter (running new [TeensyCNC2 firmware](https://github.com/wholder/TeensyCNC2))
  
 ## Jog Controls
 GRBL-based devices, such as the Mini Laser also have a Jog control panel for moving the laser head around and selecting the origin.
@@ -100,6 +100,7 @@ The function of the different fields is, as follows:
   - **6/9/2019** - Added support for Silhouette™ craft cutters (currently tested with Curio and Cameo 3)
   - **6/18/2019** - Can now use mouse to resize and rotate Text and enforce resizing Resizable shapes to a minimum size
   - **6/27/2019** - Added experimental new code to support a Cricut™ Mini Modified to run [TeensyCNC](https://github.com/seishuku/TeensyCNC) by Matt Williams
+  - **9/5/2019** - Updated to use [TeensyCNC](https://github.com/wholder/TeensyCNC2), which is my updated version of Matt Williams' TeensyCNC code
   
 ## Under Development
 - Support for a user-extendable library of specialized cutout shapes, such as for mounting RC Servos (to replace and extend the current Nema Stepper code)
