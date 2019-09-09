@@ -10,8 +10,8 @@ The current code and runnable Jar file requires Java 8, or later.  [Click Here t
 ### Issue with JSSC 2.8.0 and Java 9, or later on 64 bit Windows 10
 The issue with a JSSC's `jSSC-2.8_x86_64.dll` driver when using Java 9, or later on 64 bit Windows 10 seems to be resolved using Java 10.0.1+10 and Windows 10 Home, Version 1803, Build 17134.165.  As of 7/17/2018 I have successfully run LaserCut's MiniLaser feature using JSSC 2.8.0 (built in) to communicate with GRBL 1.1.
 
-# Important Note
-LaserCut uses the Java Language's reflection and object serialization features to store and load design files.  This means that future versions of LaserCut may introduce changes that make LaserCut unable to read design files saved by older versions.  I'm trying to code in a way that avoid this, but I can make no guarantees about future compatability with older saved files.
+### Important Note
+LaserCut uses the Java Language's reflection and object serialization features to store and load design files.  This means that future versions of LaserCut may introduce changes that make LaserCut unable to read design files saved by older versions.  I'm trying to code in a way that avoid this, but I can make no guarantees about future compatability with older, saved files.
 
 ## Basic Features
 - Create and place simple 2D vector shapes such as rectangles, rounded rectangles, ovals, circles, n-sided polygons and text outlines
