@@ -84,6 +84,7 @@ public class LaserCut extends JFrame {
   private boolean               useMouseWheel = prefs.getBoolean("useMouseWheel", false);
   private boolean               snapToGrid = prefs.getBoolean("snapToGrid", true);
   private boolean               displayGrid = prefs.getBoolean("displayGrid", true);
+  private String                onStartup = prefs.get("onStartup", "demo");
   private OutputDevice          outputDevice;
   private int                   deviceMenuSlot;
 
@@ -136,8 +137,9 @@ public class LaserCut extends JFrame {
   }
 
   private void showPreferencesBox () {
-    String device = Integer.toString(prefs.getInt("outputDevice", 0));
     Map<String,ParameterDialog.ParmItem> items = new LinkedHashMap<>();
+    items.put("onStartup", new ParameterDialog.ParmItem("On Startup:Blank Page|blank:Reopen Last File|reopen:Demo Page|demo", onStartup));
+    String device = Integer.toString(prefs.getInt("outputDevice", 0));
     items.put("outputDevice", new ParameterDialog.ParmItem("Output Device:None|0:Epilog Zing|1:Mini Laser|2:" +
                                                            "Micro Laser|3:MiniCNC|4:Silhouette|5:Mini Cutter|6", device));
     items.put("useMouseWheel", new ParameterDialog.ParmItem("Mouse Wheel Scrolling", prefs.getBoolean("useMouseWheel", false)));
@@ -146,7 +148,7 @@ public class LaserCut extends JFrame {
     items.put("enableGerber", new ParameterDialog.ParmItem("Enable Gerber ZIP Import", prefs.getBoolean("gerber.import", false)));
     items.put("pxDpi", new ParameterDialog.ParmItem("px per Inch (SVG Import/Export)", prefs.getInt("svg.pxDpi", 96)));
     ParameterDialog.ParmItem[] parmSet = items.values().toArray(new ParameterDialog.ParmItem[0]);
-    ParameterDialog dialog = (new ParameterDialog(parmSet, new String[] {"Save", "Cancel"}, displayUnits));
+    ParameterDialog dialog = (new ParameterDialog("LaserCut Preferences", parmSet, new String[] {"Save", "Cancel"}, displayUnits));
     dialog.setLocationRelativeTo(this);
     dialog.setVisible(true);              // Note: this call invokes dialog
     if (dialog.wasPressed() ) {
@@ -186,6 +188,9 @@ public class LaserCut extends JFrame {
         } else if ("pxDpi".equals(name)) {
           pxDpi = (Integer) parm.value;
           prefs.putInt("svg.pxDpi", pxDpi);
+        } else if ("onStartup".equals(name)) {
+          onStartup = (String) parm.value;
+          prefs.put("onStartup", onStartup);
         } else {
           System.out.println(name + ": " + parm.value);
         }
@@ -573,6 +578,7 @@ public class LaserCut extends JFrame {
           surface.setDesign(loadDesign(tFile));
           savedCrc = surface.getDesignChecksum();
           prefs.put("default.dir", tFile.getAbsolutePath());
+          prefs.put("lastFile", tFile.getAbsolutePath());
           setTitle("LaserCut - (" + tFile + ")");
         } catch (Exception ex) {
           showErrorDialog("Unable to load file");
@@ -904,7 +910,7 @@ public class LaserCut extends JFrame {
     JMenuItem roundCorners = new MyMenuItem("Round Corners of Selected Shape", KeyEvent.VK_B, cmdMask, false);
     roundCorners.addActionListener((ev) -> {
       ParameterDialog.ParmItem[] rParms = {new ParameterDialog.ParmItem("radius|in", 0d)};
-      ParameterDialog rDialog = (new ParameterDialog(rParms, new String[] {"Round", "Cancel"}, displayUnits));
+      ParameterDialog rDialog = (new ParameterDialog("Edit Parameters", rParms, new String[] {"Round", "Cancel"}, displayUnits));
       rDialog.setLocationRelativeTo(surface.getParent());
       rDialog.setVisible(true);              // Note: this call invokes dialog
       if (rDialog.wasPressed()) {
@@ -924,7 +930,7 @@ public class LaserCut extends JFrame {
       ParameterDialog.ParmItem[] rParms = {new ParameterDialog.ParmItem("radius|in{radius of tool}", 0d),
           new ParameterDialog.ParmItem("inset{If checked, toolpath routes interior" +
               " of cadShape, else outside}", true)};
-      ParameterDialog rDialog = (new ParameterDialog(rParms, new String[] {"OK", "Cancel"}, displayUnits));
+      ParameterDialog rDialog = (new ParameterDialog("Edit Parameters", rParms, new String[] {"OK", "Cancel"}, displayUnits));
       rDialog.setLocationRelativeTo(surface.getParent());
       rDialog.setVisible(true);              // Note: this call invokes dialog
       if (rDialog.wasPressed()) {
@@ -1256,7 +1262,14 @@ public class LaserCut extends JFrame {
     setLocation(prefs.getInt("window.x", 10), prefs.getInt("window.y", 10));
     pack();
     setVisible(true);
-    if (outputDevice instanceof ZingLaser) {
+    String reopen = prefs.get("lastFile", null);
+    if ("reopen".equals(onStartup) && reopen != null) {
+      try {
+        surface.setDesign(loadDesign(new File(reopen)));
+      } catch (Exception ex) {
+        ex.printStackTrace();
+      }
+    } else if ("demo".equals(onStartup) && outputDevice instanceof ZingLaser) {
       /*
        * * * * * * * * * * * * * * * * * * *
        * Add some test shapes to DrawSurface
@@ -2050,7 +2063,7 @@ public class LaserCut extends JFrame {
         pNames.put(parm.name, parm);
       }
       hookParameters(pNames);
-      ParameterDialog dialog = (new ParameterDialog(parmSet, new String[] {actionButton, "Cancel"}, dUnits));
+      ParameterDialog dialog = (new ParameterDialog("Edit Parameters", parmSet, new String[] {actionButton, "Cancel"}, dUnits));
       dialog.setLocationRelativeTo(surface.getParent());
       boolean wasCentered = centered;
       double priorXLoc = xLoc;

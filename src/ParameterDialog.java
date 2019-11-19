@@ -325,20 +325,21 @@ class ParameterDialog extends JDialog {
    * @param buttons String] array of button names (first name in array is action button)
    * @param dUnits Selected display units; "in", "cm", or "mm"
    */
-  ParameterDialog (ParmItem[] parms, String[] buttons, String dUnits) {
-    this(parms, buttons, dUnits, null);
+  ParameterDialog (String title, ParmItem[] parms, String[] buttons, String dUnits) {
+    this(title, parms, buttons, dUnits, null);
   }
 
   /**
    * Constructor for Pop Up Parameters Dialog with error checking
+   * @param title text for parameter dialog window
    * @param parms array of ParmItem objects that describe each parameter
    * @param buttons String] array of button names (first name in array is action button)
    * @param dUnits Selected display units; "in", "cm", or "mm"
    * @param info Properties object containing ParmItem info displayed in an extra column (see getGRBLSettingsMenu())
    */
-  ParameterDialog (ParmItem[] parms, String[] buttons, String dUnits, Properties info) {
+  ParameterDialog (String title, ParmItem[] parms, String[] buttons, String dUnits, Properties info) {
     super((Frame) null, true);
-    setTitle("Edit Parameters");
+    setTitle(title);
     JPanel fields = new JPanel();
     fields.setLayout(new GridBagLayout());
     int jj = 0;
@@ -571,7 +572,7 @@ class ParameterDialog extends JDialog {
    * @return true if user pressed "Save"
    */
   static boolean showSaveCancelParameterDialog (ParmItem[] parms, String dUnits, Component parent) {
-    ParameterDialog dialog = (new ParameterDialog(parms, new String[] {"Save", "Cancel"}, dUnits));
+    ParameterDialog dialog = (new ParameterDialog("Edit Parameters", parms, new String[] {"Save", "Cancel"}, dUnits));
     dialog.setLocationRelativeTo(parent);
     dialog.setVisible(true);              // Note: this call invokes dialog
     return dialog.wasPressed();

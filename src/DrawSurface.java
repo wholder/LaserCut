@@ -125,11 +125,18 @@ public class DrawSurface extends JPanel implements Runnable {
               if (shape.isPositionClicked(newLoc, zoomFactor) || shape.isShapeClicked(newLoc, zoomFactor)) {
                 double dx = shape.xLoc - selected.xLoc;
                 double dy = shape.yLoc - selected.yLoc;
-                setInfoText(" dx: " + LaserCut.df.format(dx) + " in, dy: " + LaserCut.df.format(dy) +
-                            " in (" + LaserCut.df.format(LaserCut.inchesToMM(dx)) + " mm, " +
-                            LaserCut.df.format(LaserCut.inchesToMM(dy)) + " mm)");
-                measure1 = new Point2D.Double(selected.xLoc * LaserCut.SCREEN_PPI, selected.yLoc * LaserCut.SCREEN_PPI);
-                measure2 = new Point2D.Double(shape.xLoc * LaserCut.SCREEN_PPI, shape.yLoc * LaserCut.SCREEN_PPI);
+                double diag = Math.sqrt(dx * dx + dy * dy);
+                setInfoText(" dx: " + LaserCut.df.format(dx) + "in," +
+                            " dy: " + LaserCut.df.format(dy) + "in, " +
+                            " diagonal: " + LaserCut.df.format(diag) + "in  " +
+                            "(" + LaserCut.df.format(LaserCut.inchesToMM(dx)) + " mm," +
+                            " " + LaserCut.df.format(LaserCut.inchesToMM(dy)) + " mm," +
+                            " " + LaserCut.df.format(LaserCut.inchesToMM(diag)) + " mm)"
+                    );
+                measure1 = new Point2D.Double(selected.xLoc * zoomFactor * LaserCut.SCREEN_PPI,
+                                              selected.yLoc * zoomFactor * LaserCut.SCREEN_PPI);
+                measure2 = new Point2D.Double(shape.xLoc * zoomFactor * LaserCut.SCREEN_PPI,
+                                              shape.yLoc * zoomFactor * LaserCut.SCREEN_PPI);
                 showMeasure = true;
                 break;
               }
@@ -239,6 +246,7 @@ public class DrawSurface extends JPanel implements Runnable {
             clearDragList();
             setSelected(null);
             setInfoText("");
+            showMeasure = false;
           }
         }
         repaint();
@@ -479,9 +487,16 @@ public class DrawSurface extends JPanel implements Runnable {
 
   void setZoomFactor (double zoom) {
     if (zoom != zoomFactor) {
+      double change = zoom / zoomFactor;
       zoomFactor = zoom;
       Dimension zoomSize = new Dimension((int) (workSize.getWidth() * zoomFactor), (int) (workSize.getHeight() * zoomFactor));
       setSize(zoomSize);
+      if (showMeasure) {
+        measure1.x *= change;
+        measure1.y *= change;
+        measure2.x *= change;
+        measure2.y *= change;
+      }
       repaint();
       for (int ii = 0; ii < zoomFactors.length; ii++) {
         if (zoom == zoomFactors[ii]) {
@@ -1224,6 +1239,10 @@ public class DrawSurface extends JPanel implements Runnable {
       g2.fill(getArrow(measure1.x, maxY, measure2.x, maxY, true));
       g2.fill(getArrow(maxX, measure1.y, maxX, measure2.y, false));
       g2.fill(getArrow(maxX, measure1.y, maxX, measure2.y, true));
+      // Draw diagonal
+      g2.draw(new Line2D.Double(measure1.x, measure1.y, measure2.x, measure2.y));
+      //g2.fill(getArrow(measure1.x, measure1.y, measure2.x, measure2.y, false));
+      //g2.fill(getArrow(measure1.x, measure1.y, measure2.x, measure2.y, true));
     }
     if (tipText != null && tipLoc != null) {
       // todo: need code to reposition tooltip when near lower, or right edges
@@ -1263,7 +1282,7 @@ public class DrawSurface extends JPanel implements Runnable {
 
   private Path2D.Double getArrow (double x1, double y1, double x2, double y2, boolean atEnd) {
     Path2D.Double path = new Path2D.Double();
-    double angleOff = Math.toRadians(20);
+    double angleOff = Math.toRadians(10);
     int barb = 10;
     if (atEnd) {
       double angle = Math.atan2(y2 - y1, x2 - x1);
