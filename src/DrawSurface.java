@@ -19,6 +19,7 @@ public class DrawSurface extends JPanel implements Runnable {
   private PlacerListener                      placerListener;
   private double                              gridSpacing;
   private int                                 gridMajor;
+  private JMenu                               gridMenu;
   private double[]                            zoomFactors = {1, 2, 4, 8, 16};
   private double                              zoomFactor = 1;
   private Point2D.Double                      scrollPoint, measure1, measure2, dragStart;
@@ -38,7 +39,6 @@ public class DrawSurface extends JPanel implements Runnable {
   private boolean                             mouseDown = false;
   private Point2D.Double                      tipLoc;
   private String                              tipText;
-
 
   static class Placer {
     private List<LaserCut.CADShape> shapes;
@@ -87,8 +87,6 @@ public class DrawSurface extends JPanel implements Runnable {
   DrawSurface (Preferences prefs, JScrollPane scrollPane) {
     super(true);
     this.prefs = prefs;
-    gridSpacing = prefs.getDouble("gridSpacing", 0.1);
-    gridMajor = prefs.getInt("gridMajor", 10);
     useDblClkZoom = prefs.getBoolean("useDblClkZoom", false);
     DrawSurface thisSurface = this;
     // Set JPanel size to a temprary default size
@@ -477,12 +475,31 @@ public class DrawSurface extends JPanel implements Runnable {
     repaint();
   }
 
-  double[] getZoomFactors () {
-    return zoomFactors;
+  private void addZoomListener (LaserCut.ZoomListener listener) {
+    zoomListeners.add(listener);
   }
 
-  void addZoomListener (LaserCut.ZoomListener listener) {
-    zoomListeners.add(listener);
+  JMenu getZoomMenu () {
+    JMenu zoomMenu = new JMenu("Zoom");
+    ButtonGroup zoomGroup = new ButtonGroup();
+    for (double zoomFactor : zoomFactors) {
+      JRadioButtonMenuItem zItem = new JRadioButtonMenuItem(zoomFactor + " : 1");
+      zItem.setSelected(zoomFactor == getZoomFactor());
+      zoomMenu.add(zItem);
+      zoomGroup.add(zItem);
+      zItem.addActionListener(ev -> setZoomFactor(zoomFactor));
+    }
+    addZoomListener((index) -> {
+      for (int ii = 0; ii < zoomMenu.getMenuComponentCount(); ii++) {
+        JRadioButtonMenuItem item = (JRadioButtonMenuItem) zoomMenu.getMenuComponent(ii);
+        item.setSelected(ii == index);
+      }
+    });
+    return zoomMenu;
+  }
+
+  double getZoomFactor () {
+    return zoomFactor;
   }
 
   void setZoomFactor (double zoom) {
@@ -512,10 +529,6 @@ public class DrawSurface extends JPanel implements Runnable {
     this.dUnits = dUnits;
   }
 
-  double getZoomFactor () {
-    return zoomFactor;
-  }
-
   double getScreenScale () {
     return LaserCut.SCREEN_PPI * zoomFactor;
   }
@@ -529,16 +542,73 @@ public class DrawSurface extends JPanel implements Runnable {
     repaint();
   }
 
-  void setGridSize (double gridSize, int majorStep) {
+  private Map<Double,JMenuItem>   gridMap = new HashMap<>();
+
+  /**
+   * Generate and add Grid Menu Items to LaserCut Grid Menu
+   * @param gridMenu JMenu where Grid Menu items are added
+   */
+  void addGridMenu (JMenu gridMenu) {
+    this.gridMenu = gridMenu;
+    ButtonGroup gridGroup = new ButtonGroup();
+    String[] gridSizes = new String[] {"|", "0.0625/16 in", "0.1/10 in", "0.125/8 in", "0.25/4 in", "0.5/2 in", "|",
+                                       "1/10 mm", "2/10 mm", "2.5/5 mm", "5/10 mm", "10/0 mm"};
+    for (String gridItem : gridSizes) {
+      if (gridItem.equals("|")) {
+        gridMenu.addSeparator();
+      } else {
+        double gridMinor;
+        int gridMajor;
+        String units = gridItem.substring(gridItem.length() - 2);
+        String[] tmp = gridItem.substring(0, gridItem.length() - 3).split("/");
+        if ("in".equals(units)) {
+          gridMinor = Double.parseDouble(tmp[0]);
+          gridMajor = Integer.parseInt(tmp[1]);
+        } else if ("mm".equals(units)) {
+          gridMinor = LaserCut.mmToInches(Double.parseDouble(tmp[0]));
+          gridMajor = Integer.parseInt(tmp[1]);
+        } else {
+          gridMinor = 0;
+          gridMajor = 0;
+        }
+        String label = tmp[0] + " " + units;
+        JMenuItem mItem = new JRadioButtonMenuItem(label);
+        gridMap.put(gridMinor, mItem);
+        mItem.setSelected(gridMinor == getGridSize());
+        gridGroup.add(mItem);
+        gridMenu.add(mItem);
+        mItem.addActionListener(ev -> {
+          try {
+            setGridSize(gridMinor, gridMajor);
+          } catch (Exception ex) {
+            ex.printStackTrace();
+          }
+        });
+      }
+    }
+  }
+
+  private void setGridSize (double gridSize, int majorStep) {
     gridSpacing = gridSize;
     gridMajor = majorStep;
-    prefs.putDouble("gridSpacing", gridSize);
-    prefs.putInt("gridMajor", gridMajor);
     repaint();
+    JMenuItem mItem = gridMap.get(gridSpacing);
+    if (mItem != null) {
+      for (int ii = 0; ii < gridMenu.getItemCount(); ii++) {
+        JMenuItem tmp = gridMenu.getItem(ii);
+        if (tmp == mItem) {
+          mItem.setSelected(true);
+        }
+      }
+    }
   }
 
   double getGridSize () {
     return gridSpacing;
+  }
+
+  int getGridMajor () {
+    return gridMajor;
   }
 
   private double toGrid (double coord) {
@@ -677,8 +747,15 @@ public class DrawSurface extends JPanel implements Runnable {
     return crc.getValue();
   }
 
-  void setDesign (List<LaserCut.CADShape> shapes) {
+  void setDesign (List<LaserCut.CADShape> shapes, LaserCut.SurfaceSettings settings) {
     this.shapes = shapes;
+    if (settings != null) {
+      setZoomFactor(settings.zoomFactor);
+      setGridSize(settings.gridStep, settings.gridMajor);
+    } else {
+      setZoomFactor(1);         // 1:1 scale
+      setGridSize( 0.1, 10);    // 1/10th inch, 10 per inch
+    }
     repaint();
   }
 
@@ -750,6 +827,8 @@ public class DrawSurface extends JPanel implements Runnable {
   void clear () {
     pushToUndoStack();
     shapes.clear();
+    setZoomFactor(1);
+    setGridSize(0.1, 10);
     repaint();
   }
 
