@@ -20,7 +20,7 @@ public class DrawSurface extends JPanel implements Runnable {
   private double                              gridSpacing;
   private int                                 gridMajor;
   private JMenu                               gridMenu;
-  private double[]                            zoomFactors = {1, 2, 4, 8, 16};
+  private double[]                            zoomFactors = {1, 2, 3, 4, 8, 16};
   private double                              zoomFactor = 1;
   private Point2D.Double                      scrollPoint, measure1, measure2, dragStart;
   private Rectangle2D.Double                  dragBox;

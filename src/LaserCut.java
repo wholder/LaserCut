@@ -885,7 +885,7 @@ public class LaserCut extends JFrame {
     //
     // Add "Rotate Group Around Selected Shape" Menu Item
     //
-    JMenuItem rotateSelected = new MyMenuItem("Rotate Group Around Selected Shape", KeyEvent.VK_R, cmdMask, false);
+    JMenuItem rotateSelected = new MyMenuItem("Rotate Group Around Selected Shape's Origin", KeyEvent.VK_R, cmdMask, false);
     rotateSelected.addActionListener((ev) ->  surface.rotateGroupAroundSelected());
     editMenu.add(rotateSelected);
     //
