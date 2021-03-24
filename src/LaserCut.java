@@ -989,7 +989,6 @@ public class LaserCut extends JFrame {
       }
     });
     importMenu.add(importObj);
-
     //
     // Add "Import SVG File" menu item
     //

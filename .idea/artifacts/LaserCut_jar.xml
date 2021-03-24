@@ -1,12 +1,23 @@
 <component name="ArtifactManager">
-  <artifact type="jar" build-on-make="true" name="LaserCut:jar">
+  <artifact type="jar" name="LaserCut:jar">
     <output-path>$PROJECT_DIR$/out/artifacts/LaserCut_jar</output-path>
     <root id="archive" name="LaserCut.jar">
       <element id="module-output" name="LaserCut" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/lib/commons-lang3-3.8.1.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/lib/commons-logging-1.2.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/lib/jdxf.jar" path-in-jar="/" />
       <element id="extracted-dir" path="$PROJECT_DIR$/lib/jssc.jar" path-in-jar="/" />
       <element id="extracted-dir" path="$PROJECT_DIR$/lib/LibLaserCut.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/lib/libusb4java-1.3.0-darwin-x86-64.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/lib/libusb4java-1.3.0-linux-aarch64.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/lib/libusb4java-1.3.0-linux-arm.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/lib/libusb4java-1.3.0-linux-x86-64.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/lib/libusb4java-1.3.0-linux-x86.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/lib/libusb4java-1.3.0-win32-x86-64.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/lib/libusb4java-1.3.0-win32-x86.jar" path-in-jar="/" />
       <element id="extracted-dir" path="$PROJECT_DIR$/lib/pdfbox-2.0.11.jar" path-in-jar="/" />
-      <element id="extracted-dir" path="$PROJECT_DIR$/lib/commons-logging-1.2.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/lib/slf4j-simple-1.7.9.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/lib/usb4java-1.3.0.jar" path-in-jar="/" />
     </root>
   </artifact>
 </component>

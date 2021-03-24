@@ -20,16 +20,16 @@ import javax.swing.event.MenuListener;
 public class JSSCPort implements SerialPortEventListener {
   private static final Map<String,Integer> baudRates = new LinkedHashMap<>();
   private ArrayBlockingQueue<Integer>  queue = new ArrayBlockingQueue<>(1000);
-  private static Pattern      macPat = Pattern.compile("cu.");
-  private static final int    dataBits = 8, stopBits = SerialPort.STOPBITS_1, parity = SerialPort.PARITY_NONE;
-  private static final int    flowCtrl = SerialPort.FLOWCONTROL_NONE;
-  private static final int    eventMasks = 0;   // See: SerialPort.MASK_RXCHAR, MASK_TXEMPTY, MASK_CTS, MASK_DSR
-  private Preferences         prefs;
-  private String              portName;
-  private int                 baudRate;
-  private SerialPort          serialPort;
-  private String              prefix;
-  private List<RXEvent>       rxHandlers = new ArrayList<>();
+  private static Pattern        macPat = Pattern.compile("cu.");
+  private static final int      dataBits = 8, stopBits = SerialPort.STOPBITS_1, parity = SerialPort.PARITY_NONE;
+  private static final int      flowCtrl = SerialPort.FLOWCONTROL_NONE;
+  private static final int      eventMasks = 0;   // See: SerialPort.MASK_RXCHAR, MASK_TXEMPTY, MASK_CTS, MASK_DSR
+  private final Preferences     prefs;
+  private String                portName;
+  private int                   baudRate;
+  private SerialPort            serialPort;
+  private final String          prefix;
+  private final List<RXEvent>   rxHandlers = new ArrayList<>();
 
   interface RXEvent {
     void rxChar (byte cc);

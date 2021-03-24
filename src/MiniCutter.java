@@ -66,9 +66,9 @@ class MiniCutter implements LaserCut.OutputDevice {
   private static final int      MINI_PAPER_CUTTER_DEFAULT_SPEED = 90;           // Max feed rate (inches/min)
   private static final int      MINI_PAPER_CUTTER_MAX_SPEED = 200;              // Max feed rate (inches/min)
   private static final boolean  INVERT_Y_AXIS = false;
-  private JSSCPort              jPort;
-  private LaserCut              laserCut;
-  private String                dUnits;
+  private final JSSCPort        jPort;
+  private final LaserCut        laserCut;
+  private final String          dUnits;
 
   MiniCutter (LaserCut laserCut) {
     this.laserCut = laserCut;
@@ -95,22 +95,6 @@ class MiniCutter implements LaserCut.OutputDevice {
     return 1.0;
   }
 
-  private boolean getBoolean(String name, boolean def) {
-    return laserCut.prefs.getBoolean(getPrefix() + name, def);
-  }
-
-  private void putBoolean (String name, boolean value) {
-    laserCut.prefs.putBoolean(getPrefix() + name, value);
-  }
-
-  private int getInt(String name, int def) {
-    return laserCut.prefs.getInt(getPrefix() + name, def);
-  }
-
-  private void putInt (String name, int value) {
-    laserCut.prefs.putInt(getPrefix() + name, value);
-  }
-
   public JMenu getDeviceMenu () {
     JMenu miniCutterMenu = new JMenu(getName());
     // Add "Send to Mini Cutter" Submenu Item
@@ -122,10 +106,10 @@ class MiniCutter implements LaserCut.OutputDevice {
     sendToMiniLazer.addActionListener((ActionEvent ev) -> {
       if (jPort.hasSerial()) {
         if (showConfirmDialog(laserCut, panel, "Send Job to " + getName(), YES_NO_OPTION, PLAIN_MESSAGE, null) == OK_OPTION) {
-          boolean planPath = getBoolean("pathplan", true);
+          boolean planPath = laserCut.prefs.getBoolean(getPrefix() + "pathplan", true);
           int iterations = Integer.parseInt(tf.getText());
           // Cut Settings
-          int cutSpeed = getInt("speed", MINI_PAPER_CUTTER_DEFAULT_SPEED);
+          int cutSpeed = laserCut.prefs.getInt(getPrefix() + "speed", MINI_PAPER_CUTTER_DEFAULT_SPEED);
           cutSpeed = Math.min(MINI_PAPER_CUTTER_MAX_SPEED, cutSpeed);                         // Setting cutting speed
           // Generate G_Code for TeensyCNC
           List<String> cmds = new ArrayList<>();
@@ -190,12 +174,13 @@ class MiniCutter implements LaserCut.OutputDevice {
     JMenuItem miniLazerSettings = new JMenuItem(getName() + " Settings");
     miniLazerSettings.addActionListener(ev -> {
       ParameterDialog.ParmItem[] parmSet = {
-          new ParameterDialog.ParmItem("Use Path Planner", getBoolean("pathplan", true)),
-          new ParameterDialog.ParmItem("Cut Speed{inches/minute}", getInt("speed", MINI_PAPER_CUTTER_DEFAULT_SPEED)),
+          new ParameterDialog.ParmItem("Use Path Planner", laserCut.prefs.getBoolean(getPrefix() + "pathplan", true)),
+          new ParameterDialog.ParmItem("Cut Speed{inches/minute}", laserCut.prefs.getInt(getPrefix() + "speed",
+                                       MINI_PAPER_CUTTER_DEFAULT_SPEED)),
       };
       if (ParameterDialog.showSaveCancelParameterDialog(parmSet, dUnits, laserCut)) {
-        putBoolean("pathplan", (Boolean) parmSet[0].value);
-        putInt("speed", (Integer) parmSet[1].value);
+        laserCut.prefs.putBoolean(getPrefix() + "pathplan", (Boolean) parmSet[0].value);
+        laserCut.prefs.putInt(getPrefix() + "speed", (Integer) parmSet[1].value);
       }
     });
     miniCutterMenu.add(miniLazerSettings);
@@ -218,13 +203,13 @@ class MiniCutter implements LaserCut.OutputDevice {
   }
 
   class GCodeSender extends JDialog implements JSSCPort.RXEvent, Runnable {
-    private StringBuilder   response = new StringBuilder();
-    private String[]        cmds, abortCmds;
-    private JTextArea       gcode;
-    private JProgressBar    progress;
-    private volatile long   cmdQueue;
+    private final StringBuilder response = new StringBuilder();
+    private String[]            cmds, abortCmds;
+    private JTextArea           gcodePane;
+    private JProgressBar        progress;
+    private volatile long       cmdQueue;
     private final MiniCutter.GCodeSender.Lock lock = new MiniCutter.GCodeSender.Lock();
-    private boolean         doAbort, printInfo;
+    private boolean             doAbort, printInfo;
 
     final class Lock { }
 
@@ -234,27 +219,31 @@ class MiniCutter implements LaserCut.OutputDevice {
 
     GCodeSender (String[] cmds, String[] abortCmds, boolean printInfo) {
       super(laserCut, false);
-      this.printInfo = printInfo;
-      setTitle("G-Code Monitor");
-      setLocationRelativeTo(laserCut);
-      add(progress = new JProgressBar(), BorderLayout.NORTH);
-      progress.setMaximum(cmds.length);
-      JScrollPane sPane = new JScrollPane(gcode = new JTextArea());
-      gcode.setMargin(new Insets(3, 3, 3, 3));
-      DefaultCaret caret = (DefaultCaret) gcode.getCaret();
-      caret.setUpdatePolicy(DefaultCaret.ALWAYS_UPDATE);
-      gcode.setEditable(false);
-      add(sPane, BorderLayout.CENTER);
-      JButton abort = new JButton("Abort Job");
-      add(abort, BorderLayout.SOUTH);
-      abort.addActionListener(ev -> doAbort = true);
-      Rectangle loc = getBounds();
-      setSize(400, 300);
-      setLocation(loc.x + loc.width / 2 - 150, loc.y + loc.height / 2 - 150);
-      validate();
-      this.cmds = cmds;
-      this.abortCmds = abortCmds;
-      new Thread(this).start();
+      if (jPort.hasSerial()) {
+        this.printInfo = printInfo;
+        setTitle("G-Code Monitor");
+        setLocationRelativeTo(laserCut);
+        add(progress = new JProgressBar(), BorderLayout.NORTH);
+        progress.setMaximum(cmds.length);
+        JScrollPane sPane = new JScrollPane(gcodePane = new JTextArea());
+        gcodePane.setMargin(new Insets(3, 3, 3, 3));
+        DefaultCaret caret = (DefaultCaret) gcodePane.getCaret();
+        caret.setUpdatePolicy(DefaultCaret.ALWAYS_UPDATE);
+        gcodePane.setEditable(false);
+        add(sPane, BorderLayout.CENTER);
+        JButton abort = new JButton("Abort Job");
+        add(abort, BorderLayout.SOUTH);
+        abort.addActionListener(ev -> doAbort = true);
+        Rectangle loc = getBounds();
+        setSize(400, 300);
+        setLocation(loc.x + loc.width / 2 - 150, loc.y + loc.height / 2 - 150);
+        validate();
+        this.cmds = cmds;
+        this.abortCmds = abortCmds;
+        new Thread(this).start();
+      } else {
+        showMessageDialog(laserCut, "No Serial Port Selected", "Error", PLAIN_MESSAGE);
+      }
     }
 
     public void rxChar (byte cc) {
@@ -269,13 +258,13 @@ class MiniCutter implements LaserCut.OutputDevice {
                 //System.out.println(rsp + "\t" + cmdQueue);
               }
             } else {
-              gcode.append(rsp);
-              gcode.append("\n");
+              gcodePane.append(rsp);
+              gcodePane.append("\n");
             }
             response.setLength(0);
           } else if (rsp.startsWith("*") && printInfo) {
             if (rsp.contains("TeensyCNC")) {
-              gcode.append(rsp.substring(2).replace('|', '\n'));
+              gcodePane.append(rsp.substring(2).replace('|', '\n'));
             }
             response.setLength(0);
           } else {
@@ -312,14 +301,18 @@ class MiniCutter implements LaserCut.OutputDevice {
           String gcode = cmds[ii].trim();
           //System.out.println(gcode);
           if (!printInfo) {
-            this.gcode.append(gcode + '\n');
+            this.gcodePane.append(gcode + '\n');
           }
           // Ignore blank lines
           if (gcode.length() == 0) {
             continue;
           }
           progress.setValue(ii);
-          jPort.sendString(gcode + "\n\r");
+          try {
+            jPort.sendString(gcode + "\n\r");
+          } catch (Exception ex) {
+            gcodePane.append("Unable to connect to MiniCutter\n");
+          }
           synchronized (lock) {
             cmdQueue++;
             //System.out.println(gcode + "\t" + cmdQueue);
@@ -329,9 +322,9 @@ class MiniCutter implements LaserCut.OutputDevice {
         if (doAbort) {
           cmdQueue = 0;
           doAbort = false;
-          this.gcode.append("-abort-\n");
+          this.gcodePane.append("-abort-\n");
           for (String cmd : abortCmds) {
-            this.gcode.append(cmd + '\n');
+            this.gcodePane.append(cmd + '\n');
             jPort.sendString(cmd + "\n\r");     // Set abort command
             synchronized (lock) {
               cmdQueue++;

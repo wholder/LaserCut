@@ -1,0 +1,23 @@
+<component name="libraryTable">
+  <library name="commons-lang3-3.8.1">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/lib/commons-lang3-3.8.1.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/commons-logging-1.2.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/jdxf.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/jssc.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/LibLaserCut.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/libusb4java-1.3.0-darwin-x86-64.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/libusb4java-1.3.0-linux-aarch64.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/libusb4java-1.3.0-linux-arm.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/libusb4java-1.3.0-linux-x86-64.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/libusb4java-1.3.0-linux-x86.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/libusb4java-1.3.0-win32-x86-64.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/libusb4java-1.3.0-win32-x86.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/pdfbox-2.0.11.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/slf4j-simple-1.7.9.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/usb4java-1.3.0.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
