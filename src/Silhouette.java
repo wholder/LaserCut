@@ -24,11 +24,12 @@ class Silhouette implements LaserCut.OutputDevice {
   private static List<Cutter>         cutters = new LinkedList<>();
   private static Map<String,Cutter>   devices = new HashMap<>();
   private static String               device = "Curio";
-  private static int                  action, pen, pens, speed, pressure, media, landscape;
+  private static int                  action, pen, pens, speed, pressure, media, landscape, bezierMode;
   private LaserCut                    laserCut;
   private String                      dUnits;
   private Rectangle2D.Double          workspaceSize;
   private USBIO                       usb;
+  private boolean                     simulate = false;
 
   static class Cutter {
     String  name;
@@ -108,6 +109,7 @@ class Silhouette implements LaserCut.OutputDevice {
     pen = getInt("pen", Math.min(1, pens));             // 1 selects left pen, 2 selects right pen
     speed = getInt("speed", 5);                         // Drawing speed (value times 10 is centimeters/second)
     pressure = getInt("pressure", 10);                  // Tool pressure (value times 7 is grams of force, or 7-230 grams)
+    bezierMode = getInt("bezierMode", 0);               // Special Bezier mode (0 = normal, 1 = use BZ0, 2 = linify Bezier
   }
 
   // Implement for GRBLBase to define Preferences prefix, such as "mini.laser."
@@ -177,7 +179,11 @@ class Silhouette implements LaserCut.OutputDevice {
             cmds.addAll(shapeToSilhouette(shape));
           }
         }
-        if (device != null) {
+        if (simulate) {
+          for (String cmd : cmds) {
+            System.out.println(cmd);
+          }
+        } else if (device != null) {
           Cutter dev = devices.get(device);
           new SilhouetteSender(dev, cmds.toArray(new String[0]));
         } else {
@@ -196,6 +202,7 @@ class Silhouette implements LaserCut.OutputDevice {
           new ParameterDialog.ParmItem("Pen:Left|1:Right|2", Math.min(pen, pens)),
           new ParameterDialog.ParmItem("Speed[1-10]", speed),
           new ParameterDialog.ParmItem("Pressure[1-33]", pressure),
+          new ParameterDialog.ParmItem("Bezier Mode:Normal|0:Use BZ0|1:Linify|2", bezierMode),
       };
       parmSet[3].setEnabled(devices.get(device).pens > 1);
       parmSet[0].addParmListener(parm -> {
@@ -214,7 +221,8 @@ class Silhouette implements LaserCut.OutputDevice {
         putInt("action", action = Integer.parseInt((String) parmSet[idx++].value));
         putInt("pen", pen = Integer.parseInt((String) parmSet[idx++].value));
         putInt("speed", speed = (Integer) parmSet[idx++].value);
-        putInt("pressure", pressure = (Integer) parmSet[idx].value);
+        putInt("pressure", pressure = (Integer) parmSet[idx++].value);
+        putInt("bezierMode", bezierMode = Integer.parseInt((String) parmSet[idx].value));
       }
     });
     silhouetteMenu.add(silhouetteSettings);
@@ -235,6 +243,7 @@ class Silhouette implements LaserCut.OutputDevice {
     double firstY = 0;
     double lastX = 0;
     double lastY = 0;
+    boolean inBezier = false;
     // Use PathIterator to generate sequence of line or curve segments
     PathIterator pi = shape.getPathIterator(at);
     while (!pi.isDone()) {
@@ -268,17 +277,64 @@ class Silhouette implements LaserCut.OutputDevice {
           // Fall through to draw converted Bezier curve
         case PathIterator.SEG_CUBICTO:  // 3
           // Write 4 point, cubic Bezier curve
-          cmds.add("BZ1," +
-              df.format(lastX) + "," + df.format(lastY) + "," +
-              df.format(coords[0]) + "," + df.format(coords[1]) + "," +
-              df.format(coords[2]) + "," + df.format(coords[3]) + "," +
-              df.format(coords[4]) + "," + df.format(coords[5]));
-          lastX = coords[4];
-          lastY = coords[5];
+          switch (bezierMode) {
+            case 0:                                                             // Normal
+              cmds.add("BZ1," +
+                df.format(lastX) + "," + df.format(lastY) + "," +               // p1
+                df.format(coords[0]) + "," + df.format(coords[1]) + "," +       // p2
+                df.format(coords[2]) + "," + df.format(coords[3]) + "," +       // p3
+                df.format(coords[4]) + "," + df.format(coords[5]));             // p4
+              lastX = coords[4];
+              lastY = coords[5];
+              break;
+            case 1:                                                             // Use BZ0
+              cmds.add((inBezier ? "BZ1," : "BZ0,") +
+                df.format(lastX) + "," + df.format(lastY) + "," +
+                df.format(coords[0]) + "," + df.format(coords[1]) + "," +
+                df.format(coords[2]) + "," + df.format(coords[3]) + "," +
+                df.format(coords[4]) + "," + df.format(coords[5]));
+              lastX = coords[4];
+              lastY = coords[5];
+              inBezier = true;
+              break;
+            case 2:                                                             // Linify
+              // Decompose 4 point, cubic Bezier curve into line segments
+              Point2D.Double[] tmp = new Point2D.Double[4];
+              Point2D.Double[] cControl = {
+                new Point2D.Double(lastX, lastY),
+                new Point2D.Double(coords[0], coords[1]),
+                new Point2D.Double(coords[2], coords[3]),
+                new Point2D.Double(coords[4], coords[5])};
+              int segments = 32;
+              for (int ii = 0; ii < segments; ii++) {
+                double t = ((double) ii) / (segments - 1);
+                for (int jj = 0; jj < cControl.length; jj++) {
+                  tmp[jj] = new Point2D.Double(cControl[jj].x, cControl[jj].y);
+                }
+                for (int jj = 0; jj < cControl.length - 1; jj++) {
+                  for (int kk = 0; kk < cControl.length - 1; kk++) {
+                    // Subdivide points
+                    tmp[kk].x -= (tmp[kk].x - tmp[kk + 1].x) * t;
+                    tmp[kk].y -= (tmp[kk].y - tmp[kk + 1].y) * t;
+                  }
+                }
+                if (ii == 0) {
+                  // move to lastX, lastY
+                  cmds.add("M" + df.format(lastX) + "," + df.format(lastY));
+                } else {
+                  // line to lastX, lastY
+                  cmds.add("D" + df.format(lastX) + "," + df.format(lastY));
+                }
+                lastX = tmp[0].x;
+                lastY = tmp[0].y;
+
+              }
+              break;
+          }
           break;
         case PathIterator.SEG_CLOSE:    // 4
           // Close and write out the current curve
-          if (lastX != firstX || lastY !=firstY) {
+          if (lastX != firstX || lastY != firstY) {
             cmds.add("D" + df.format(firstX) + "," + df.format(firstY));
           }
           break;
