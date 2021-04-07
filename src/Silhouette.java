@@ -180,9 +180,7 @@ class Silhouette implements LaserCut.OutputDevice {
           }
         }
         if (simulate) {
-          for (String cmd : cmds) {
-            System.out.println(cmd);
-          }
+          // do nothing;
         } else if (device != null) {
           Cutter dev = devices.get(device);
           new SilhouetteSender(dev, cmds.toArray(new String[0]));
@@ -235,7 +233,7 @@ class Silhouette implements LaserCut.OutputDevice {
    * @param shape Shape object to convert
    * @return List of Silhouette command Strings
    */
-  private static List<String> shapeToSilhouette (Shape shape) {
+  private List<String> shapeToSilhouette (Shape shape) {
     AffineTransform at = new AffineTransform();
     at.scale(SCALE, SCALE);
     List<String> cmds = new ArrayList<>();
@@ -244,6 +242,9 @@ class Silhouette implements LaserCut.OutputDevice {
     double lastX = 0;
     double lastY = 0;
     boolean inBezier = false;
+    if (simulate) {
+      System.out.println("New shape");
+    }
     // Use PathIterator to generate sequence of line or curve segments
     PathIterator pi = shape.getPathIterator(at);
     while (!pi.isDone()) {
@@ -251,6 +252,7 @@ class Silhouette implements LaserCut.OutputDevice {
       int type = pi.currentSegment(coords);
       // Reverse x/y values for Silhouette
       coords = new double[] {coords[1], coords[0], coords[3], coords[2], coords[5], coords[4]};
+      int lastCmdsSize = cmds.size();
       switch (type) {
         case PathIterator.SEG_MOVETO:   // 0
           // Move to start of a line, or Bezier curve segment
@@ -345,6 +347,11 @@ class Silhouette implements LaserCut.OutputDevice {
           }
           inBezier = false;
           break;
+      }
+      if (simulate) {
+        for (int ii = lastCmdsSize; ii < cmds.size(); ii++) {
+          System.out.println(cmds.get(ii));
+        }
       }
       pi.next();
     }
