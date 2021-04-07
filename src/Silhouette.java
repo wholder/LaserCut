@@ -255,14 +255,20 @@ class Silhouette implements LaserCut.OutputDevice {
         case PathIterator.SEG_MOVETO:   // 0
           // Move to start of a line, or Bezier curve segment
           cmds.add("M" + df.format(coords[0]) + "," + df.format(coords[1]));
-          lastX = firstX = coords[0];
-          lastY = firstY = coords[1];
+          if (lastX != coords[0] || lastY!= coords[1]) {
+            lastX = firstX = coords[0];
+            lastY = firstY = coords[1];
+          }
+          inBezier = false;
           break;
         case PathIterator.SEG_LINETO:   // 1
           // Draw line from previous point to new point
-          cmds.add("D" + df.format(coords[0]) + "," + df.format(coords[1]));
-          lastX = coords[0];
-          lastY = coords[1];
+          if (lastX != coords[0] || lastY!= coords[1]) {
+            cmds.add("D" + df.format(coords[0]) + "," + df.format(coords[1]));
+            lastX = coords[0];
+            lastY = coords[1];
+          }
+          inBezier = false;
           break;
         case PathIterator.SEG_QUADTO:   // 2
           // Convert 3 point, quadratic Bezier curve into 4 point, cubic Bezier curve
@@ -280,19 +286,19 @@ class Silhouette implements LaserCut.OutputDevice {
           switch (bezierMode) {
             case 0:                                                             // Normal
               cmds.add("BZ1," +
-                df.format(lastX) + "," + df.format(lastY) + "," +               // p1
-                df.format(coords[0]) + "," + df.format(coords[1]) + "," +       // p2
-                df.format(coords[2]) + "," + df.format(coords[3]) + "," +       // p3
-                df.format(coords[4]) + "," + df.format(coords[5]));             // p4
+                df.format(lastX) + "," + df.format(lastY) + "," +               // p1 (start)
+                df.format(coords[0]) + "," + df.format(coords[1]) + "," +       // p2 (control point)
+                df.format(coords[2]) + "," + df.format(coords[3]) + "," +       // p3 (control point)
+                df.format(coords[4]) + "," + df.format(coords[5]) + ",0");      // p4 (end)
               lastX = coords[4];
               lastY = coords[5];
               break;
             case 1:                                                             // Use BZ0
               cmds.add((inBezier ? "BZ1," : "BZ0,") +
-                df.format(lastX) + "," + df.format(lastY) + "," +
-                df.format(coords[0]) + "," + df.format(coords[1]) + "," +
-                df.format(coords[2]) + "," + df.format(coords[3]) + "," +
-                df.format(coords[4]) + "," + df.format(coords[5]));
+                df.format(lastX) + "," + df.format(lastY) + "," +               // p1 (start)
+                df.format(coords[0]) + "," + df.format(coords[1]) + "," +       // p2 (control point)
+                df.format(coords[2]) + "," + df.format(coords[3]) + "," +       // p3 (control point)
+                df.format(coords[4]) + "," + df.format(coords[5]) + ",0");      // p4 (end)
               lastX = coords[4];
               lastY = coords[5];
               inBezier = true;
@@ -301,10 +307,10 @@ class Silhouette implements LaserCut.OutputDevice {
               // Decompose 4 point, cubic Bezier curve into line segments
               Point2D.Double[] tmp = new Point2D.Double[4];
               Point2D.Double[] cControl = {
-                new Point2D.Double(lastX, lastY),
-                new Point2D.Double(coords[0], coords[1]),
-                new Point2D.Double(coords[2], coords[3]),
-                new Point2D.Double(coords[4], coords[5])};
+                new Point2D.Double(lastX, lastY),                               // p1 (start)
+                new Point2D.Double(coords[0], coords[1]),                       // p2 (control point)
+                new Point2D.Double(coords[2], coords[3]),                       // p3 (control point)
+                new Point2D.Double(coords[4], coords[5])};                      // p4 (end)
               int segments = 32;
               for (int ii = 0; ii < segments; ii++) {
                 double t = ((double) ii) / (segments - 1);
@@ -337,6 +343,7 @@ class Silhouette implements LaserCut.OutputDevice {
           if (lastX != firstX || lastY != firstY) {
             cmds.add("D" + df.format(firstX) + "," + df.format(firstY));
           }
+          inBezier = false;
           break;
       }
       pi.next();
