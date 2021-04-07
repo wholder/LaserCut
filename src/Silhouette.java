@@ -9,6 +9,7 @@ import java.text.DecimalFormat;
 import java.util.*;
 import java.util.List;
 
+import static java.awt.Event.CTRL_MASK;
 import static javax.swing.JOptionPane.*;
 
 /**
@@ -24,7 +25,7 @@ class Silhouette implements LaserCut.OutputDevice {
   private static List<Cutter>         cutters = new LinkedList<>();
   private static Map<String,Cutter>   devices = new HashMap<>();
   private static String               deviceName = "Curio";
-  private static int                  action, pen, pens, speed, pressure, media, landscape, bezierMode;
+  private static int                  action, pen, pens, speed, pressure, media, landscape, bezier;
   private LaserCut                    laserCut;
   private String                      dUnits;
   private Rectangle2D.Double          workspaceSize;
@@ -113,7 +114,7 @@ class Silhouette implements LaserCut.OutputDevice {
     pen = getInt("pen", Math.min(1, pens));             // 1 selects left pen, 2 selects right pen
     speed = getInt("speed", 5);                         // Drawing speed (value times 10 is centimeters/second)
     pressure = getInt("pressure", 10);                  // Tool pressure (value times 7 is grams of force, or 7-230 grams)
-    bezierMode = getInt("bezierMode", 0);               // Special Bezier mode (0 = normal, 1 = use BZ0, 2 = linify Bezier
+    bezier = getInt("bezierMode", 0);               // Special Bezier mode (0 = normal, 1 = use BZ0, 2 = linify Bezier
   }
 
   // Implement for GRBLBase to define Preferences prefix, such as "mini.laser."
@@ -197,35 +198,43 @@ class Silhouette implements LaserCut.OutputDevice {
     // Add "Silhouette Settings" Submenu Item
     JMenuItem silhouetteSettings = new JMenuItem(getName() + " Settings");
     silhouetteSettings.addActionListener(ev -> {
-      ParameterDialog.ParmItem[] parmSet = {
-          new ParameterDialog.ParmItem("Device" + getDeviceNames(), deviceName),                  // Device
-          new ParameterDialog.ParmItem("Orientation:Portrait|0:Landscape|1", landscape),          // Orientation
-          new ParameterDialog.ParmItem("Action:Draw|0:Cut|18", action),                           // Action
-          new ParameterDialog.ParmItem("Pen:Left|1:Right|2", Math.min(pen, pens)),                // Pen
-          new ParameterDialog.ParmItem("Speed[1-10]", speed),                                     // Speed
-          new ParameterDialog.ParmItem("Pressure[1-33]", pressure),                               // Pressure
-          new ParameterDialog.ParmItem("Bezier Mode:Normal|0:Use BZ0|1:Linify|2", bezierMode),    // Bezier Mode
-      };
-      parmSet[3].setEnabled(devices.get(deviceName).pens > 1);
-      parmSet[0].addParmListener(parm -> {
+      boolean ctrlDn = (ev.getModifiers() & CTRL_MASK) != 0 || bezier != 0;
+      List<ParameterDialog.ParmItem> parms = new ArrayList<>();
+      ParameterDialog.ParmItem parm0, parm3;
+      parms.add(parm0 = new ParameterDialog.ParmItem("Device" + getDeviceNames(), deviceName));       // Device
+      parms.add(new ParameterDialog.ParmItem("Orientation:Portrait|0:Landscape|1", landscape));       // Orientation
+      parms.add(new ParameterDialog.ParmItem("Action:Draw|0:Cut|18", action));                        // Action
+      parms.add(parm3 = new ParameterDialog.ParmItem("Pen:Left|1:Right|2", Math.min(pen, pens)));     // Pen
+      parms.add(new ParameterDialog.ParmItem("Speed[1-10]", speed));                                  // Speed
+      parms.add(new ParameterDialog.ParmItem("Pressure[1-33]", pressure));                            // Pressure
+      if (ctrlDn) {
+        parms.add(new ParameterDialog.ParmItem("Bezier Mode:Normal|0:Use BZ0|1:Linify|2", bezier)); // Bezier Mode
+      }
+      ParameterDialog.ParmItem[] parmSet = parms.toArray(new ParameterDialog.ParmItem[0]);
+      parm3.setEnabled(devices.get(deviceName).pens > 1);
+      parm0.addParmListener(parm -> {
         String device = (String) ((JComboBox) parm.field).getSelectedItem();
         Cutter cutter = devices.get(device);
         parmSet[3].setEnabled(cutter.pens > 1);
       });
       if (ParameterDialog.showSaveCancelParameterDialog(parmSet, dUnits, laserCut)) {
         int idx = 0;
-        deviceName = (String) parmSet[idx++].value;                                               // Device
+        deviceName = (String) parmSet[idx++].value;                                                   // Device
         putString("deviceName", deviceName);
-        putInt("landscape", landscape = Integer.parseInt((String) parmSet[idx++].value));         // Orientation
+        putInt("landscape", landscape = Integer.parseInt((String) parmSet[idx++].value));             // Orientation
         Cutter cutter = devices.get(deviceName);
         workspaceSize = cutter.getWorkspaceSize(0, landscape == 1);
         laserCut.updateWorkspace();
         pens = cutter.pens;
-        putInt("action", action = Integer.parseInt((String) parmSet[idx++].value));               // Action
-        putInt("pen", pen = Integer.parseInt((String) parmSet[idx++].value));                     // Pen
-        putInt("speed", speed = (Integer) parmSet[idx++].value);                                  // Speed
-        putInt("pressure", pressure = (Integer) parmSet[idx++].value);                            // Pressure
-        putInt("bezierMode", bezierMode = Integer.parseInt((String) parmSet[idx].value));         // Bezier Mode
+        putInt("action", action = Integer.parseInt((String) parmSet[idx++].value));                   // Action
+        putInt("pen", pen = Integer.parseInt((String) parmSet[idx++].value));                         // Pen
+        putInt("speed", speed = (Integer) parmSet[idx++].value);                                      // Speed
+        putInt("pressure", pressure = (Integer) parmSet[idx++].value);                                // Pressure
+        if (ctrlDn) {
+          putInt("bezierMode", bezier = Integer.parseInt((String) parmSet[idx].value));               // Bezier Mode
+        } else {
+          bezier = 0;
+        }
       }
     });
     silhouetteMenu.add(silhouetteSettings);
@@ -290,7 +299,7 @@ class Silhouette implements LaserCut.OutputDevice {
           // Fall through to draw converted Bezier curve
         case PathIterator.SEG_CUBICTO:  // 3
           // Write 4 point, cubic Bezier curve
-          switch (bezierMode) {
+          switch (bezier) {
             case 0:                                                             // Normal
               cmds.add("BZ1," +
                 df.format(lastX) + "," + df.format(lastY) + "," +               // p1 (start)
