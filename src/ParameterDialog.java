@@ -128,8 +128,11 @@ class ParameterDialog extends JDialog {
     void setEnabled (boolean enabled) {
       if (field != null) {
         field.setEnabled(enabled);
-        if (field instanceof JComboBox){
-          ((JComboBox) field).setSelectedIndex(0);
+        if (field instanceof JComboBox) {
+          JComboBox jBox = (JComboBox) field;
+          if (jBox.getItemCount() < jBox.getSelectedIndex()) {
+            jBox.setSelectedIndex(0);
+          }
         }
       }
       this.enabled = enabled;
@@ -378,6 +381,8 @@ class ParameterDialog extends JDialog {
           } else {
             select.setSelectedIndex(Arrays.asList(values).indexOf((String) parm.value));
           }
+          Object sel = select.getSelectedItem();
+          int idx = select.getSelectedIndex();
           fields.add(parm.field = select, getGbc(1, jj));
         } else if (parm.valueType instanceof int[]) {
           String[] vals = intToString((int[]) parm.valueType);
@@ -580,6 +585,8 @@ class ParameterDialog extends JDialog {
 
   public static void main (String... args) {
     ParmItem[] parmSet = {
+        new ParmItem("Device:Curio:Cameo:Cameo 2:Cameo 3:Portrait:Portrait 2:SD-1:SD-2:CC200-20:CC300-20", "Portrait 2"),
+        new ParmItem("Orientation:Portrait|0:Landscape|1", "1"),
         new ParmItem("Cut Power|%(1-10)", 10),
         new ParmItem("Pressure[1-33]", 6),
         new ParmItem("X Offset|in", 2.0),
