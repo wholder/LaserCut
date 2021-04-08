@@ -20,17 +20,17 @@ import static javax.swing.JOptionPane.*;
  */
 
 class Silhouette implements LaserCut.OutputDevice {
-  private static final DecimalFormat  df = new DecimalFormat("0.#");
-  private static final double         SCALE = 508;   // Silhouette unit
-  private static List<Cutter>         cutters = new LinkedList<>();
-  private static Map<String,Cutter>   devices = new HashMap<>();
-  private static String               deviceName = "Curio";
-  private static int                  action, pen, pens, speed, pressure, media, landscape, bezier;
-  private LaserCut                    laserCut;
-  private String                      dUnits;
-  private Rectangle2D.Double          workspaceSize;
-  private USBIO                       usb;
-  private boolean                     simulate = false;
+  private static final DecimalFormat      df = new DecimalFormat("0.#");
+  private static final double             SCALE = 508;   // Silhouette unit
+  private static final List<Cutter>       cutters = new LinkedList<>();
+  private static final Map<String,Cutter> devices = new HashMap<>();
+  private static String                   deviceName = "Curio";
+  private static int                      action, pen, pens, speed, pressure, media, landscape;
+  private final LaserCut                  laserCut;
+  private final String                    dUnits;
+  private Rectangle2D.Double              workspaceSize;
+  private USBIO                           usb;
+  private final boolean                   simulate = false;
 
   static class Cutter {
     String  name;
@@ -65,7 +65,8 @@ class Silhouette implements LaserCut.OutputDevice {
   }
 
   static class Mat {
-    private double  wid, hyt;
+    private final double  wid;
+    private final double hyt;
 
     Mat (double wid, double hyt) {
       this.wid = wid;
@@ -114,7 +115,6 @@ class Silhouette implements LaserCut.OutputDevice {
     pen = getInt("pen", Math.min(1, pens));             // 1 selects left pen, 2 selects right pen
     speed = getInt("speed", 5);                         // Drawing speed (value times 10 is centimeters/second)
     pressure = getInt("pressure", 10);                  // Tool pressure (value times 7 is grams of force, or 7-230 grams)
-    bezier = getInt("bezierMode", 0);               // Special Bezier mode (0 = normal, 1 = use BZ0, 2 = linify Bezier
   }
 
   // Implement for GRBLBase to define Preferences prefix, such as "mini.laser."
@@ -198,7 +198,6 @@ class Silhouette implements LaserCut.OutputDevice {
     // Add "Silhouette Settings" Submenu Item
     JMenuItem silhouetteSettings = new JMenuItem(getName() + " Settings");
     silhouetteSettings.addActionListener(ev -> {
-      boolean ctrlDn = (ev.getModifiers() & CTRL_MASK) != 0 || bezier != 0;
       List<ParameterDialog.ParmItem> parms = new ArrayList<>();
       ParameterDialog.ParmItem parm0, parm3;
       parms.add(parm0 = new ParameterDialog.ParmItem("Device" + getDeviceNames(), deviceName));       // Device
@@ -207,9 +206,6 @@ class Silhouette implements LaserCut.OutputDevice {
       parms.add(parm3 = new ParameterDialog.ParmItem("Pen:Left|1:Right|2", Math.min(pen, pens)));     // Pen
       parms.add(new ParameterDialog.ParmItem("Speed[1-10]", speed));                                  // Speed
       parms.add(new ParameterDialog.ParmItem("Pressure[1-33]", pressure));                            // Pressure
-      if (ctrlDn) {
-        parms.add(new ParameterDialog.ParmItem("Bezier Mode:Normal|0:Use BZ0|1:Linify|2", bezier)); // Bezier Mode
-      }
       ParameterDialog.ParmItem[] parmSet = parms.toArray(new ParameterDialog.ParmItem[0]);
       parm3.setEnabled(devices.get(deviceName).pens > 1);
       parm0.addParmListener(parm -> {
@@ -230,11 +226,6 @@ class Silhouette implements LaserCut.OutputDevice {
         putInt("pen", pen = Integer.parseInt((String) parmSet[idx++].value));                         // Pen
         putInt("speed", speed = (Integer) parmSet[idx++].value);                                      // Speed
         putInt("pressure", pressure = (Integer) parmSet[idx++].value);                                // Pressure
-        if (ctrlDn) {
-          putInt("bezierMode", bezier = Integer.parseInt((String) parmSet[idx].value));               // Bezier Mode
-        } else {
-          bezier = 0;
-        }
       }
     });
     silhouetteMenu.add(silhouetteSettings);
@@ -255,10 +246,7 @@ class Silhouette implements LaserCut.OutputDevice {
     double firstY = 0;
     double lastX = 0;
     double lastY = 0;
-    boolean inBezier = false;
-    if (simulate) {
-      System.out.println("New shape");
-    }
+    boolean hasFirst = false;
     // Use PathIterator to generate sequence of line or curve segments
     PathIterator pi = shape.getPathIterator(at);
     while (!pi.isDone()) {
@@ -271,20 +259,19 @@ class Silhouette implements LaserCut.OutputDevice {
         case PathIterator.SEG_MOVETO:   // 0
           // Move to start of a line, or Bezier curve segment
           cmds.add("M" + df.format(coords[0]) + "," + df.format(coords[1]));
-          if (lastX != coords[0] || lastY!= coords[1]) {
-            lastX = firstX = coords[0];
-            lastY = firstY = coords[1];
+          lastX = coords[0];
+          lastY = coords[1];
+          if (!hasFirst) {
+            firstX = coords[0];
+            firstY = coords[1];
+            hasFirst = true;
           }
-          inBezier = false;
           break;
         case PathIterator.SEG_LINETO:   // 1
           // Draw line from previous point to new point
-          if (lastX != coords[0] || lastY!= coords[1]) {
-            cmds.add("D" + df.format(coords[0]) + "," + df.format(coords[1]));
-            lastX = coords[0];
-            lastY = coords[1];
-          }
-          inBezier = false;
+          cmds.add("D" + df.format(coords[0]) + "," + df.format(coords[1]));
+          lastX = coords[0];
+          lastY = coords[1];
           break;
         case PathIterator.SEG_QUADTO:   // 2
           // Convert 3 point, quadratic Bezier curve into 4 point, cubic Bezier curve
@@ -299,67 +286,46 @@ class Silhouette implements LaserCut.OutputDevice {
           // Fall through to draw converted Bezier curve
         case PathIterator.SEG_CUBICTO:  // 3
           // Write 4 point, cubic Bezier curve
-          switch (bezier) {
-            case 0:                                                             // Normal
-              cmds.add("BZ1," +
-                df.format(lastX) + "," + df.format(lastY) + "," +               // p1 (start)
-                df.format(coords[0]) + "," + df.format(coords[1]) + "," +       // p2 (control point)
-                df.format(coords[2]) + "," + df.format(coords[3]) + "," +       // p3 (control point)
-                df.format(coords[4]) + "," + df.format(coords[5]) + ",0");      // p4 (end)
-              lastX = coords[4];
-              lastY = coords[5];
-              break;
-            case 1:                                                             // Use BZ0
-              cmds.add((inBezier ? "BZ1," : "BZ0,") +
-                df.format(lastX) + "," + df.format(lastY) + "," +               // p1 (start)
-                df.format(coords[0]) + "," + df.format(coords[1]) + "," +       // p2 (control point)
-                df.format(coords[2]) + "," + df.format(coords[3]) + "," +       // p3 (control point)
-                df.format(coords[4]) + "," + df.format(coords[5]) + ",0");      // p4 (end)
-              lastX = coords[4];
-              lastY = coords[5];
-              inBezier = true;
-              break;
-            case 2:                                                             // Linify
-              // Decompose 4 point, cubic Bezier curve into line segments
-              Point2D.Double[] tmp = new Point2D.Double[4];
-              Point2D.Double[] cControl = {
-                new Point2D.Double(lastX, lastY),                               // p1 (start)
-                new Point2D.Double(coords[0], coords[1]),                       // p2 (control point)
-                new Point2D.Double(coords[2], coords[3]),                       // p3 (control point)
-                new Point2D.Double(coords[4], coords[5])};                      // p4 (end)
-              int segments = 32;
-              for (int ii = 0; ii < segments; ii++) {
-                double t = ((double) ii) / (segments - 1);
-                for (int jj = 0; jj < cControl.length; jj++) {
-                  tmp[jj] = new Point2D.Double(cControl[jj].x, cControl[jj].y);
-                }
-                for (int jj = 0; jj < cControl.length - 1; jj++) {
-                  for (int kk = 0; kk < cControl.length - 1; kk++) {
-                    // Subdivide points
-                    tmp[kk].x -= (tmp[kk].x - tmp[kk + 1].x) * t;
-                    tmp[kk].y -= (tmp[kk].y - tmp[kk + 1].y) * t;
-                  }
-                }
-                if (ii == 0) {
-                  // move to lastX, lastY
-                  cmds.add("M" + df.format(lastX) + "," + df.format(lastY));
-                } else {
-                  // line to lastX, lastY
-                  cmds.add("D" + df.format(lastX) + "," + df.format(lastY));
-                }
-                lastX = tmp[0].x;
-                lastY = tmp[0].y;
-
+            // Decompose 4 point, cubic Bezier curve into line segments
+            Point2D.Double[] tmp = new Point2D.Double[4];
+            Point2D.Double[] cControl = {
+              new Point2D.Double(lastX, lastY),                               // p1 (start)
+              new Point2D.Double(coords[0], coords[1]),                       // p2 (control point)
+              new Point2D.Double(coords[2], coords[3]),                       // p3 (control point)
+              new Point2D.Double(coords[4], coords[5])};                      // p4 (end)
+            double dist = cControl[0].distance(cControl[3]);
+            // Kludge: to increase number of line segments for larger curves
+            int segments = 16 * Math.max((int) Math.sqrt(dist / 100), 1);
+            if (false) {
+              System.out.printf("        dist: %.2f, segments: %d\n", dist, segments);
+            }
+            for (int ii = 0; ii < segments; ii++) {
+              double t = ((double) ii) / (segments - 1);
+              for (int jj = 0; jj < cControl.length; jj++) {
+                tmp[jj] = new Point2D.Double(cControl[jj].x, cControl[jj].y);
               }
-              break;
-          }
+              for (int jj = 0; jj < cControl.length - 1; jj++) {
+                for (int kk = 0; kk < cControl.length - 1; kk++) {
+                  // Subdivide points
+                  tmp[kk].x -= (tmp[kk].x - tmp[kk + 1].x) * t;
+                  tmp[kk].y -= (tmp[kk].y - tmp[kk + 1].y) * t;
+                }
+              }
+              if (ii == 0) {
+                // move to lastX, lastY
+                cmds.add("M" + df.format(lastX = tmp[0].x) + "," + df.format(lastY = tmp[0].y));
+              } else {
+                // line to lastX, lastY
+                cmds.add("D" + df.format(lastX = tmp[0].x) + "," + df.format(lastY = tmp[0].y));
+              }
+            }
           break;
         case PathIterator.SEG_CLOSE:    // 4
           // Close and write out the current curve
           if (lastX != firstX || lastY != firstY) {
             cmds.add("D" + df.format(firstX) + "," + df.format(firstY));
           }
-          inBezier = false;
+          hasFirst = false;
           break;
       }
       if (simulate) {
@@ -373,10 +339,10 @@ class Silhouette implements LaserCut.OutputDevice {
   }
 
   class SilhouetteSender extends JDialog implements Runnable {
-    private Cutter          device;
-    private String[]        cmds;
-    private JTextArea       monitor;
-    private JProgressBar    progress;
+    private final Cutter          device;
+    private final String[]        cmds;
+    private final JTextArea       monitor;
+    private final JProgressBar    progress;
     private boolean         doAbort;
 
     SilhouetteSender (Cutter device, String[] cmds) {
