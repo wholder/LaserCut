@@ -30,7 +30,7 @@ class Silhouette implements LaserCut.OutputDevice {
   private final String                    dUnits;
   private Rectangle2D.Double              workspaceSize;
   private USBIO                           usb;
-  private final boolean                   simulate = false;
+  private final boolean                   simulate = true;
 
   static class Cutter {
     String  name;
@@ -258,9 +258,9 @@ class Silhouette implements LaserCut.OutputDevice {
       switch (type) {
         case PathIterator.SEG_MOVETO:   // 0
           // Move to start of a line, or Bezier curve segment
-          cmds.add("M" + df.format(coords[0]) + "," + df.format(coords[1]));
-          lastX = coords[0];
-          lastY = coords[1];
+          if (lastX != coords[0] || lastY != coords[1]) {
+            cmds.add("M" + df.format(lastX = coords[0]) + "," + df.format(lastY = coords[1]));
+          }
           if (!hasFirst) {
             firstX = coords[0];
             firstY = coords[1];
@@ -312,8 +312,10 @@ class Silhouette implements LaserCut.OutputDevice {
                 }
               }
               if (ii == 0) {
-                // move to lastX, lastY
-                cmds.add("M" + df.format(lastX = tmp[0].x) + "," + df.format(lastY = tmp[0].y));
+                if (lastX != tmp[0].x || lastY != tmp[0].y) {
+                  // move to lastX, lastY
+                  cmds.add("M" + df.format(lastX = tmp[0].x) + "," + df.format(lastY = tmp[0].y));
+                }
               } else {
                 // line to lastX, lastY
                 cmds.add("D" + df.format(lastX = tmp[0].x) + "," + df.format(lastY = tmp[0].y));
