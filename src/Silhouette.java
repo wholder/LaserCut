@@ -30,7 +30,7 @@ class Silhouette implements LaserCut.OutputDevice {
   private final String                    dUnits;
   private Rectangle2D.Double              workspaceSize;
   private USBIO                           usb;
-  private final boolean                   simulate = true;
+  private final boolean                   simulate = false;
 
   static class Cutter {
     String  name;
