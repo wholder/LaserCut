@@ -100,6 +100,7 @@ The function of the different fields is, as follows:
   - **6/18/2019** - Can now use mouse to resize and rotate Text and enforce resizing Resizable shapes to a minimum size
   - **6/27/2019** - Added experimental new code to support a Cricut™ Mini Modified to run [TeensyCNC](https://github.com/seishuku/TeensyCNC) by Matt Williams
   - **9/5/2019** - Updated to use [TeensyCNC](https://github.com/wholder/TeensyCNC2), which is my updated version of Matt Williams' TeensyCNC code
+  - 4/20/2023 - Refactored code in preparation for adding some new features and fixing some code issues
   
 ## Under Development
 - Support for a user-extendable library of specialized cutout shapes, such as for mounting RC Servos (to replace and extend the current Nema Stepper code)
