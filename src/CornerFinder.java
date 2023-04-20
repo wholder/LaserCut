@@ -6,7 +6,7 @@ import java.util.ArrayList;
   // Bezier circle: http://spencermortensen.com/articles/bezier-circle/
 
 public class CornerFinder {
-  private static DecimalFormat  df = new DecimalFormat("#.####");
+  private static final DecimalFormat  df = new DecimalFormat("#.####");
 
   public static void main (String[] args) {
     Shape shape;

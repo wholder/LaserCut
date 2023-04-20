@@ -33,7 +33,9 @@ public class GerberZip {
   }
 
   static class ExcellonHole {
-    double  xLoc, yLoc, diameter;
+    final double  xLoc;
+    final double yLoc;
+    final double diameter;
 
     ExcellonHole (double x, double y, double dia) {
       xLoc = x;

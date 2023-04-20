@@ -6,6 +6,7 @@ import java.awt.geom.*;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.text.DecimalFormat;
 import java.util.*;
 import java.util.List;
@@ -50,9 +51,9 @@ public class DXFReader {
   private boolean               drawText;
   private boolean               drawMText;
   private boolean               drawDimen;
-  private ArrayList<DrawItem>   entities = new ArrayList<>();
+  private final ArrayList<DrawItem>   entities = new ArrayList<>();
   private ArrayList<Entity>     stack = new ArrayList<>();
-  private Map<String,Block>     blockDict = new TreeMap<>();
+  private final Map<String,Block>     blockDict = new TreeMap<>();
   private Entity                cEntity = null;
   private Rectangle2D           bounds;
   private double                uScale = 0.039370078740157; // default to millimeters as units
@@ -76,8 +77,8 @@ public class DXFReader {
     }
   }
 
-  class Entity {
-    private String        type;
+  static class Entity {
+    private final String        type;
 
     Entity (String type) {
       this.type = type;
@@ -103,7 +104,7 @@ public class DXFReader {
   }
 
   class Section extends Entity {
-    private Map<String,Map<Integer,String>>   attributes = new TreeMap<>();
+    private final Map<String,Map<Integer,String>>   attributes = new TreeMap<>();
     private Map<Integer,String>               attValues;
     private String                            sType;
 
@@ -256,7 +257,7 @@ public class DXFReader {
    * Note: this code should use, or support vector fonts such as those by Hershey
    */
   class Text extends DrawItem implements AutoPop {
-    private Canvas    canvas = new Canvas();
+    private final Canvas    canvas = new Canvas();
     private double    ix, iy, ix2, iy2, textHeight, rotation;
     private int       hAdjust, vAdjust;
     private String    text;
@@ -430,7 +431,7 @@ public class DXFReader {
    *  BOLLARD,\PFOR W.H.\PPROTECTION
    */
   class MText extends DrawItem implements AutoPop {
-    private Canvas    canvas = new Canvas();
+    private final Canvas    canvas = new Canvas();
     private String    text;
     private double    ix, iy, textHeight, refWidth, xRot, yRot;
     private int       attachPoint;
@@ -462,23 +463,30 @@ public class DXFReader {
                 String val = value.substring(jj + 1, tdx);
                 jj = tdx;
                 if (cc == 'S') {                      // Stacking Fractions (1/2, 1/3, etc)
-                  if ("1/2".equals(val)) {
-                    buf.append("\u00BD");             // Unicode for 1/2
-                  } else if ("1/3".equals(val)) {
+                  switch (val) {
+                    case "1/2":
+                      buf.append("\u00BD");             // Unicode for 1/2
+                      break;
+                    case "1/3":
                       buf.append("\u2153");           // Unicode for 1/3
-                  } else if ("1/4".equals(val)) {
-                    buf.append("\u00BC");             // Unicode for 1/4
-                  } else if ("2/3".equals(val)) {
-                    buf.append("\u2154");             // Unicode for 2/3
-                  } else if ("3/4".equals(val)) {
-                    buf.append("\u00BE");             // Unicode for 3/4
-                  } else {
-                    String[] parts = val.split("/");
-                    if (parts.length == 2) {
-                      buf.append(parts[0]);
-                      buf.append("\u2044");
-                      buf.append(parts[1]);
-                    }
+                      break;
+                    case "1/4":
+                      buf.append("\u00BC");             // Unicode for 1/4
+                      break;
+                    case "2/3":
+                      buf.append("\u2154");             // Unicode for 2/3
+                      break;
+                    case "3/4":
+                      buf.append("\u00BE");             // Unicode for 3/4
+                      break;
+                    default:
+                      String[] parts = val.split("/");
+                      if (parts.length == 2) {
+                        buf.append(parts[0]);
+                        buf.append("\u2044");
+                        buf.append(parts[1]);
+                      }
+                      break;
                   }
                 }
                 break;
@@ -605,7 +613,7 @@ public class DXFReader {
   }
 
   class Block extends Entity {
-    private List<DrawItem>  entities = new ArrayList<>();
+    private final List<DrawItem>  entities = new ArrayList<>();
     private double          baseX, baseY;
     private int             flags;
 
@@ -646,7 +654,7 @@ public class DXFReader {
   }
 
   class Insert extends DrawItem implements AutoPop {
-    private String    blockHandle, blockName;
+    private String    blockName;
     private double    ix, iy, xScale = 1.0, yScale = 1.0, zScale = 1.0, rotation;
 
     Insert (String type) {
@@ -660,7 +668,6 @@ public class DXFReader {
         blockName = value;
         break;
       case 5:                                     // Handle of Block to insert
-        blockHandle = value;
         break;
       case 10:                                    // Insertion X
         ix = Double.parseDouble(value) * uScale;
@@ -727,7 +734,7 @@ public class DXFReader {
    * Note: code for "DIMENSION" is incomplete
    */
   class Dimen extends DrawItem implements AutoPop {
-    private String    blockHandle, blockName;
+    private String    blockName;
     private double    ax, ay, mx, my;
     private int       type, orientation;
 
@@ -742,7 +749,6 @@ public class DXFReader {
         blockName = value;
         break;
       case 5:                                     // Handle of Block to with Dimension graphics
-        blockHandle = value;
         break;
       case 10:                                    // Definition Point X
         ax = Double.parseDouble(value) * uScale;
@@ -783,7 +789,7 @@ public class DXFReader {
   }
 
   class Circle extends DrawItem implements AutoPop {
-    Ellipse2D.Double  circle = new Ellipse2D.Double();
+    final Ellipse2D.Double  circle = new Ellipse2D.Double();
     private double    cx, cy, radius;
 
     Circle (String type) {
@@ -897,7 +903,7 @@ public class DXFReader {
   }
 
   class Arc extends DrawItem implements AutoPop {
-    Arc2D.Double arc = new Arc2D.Double(Arc2D.OPEN);
+    final Arc2D.Double arc = new Arc2D.Double(Arc2D.OPEN);
     private double    cx, cy, startAngle, endAngle, radius;
 
     Arc (String type) {
@@ -1065,14 +1071,16 @@ public class DXFReader {
 
   class LwPolyline extends DrawItem implements AutoPop {
     Path2D.Double         path;
-    List<LSegment>        segments = new ArrayList<>();
+    final List<LSegment>        segments = new ArrayList<>();
     LSegment              cSeg;
     private double        xCp, yCp;
     private boolean       hasXcp, hasYcp;
     private boolean       close;
 
     class LSegment {
-      private double  dx, dy, bulge;
+      private final double  dx;
+      private final double dy;
+      private double bulge;
 
       LSegment (double dx, double dy) {
         this.dx = dx;
@@ -1147,8 +1155,8 @@ public class DXFReader {
   }
 
   class Spline extends DrawItem implements AutoPop {
-    Path2D.Double         path = new Path2D.Double();
-    List<Point2D.Double>  cPoints = new ArrayList<>();
+    final Path2D.Double         path = new Path2D.Double();
+    final List<Point2D.Double>  cPoints = new ArrayList<>();
     private double        xCp, yCp;
     private boolean       hasXcp, hasYcp;
     private boolean       closed;
@@ -1272,12 +1280,11 @@ public class DXFReader {
       if (entity instanceof Insert && (block.flags & 2) != 0) {
         push();
         entities.add(entity);
-        cEntity = entity;
       } else {
         push();
         block.addEntity(entity);
-        cEntity = entity;
       }
+      cEntity = entity;
     } else {
       push();
       entities.add(entity);
@@ -1295,7 +1302,7 @@ public class DXFReader {
   Shape[] parseFile (File file, double maxSize, double minSize) throws IOException {
     stack = new ArrayList<>();
     cEntity = null;
-    Scanner lines = new Scanner(new FileInputStream(file));
+    Scanner lines = new Scanner(Files.newInputStream(file.toPath()));
     while (lines.hasNextLine()) {
       String line = lines.nextLine().trim();
       String value = lines.nextLine().trim();
@@ -1446,11 +1453,11 @@ public class DXFReader {
    */
 
   static class DXFViewer extends JPanel implements Runnable {
-    private DecimalFormat df = new DecimalFormat("#0.0#");
+    private final DecimalFormat df = new DecimalFormat("#0.0#");
     private final double  SCREEN_PPI = Toolkit.getDefaultToolkit().getScreenResolution();
-    private Shape[]       shapes;
-    private double        border = 0.125;
-    private DXFReader     dxf;
+    private final Shape[]       shapes;
+    private final double        border = 0.125;
+    private final DXFReader     dxf;
     private Rectangle2D   bounds;
 
     DXFViewer (String fileName, double maxSize, double minSize) throws IOException {
@@ -1524,6 +1531,7 @@ public class DXFReader {
       if (INFO) {
         int yOff = 30;
         g2.setFont(new Font("Monaco", Font.PLAIN, 12));
+        assert shapes != null;
         g2.drawString("Paths:      " + shapes.length, 20, yOff);
         yOff += 15;
         g2.drawString("Location:   " + df.format(dxf.bounds.getX()) + " x " + df.format(dxf.bounds.getY()), 20, yOff);

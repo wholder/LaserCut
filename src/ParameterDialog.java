@@ -2,6 +2,7 @@ import java.awt.*;
 import java.awt.event.*;
 import java.util.Arrays;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Properties;
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
@@ -145,7 +146,7 @@ class ParameterDialog extends JDialog {
     private void hookActionListener () {
       if (parmListener != null) {
         if (field instanceof JComboBox){
-          ((JComboBox) field).addActionListener(ev -> parmListener.parmEvent(this));
+          ((JComboBox<?>) field).addActionListener(ev -> parmListener.parmEvent(this));
         } else if (field instanceof JTextField) {
           ((JTextField) field).getDocument().addDocumentListener(new DocumentListener() {
             @Override
@@ -249,8 +250,8 @@ class ParameterDialog extends JDialog {
   /**
    * Subclass of JComboBox that displays a list of fonts showing the typeface in the component
    */
-  class FontList extends JComboBox<String> {
-    private Dimension   dim;
+  static class FontList extends JComboBox<String> {
+    private final Dimension   dim;
 
     FontList (String[] fonts) {
       super(fonts);
@@ -434,7 +435,7 @@ class ParameterDialog extends JDialog {
             try {
               String msg = info.getProperty(parm.key);
               final String[] tmp = msg.split("--");
-              ImageIcon icon = new ImageIcon(getClass().getResource("/images/info.png"));
+              ImageIcon icon = new ImageIcon(Objects.requireNonNull(getClass().getResource("/images/info.png")));
               JButton iBut = new JButton(icon);
               Dimension dim = iBut.getPreferredSize();
               iBut.setPreferredSize(new Dimension(dim.width - 8, dim.height - 8));
@@ -545,7 +546,7 @@ class ParameterDialog extends JDialog {
   }
 
   static class BField extends JPanel {
-    JCheckBox[] chks;
+    final JCheckBox[] chks;
 
     BField (String[] fields, int value) {
       setLayout(new GridLayout(1, fields.length));

@@ -19,7 +19,7 @@ import javax.swing.event.MenuListener;
 
 public class JSSCPort implements SerialPortEventListener {
   private static final Map<String,Integer> baudRates = new LinkedHashMap<>();
-  private ArrayBlockingQueue<Integer>  queue = new ArrayBlockingQueue<>(1000);
+  private final ArrayBlockingQueue<Integer>  queue = new ArrayBlockingQueue<>(1000);
   private static Pattern        macPat = Pattern.compile("cu.");
   private static final int      dataBits = 8, stopBits = SerialPort.STOPBITS_1, parity = SerialPort.PARITY_NONE;
   private static final int      flowCtrl = SerialPort.FLOWCONTROL_NONE;

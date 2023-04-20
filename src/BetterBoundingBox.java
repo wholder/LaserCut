@@ -14,6 +14,7 @@ class BetterBoundingBox {
       int type = pi.currentSegment(crds);
       switch (type) {
         case PathIterator.SEG_CLOSE:
+          assert bounds != null;
           bounds = bounds.createUnion((new Line2D.Double(xLoc, yLoc, mX, mY)).getBounds2D());
           break;
         case PathIterator.SEG_MOVETO:
@@ -26,6 +27,7 @@ class BetterBoundingBox {
           }
           break;
         case PathIterator.SEG_LINETO:
+          assert bounds != null;
           bounds = bounds.createUnion((new Line2D.Double(xLoc, yLoc, xLoc = crds[0], yLoc = crds[1])).getBounds2D());
           break;
         case PathIterator.SEG_CUBICTO:
@@ -48,6 +50,7 @@ class BetterBoundingBox {
                 tmp[jj].y -= (tmp[jj].y - tmp[jj + 1].y) * t;
               }
             }
+            assert bounds != null;
             bounds = bounds.createUnion((new Line2D.Double(xLoc, yLoc, xLoc = tmp[0].x, yLoc = tmp[0].y)).getBounds2D());
           }
           break;
@@ -64,6 +67,7 @@ class BetterBoundingBox {
             double step = (double) ii / segments;
             double x = (1 - step) * (1 - step) * start.x + 2 * (1 - step) * step * control.x + step * step * end.x;
             double y = (1 - step) * (1 - step) * start.y + 2 * (1 - step) * step * control.y + step * step * end.y;
+            assert bounds != null;
             bounds = bounds.createUnion((new Line2D.Double(xLast, yLast, x, y)).getBounds2D());
             xLast = x;
             yLast = y;

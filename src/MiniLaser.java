@@ -82,15 +82,15 @@ class MiniLaser extends GRBLBase implements LaserCut.OutputDevice {
           cmds.add("G20");                                                                    // Set Inches as Units
           cmds.add("M05");                                                                    // Set Laser Off
           // Process engraved items first, then cut items
-          List<LaserCut.CADShape> shapes = laserCut.surface.selectLaserItems(false, planPath);
+          List<CADShape> shapes = laserCut.surface.selectLaserItems(false, planPath);
           shapes.addAll(laserCut.surface.selectLaserItems(true, planPath));
           DecimalFormat fmt = new DecimalFormat("#.#####");
           int lastSpeed = -1;
           int lastPower = -1;
-          for (LaserCut.CADShape shape : shapes) {
-            if (shape instanceof LaserCut.CADRasterImage) {
+          for (CADShape shape : shapes) {
+            if (shape instanceof CADRasterImage) {
               RasterSettings settings = new RasterSettings(engraveDpi, engraveSpeed, 1, engravePower);
-              LaserCut.CADRasterImage raster = (LaserCut.CADRasterImage) shape;
+              CADRasterImage raster = (CADRasterImage) shape;
               List<String>  rList = toGCode(raster, settings);
               cmds.addAll(rList);
               lastSpeed = -1;
@@ -219,10 +219,10 @@ class MiniLaser extends GRBLBase implements LaserCut.OutputDevice {
    */
 
   static class RasterSettings {
-    private int   rasterDpi;          // Raster Size used for Engraving
-    private int   feedRate;           // in inches/sec
-    private int   laserMin;           // Laser Minimum Power for Engraving
-    private int   laserMax;           // Laser Maximum Power for Engraving
+    private final int   rasterDpi;          // Raster Size used for Engraving
+    private final int   feedRate;           // in inches/sec
+    private final int   laserMin;           // Laser Minimum Power for Engraving
+    private final int   laserMax;           // Laser Maximum Power for Engraving
 
     RasterSettings (int rasterDpi, int feedRate, int laserMin, int laserMax) {
       this.rasterDpi = rasterDpi;
@@ -236,7 +236,7 @@ class MiniLaser extends GRBLBase implements LaserCut.OutputDevice {
     return (value - minIn) * (maxOut - minOut) / (maxIn - minIn) + minOut;
   }
 
-  static private List<String> toGCode (LaserCut.CADRasterImage cadRaster, RasterSettings settings) {
+  static private List<String> toGCode (CADRasterImage cadRaster, RasterSettings settings) {
     BufferedImage imgIn = cadRaster.img;
     double xSize = cadRaster.width;
     double ySize = cadRaster.height;

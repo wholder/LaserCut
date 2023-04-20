@@ -106,9 +106,9 @@ import static javax.swing.JOptionPane.*;
    */
 
 abstract class GRBLBase {
-  JSSCPort      jPort;
-  LaserCut      laserCut;
-  String        dUnits;
+  final JSSCPort      jPort;
+  final LaserCut      laserCut;
+  final String        dUnits;
 
   abstract String getPrefix ();
 
@@ -289,12 +289,12 @@ abstract class GRBLBase {
   }
 
   static class DroPanel extends JPanel {
-    private LaserCut      laserCut;
-    static DecimalFormat  fmtMm = new DecimalFormat("#0.0");
-    static DecimalFormat  fmtCm = new DecimalFormat("#0.00");
-    static DecimalFormat  fmtIn = new DecimalFormat("#0.000");
-    private String[]      vals;
-    private JTextField[]  lbl = new JTextField[3];
+    private final LaserCut      laserCut;
+    static final DecimalFormat  fmtMm = new DecimalFormat("#0.0");
+    static final DecimalFormat  fmtCm = new DecimalFormat("#0.00");
+    static final DecimalFormat  fmtIn = new DecimalFormat("#0.000");
+    private final String[]      vals;
+    private final JTextField[]  lbl = new JTextField[3];
 
     DroPanel (LaserCut laserCut) {
       this(laserCut, "0", "0", "0", false);
@@ -607,7 +607,7 @@ abstract class GRBLBase {
   }
 
   static class Arrow extends ImageIcon {
-    Rectangle bounds = new Rectangle(26, 26);
+    final Rectangle bounds = new Rectangle(26, 26);
 
     Arrow (double rotation) {
       Polygon arrow = new Polygon();
@@ -629,10 +629,11 @@ abstract class GRBLBase {
   }
 
   class JogButton extends JButton implements Runnable, JSSCPort.RXEvent {
-    private JSlider       speed;
-    private DroPanel      dro;
-    private StringBuilder response = new StringBuilder();
-    private String        cmd, lastResponse;
+    private final JSlider       speed;
+    private final DroPanel      dro;
+    private final StringBuilder response = new StringBuilder();
+    private final String        cmd;
+    private String lastResponse;
     private long          step, nextStep;
     transient boolean     pressed, running;
     private final JogButton.Lock lock = new JogButton.Lock();
@@ -742,8 +743,10 @@ abstract class GRBLBase {
    *  GRBLRunner - used by GUI functions, such as Settings and Jog Menu
    */
   private class GRBLRunner implements Runnable, JSSCPort.RXEvent {
-    private StringBuilder   buf = new StringBuilder(), line = new StringBuilder();
-    private int             timeoutCount, seconds;
+    private final StringBuilder   buf = new StringBuilder();
+    private final StringBuilder line = new StringBuilder();
+    private int             timeoutCount;
+    private final int seconds;
     transient boolean       running, done, ready, timeout;
 
     GRBLRunner (int seconds) {
@@ -826,11 +829,12 @@ abstract class GRBLBase {
    *  See: https://github.com/gnea/grbl/wiki
    */
   class GRBLSender extends JDialog implements JSSCPort.RXEvent, Runnable {
-    private StringBuilder   response = new StringBuilder();
+    private final StringBuilder   response = new StringBuilder();
     private String          lastResponse = "";
-    private String[]        cmds, abortCmds;
-    private JTextArea       grbl;
-    private JProgressBar    progress;
+    private final String[]        cmds;
+    private final String[] abortCmds;
+    private final JTextArea       grbl;
+    private final JProgressBar    progress;
     private volatile long   cmdQueue;
     private final Lock      lock = new Lock();
     private boolean         doAbort, ready;

@@ -34,8 +34,8 @@ import java.util.regex.Pattern;
  */
 
 public class SVGParser {
-  private static DecimalFormat  df = new DecimalFormat("#.###");
-  private static DecimalFormat  sf = new DecimalFormat("#.########");
+  private static final DecimalFormat  df = new DecimalFormat("#.###");
+  private static final DecimalFormat  sf = new DecimalFormat("#.########");
   private boolean               debug;
   private double                scaleX = 1, scaleY = 1, pxDpi = 96;
   private boolean               inMarker;
@@ -655,8 +655,7 @@ public class SVGParser {
       } else {
         SVGParser parser = new SVGParser();
         parser.enableDebug(true);
-        Shape[] shapes = parser.parseSVG(new File("Test/SVG Files/rotate.svg"));
-        shapes = removeOffset(shapes);
+        Shape[] shapes = removeOffset(parser.parseSVG(new File("Test/SVG Files/rotate.svg")));
         Shape shape = combinePaths(shapes);
         new ShapeWindow(new Shape[]{shape}, .25);
       }

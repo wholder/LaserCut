@@ -118,10 +118,10 @@ class MiniCutter implements LaserCut.OutputDevice {
           cmds.add("M05");                                                                    // Set Tool Head Up
           cmds.add("F" + cutSpeed);                                                           // Set feed rate (inches/min)
           // Process only cut items
-          List<LaserCut.CADShape> shapes = laserCut.surface.selectCutterItems(planPath);
+          List<CADShape> shapes = laserCut.surface.selectCutterItems(planPath);
           DecimalFormat fmt = new DecimalFormat("#.###");
-          for (LaserCut.CADShape shape : shapes) {
-            if (!(shape instanceof LaserCut.CADRasterImage)) {
+          for (CADShape shape : shapes) {
+            if (!(shape instanceof CADRasterImage)) {
               for (int ii = 0; ii < iterations; ii++) {
                 double lastX = 0, lastY = 0;
                 for (Line2D.Double[] lines : shape.getListOfScaledLines(1, .001)) {

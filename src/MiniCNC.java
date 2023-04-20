@@ -102,7 +102,7 @@
             int feed = getInt("feed", MINI_CNC_FEED_DEFAULT);
             feed = Math.max(1, feed);                                       // Min feed = 1 inches/min
             DecimalFormat fmt = new DecimalFormat("#.#####");
-            for (LaserCut.CADShape shape : laserCut.surface.selectCncItems()) {
+            for (CADShape shape : laserCut.surface.selectCncItems()) {
               for (Line2D.Double[] lines : shape.getListOfScaledLines(1, .001)) {
                 String x1 = fmt.format(lines[0].x1);
                 String y1 = fmt.format(lines[0].y1);

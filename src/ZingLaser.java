@@ -23,8 +23,8 @@ class ZingLaser implements LaserCut.OutputDevice {
   private static final int                  ZING_RASTER_POWER_DEFAUlT = 50;
   private static final Rectangle2D.Double   zingFullSize = new Rectangle2D.Double(0, 0, 16, 12);
   private static final Rectangle2D.Double   zing12x12Size = new Rectangle2D.Double(0, 0, 12, 12);
-  private LaserCut                          laserCut;
-  private String                            dUnits;
+  private final LaserCut                          laserCut;
+  private final String                            dUnits;
 
   ZingLaser (LaserCut laserCut) {
     this.laserCut = laserCut;
@@ -82,9 +82,9 @@ class ZingLaser implements LaserCut.OutputDevice {
         boolean planPath = laserCut.prefs.getBoolean("zing.pathplan", true);
         LaserJob job = new LaserJob("laserCut", "laserCut", "laserCut");   // title, name, user
         // Process raster engrave passes, if any
-        for (LaserCut.CADShape shape : laserCut.surface.getDesign()) {
-          if (shape instanceof LaserCut.CADRasterImage && shape.engrave) {
-            LaserCut.CADRasterImage raster = (LaserCut.CADRasterImage) shape;
+        for (CADShape shape : laserCut.surface.getDesign()) {
+          if (shape instanceof CADRasterImage && shape.engrave) {
+            CADRasterImage raster = (CADRasterImage) shape;
             double[] scale = raster.getScale(ZING_PPI);
             Rectangle2D bb = raster.getScaledRotatedBounds(scale);
             AffineTransform at = raster.getScaledRotatedTransform(bb, scale);
@@ -112,8 +112,8 @@ class ZingLaser implements LaserCut.OutputDevice {
           VectorPart vp = new VectorPart(doCut ? cutProperties : engraveProperties, ZING_PPI);
           // Loop detects pen up/pen down based on start and end points of line segments
           boolean hasVector = false;
-          List<LaserCut.CADShape> shapes = laserCut.surface.selectLaserItems(doCut, planPath);
-          for (LaserCut.CADShape shape : shapes) {
+          List<CADShape> shapes = laserCut.surface.selectLaserItems(doCut, planPath);
+          for (CADShape shape : shapes) {
             for (Line2D.Double[] lines : shape.getListOfScaledLines(ZING_PPI, .001)) {
               if (lines.length > 0) {
                 hasVector = true;
@@ -225,10 +225,10 @@ class ZingLaser implements LaserCut.OutputDevice {
   }
 
   class ZingSender extends JDialog implements Runnable {
-    EpilogZing              lasercutter;
-    LaserJob                job;
-    private JProgressBar    progress;
-    private JTextArea       status;
+    final EpilogZing              lasercutter;
+    final LaserJob                job;
+    private final JProgressBar    progress;
+    private final JTextArea       status;
 
     ZingSender (LaserCut laserCut, EpilogZing lasercutter, LaserJob job) {
       super(laserCut);

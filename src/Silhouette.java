@@ -9,7 +9,6 @@ import java.text.DecimalFormat;
 import java.util.*;
 import java.util.List;
 
-import static java.awt.Event.CTRL_MASK;
 import static javax.swing.JOptionPane.*;
 
 /**
@@ -33,11 +32,14 @@ class Silhouette implements LaserCut.OutputDevice {
   private final boolean                   simulate = false;
 
   static class Cutter {
-    String  name;
-    short   vend = (short) 0x0B4D, prod;
-    byte    intFace = 0, outEnd = (byte) 0x01, inEnd = (byte) 0x82;
-    int     pens;
-    Mat[]   mats;
+    final String  name;
+    final short   vend = (short) 0x0B4D;
+    final short prod;
+    final byte    intFace = 0;
+    final byte outEnd = (byte) 0x01;
+    final byte inEnd = (byte) 0x82;
+    final int     pens;
+    final Mat[]   mats;
 
     /**
      * Silhouette, or Graphtec device Id and capabilities
@@ -177,9 +179,9 @@ class Silhouette implements LaserCut.OutputDevice {
         cmds.add("FX" + Math.min(Math.max(pressure, 1), 33));       // Tool pressure (value times 7 is grams of force, or 7-230 grams)
         cmds.add("!" + Math.min(Math.max(speed, 1), 10));           // Drawing speed (value times 10 is centimeters/second)
         cmds.add("J" + Math.min(pen, pens));                        // 1 selects left pen, 2 selects right pen
-        List<LaserCut.CADShape> cadShapes = laserCut.surface.selectLaserItems(true, false);
-        for (LaserCut.CADShape cadShape : cadShapes) {
-          if (!(cadShape instanceof LaserCut.CADRasterImage)) {
+        List<CADShape> cadShapes = laserCut.surface.selectLaserItems(true, false);
+        for (CADShape cadShape : cadShapes) {
+          if (!(cadShape instanceof CADRasterImage)) {
             Shape shape = cadShape.getWorkspaceTranslatedShape();
             cmds.addAll(shapeToSilhouette(shape));
           }
@@ -209,7 +211,7 @@ class Silhouette implements LaserCut.OutputDevice {
       ParameterDialog.ParmItem[] parmSet = parms.toArray(new ParameterDialog.ParmItem[0]);
       parm3.setEnabled(devices.get(deviceName).pens > 1);
       parm0.addParmListener(parm -> {
-        String device = (String) ((JComboBox) parm.field).getSelectedItem();
+        String device = (String) ((JComboBox<?>) parm.field).getSelectedItem();
         Cutter cutter = devices.get(device);
         parmSet[3].setEnabled(cutter.pens > 1);
       });

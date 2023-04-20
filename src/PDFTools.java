@@ -14,7 +14,7 @@ import java.util.Calendar;
 import java.util.List;
 
 class PDFTools {
-  static void writePDF (List<LaserCut.CADShape> design,  Dimension workSize, File file) throws Exception {
+  static void writePDF (List<CADShape> design, Dimension workSize, File file) throws Exception {
     FileOutputStream output = new FileOutputStream(file);
     double scale = 72;
     PDDocument doc = new PDDocument();
@@ -33,8 +33,8 @@ class PDFTools {
     flipY.scale(1, -1);
     stream.transform(flipY);
     AffineTransform at = AffineTransform.getScaleInstance(scale, scale);
-    for (LaserCut.CADShape item : design) {
-      if (item instanceof LaserCut.CADReference)
+    for (CADShape item : design) {
+      if (item instanceof CADReference)
         continue;
       if (item.engrave) {
         stream.setStrokingColor(Color.lightGray);

@@ -10,54 +10,55 @@ import java.util.prefs.Preferences;
 import java.util.zip.CRC32;
 
 public class DrawSurface extends JPanel implements Runnable {
-  private Preferences                         prefs;
+  private final Preferences                   prefs;
   private Dimension                           workSize;
   private JTextField                          infoText;
-  private List<LaserCut.CADShape>             shapes = new ArrayList<>();
-  private LaserCut.CADShape                   selected, dragged, resizeOrRotate;
+  private List<CADShape>                      shapes = new ArrayList<>();
+  private CADShape                            selected, dragged, resizeOrRotate;
   private Placer                              placer;
   private PlacerListener                      placerListener;
-  private double                              gridSpacing;
+  private double                              gridSpacing = 0.1;
   private int                                 gridMajor;
   private JMenu                               gridMenu;
-  private double[]                            zoomFactors = {1, 2, 3, 4, 8, 16};
+  private final double[]                      zoomFactors = {1, 2, 3, 4, 8, 16};
   private double                              zoomFactor = 1;
   private Point2D.Double                      scrollPoint, measure1, measure2, dragStart;
   private Rectangle2D.Double                  dragBox;
   private boolean                             useDblClkZoom;
-  private List<LaserCut.CADShape>             dragList = new ArrayList<>();
-  private List<LaserCut.ShapeSelectListener>  selectListerners = new ArrayList<>();
-  private List<LaserCut.ShapeDragSelectListener>  dragSelectListerners = new ArrayList<>();
-  private List<LaserCut.ActionUndoListener>   undoListerners = new ArrayList<>();
-  private List<LaserCut.ActionRedoListener>   redoListerners = new ArrayList<>();
-  private List<LaserCut.ZoomListener>         zoomListeners = new ArrayList<>();
-  private LinkedList<byte[]>                  undoStack = new LinkedList<>();
-  private LinkedList<byte[]>                  redoStack = new LinkedList<>();
+  private final List<CADShape>                dragList = new ArrayList<>();
+  private final List<LaserCut.ShapeSelectListener>  selectListerners = new ArrayList<>();
+  private final List<LaserCut.ShapeDragSelectListener>  dragSelectListerners = new ArrayList<>();
+  private final List<LaserCut.ActionUndoListener>   undoListerners = new ArrayList<>();
+  private final List<LaserCut.ActionRedoListener>   redoListerners = new ArrayList<>();
+  private final List<LaserCut.ZoomListener>         zoomListeners = new ArrayList<>();
+  private final LinkedList<byte[]>                  undoStack = new LinkedList<>();
+  private final LinkedList<byte[]>                  redoStack = new LinkedList<>();
   private boolean                             pushedToStack, showMeasure, doSnap, showGrid;
   private String                              dUnits;
   private int                                 tipTimer;
   private boolean                             mouseDown = false;
   private Point2D.Double                      tipLoc;
   private String                              tipText;
+  private boolean                             threadRunning = true;   // Note: need code to handle shutdown
 
   static class Placer {
-    private List<LaserCut.CADShape> shapes;
+    private final List<CADShape>    shapes;
     private Point2D.Double          curLoc = new Point2D.Double(0, 0);
 
-    Placer (List<LaserCut.CADShape> shapes) {
+    Placer (List<CADShape> shapes) {
       this.shapes = shapes;
     }
 
     void setPosition (Point2D.Double newLoc) {
       Point2D.Double delta = new Point2D.Double(newLoc.getX() - curLoc.getX(), newLoc.getY() - curLoc.getY());
-      for (LaserCut.CADShape shape : shapes) {
+      for (CADShape shape : shapes) {
         shape.movePosition(delta);
       }
       curLoc = newLoc;
     }
 
     void draw (Graphics2D g2, double scale) {
-      for (LaserCut.CADShape shape : shapes) {
+      for (CADShape shape : shapes) {
         shape.draw(g2, scale);
       }
     }
@@ -118,7 +119,7 @@ public class DrawSurface extends JPanel implements Runnable {
         } else if (ev.isControlDown()) {
           // Select cadShape and then do CTRL-Click on second cadShape to measure distance from origin to origin
           if (selected != null) {
-            for (LaserCut.CADShape shape : shapes) {
+            for (CADShape shape : shapes) {
               // Check for mouse pointing to cadShape
               if (shape.isPositionClicked(newLoc, zoomFactor) || shape.isShapeClicked(newLoc, zoomFactor)) {
                 double dx = shape.xLoc - selected.xLoc;
@@ -150,7 +151,7 @@ public class DrawSurface extends JPanel implements Runnable {
               return;
             }
           }
-          for (LaserCut.CADShape shape : shapes) {
+          for (CADShape shape : shapes) {
             // Add or remove clicked cadShape from dragList
             if (shape.isShapeClicked(newLoc, zoomFactor)) {
               if (shape != selected && selected != null) {
@@ -180,7 +181,7 @@ public class DrawSurface extends JPanel implements Runnable {
               showMeasure = false;
               return;
             }
-            for (LaserCut.CADShape shape : shapes) {
+            for (CADShape shape : shapes) {
               // Check for click and drag of another cadShape's position anchor
               if (shape.isPositionClicked(newLoc, zoomFactor)) {
                 dragged = shape;
@@ -215,7 +216,7 @@ public class DrawSurface extends JPanel implements Runnable {
               }
             }
           }
-          for (LaserCut.CADShape shape : shapes) {
+          for (CADShape shape : shapes) {
             // Check for selection or deselection of shapes
             if (shape.isShapeClicked(newLoc, zoomFactor)) {
               pushToUndoStack();
@@ -319,7 +320,7 @@ public class DrawSurface extends JPanel implements Runnable {
         if (dragBox != null) {
           setSelected(null);
           // Add all Shapes inside dragBox to dragList
-          for (LaserCut.CADShape shape : shapes) {
+          for (CADShape shape : shapes) {
             if (contains(dragBox, shape.getShapeBounds())) {
               if (dragList.contains(shape)) {
                 dragList.remove(shape);
@@ -353,9 +354,9 @@ public class DrawSurface extends JPanel implements Runnable {
           if (!dragged.doMovePoints(newLoc)) {
             Point2D.Double delta = dragged.dragPosition(newLoc, workSize);
             setInfoText(dragged.getShapePositionInfo());
-            LaserCut.CADShapeGroup group = dragged.getGroup();
+            CADShapeGroup group = dragged.getGroup();
             if (group != null) {
-              for (LaserCut.CADShape shape : group.getShapesInGroup()) {
+              for (CADShape shape : group.getShapesInGroup()) {
                 if (shape != dragged) {
                   shape.movePosition(delta);
                 }
@@ -542,7 +543,7 @@ public class DrawSurface extends JPanel implements Runnable {
     repaint();
   }
 
-  private Map<Double,JMenuItem>   gridMap = new HashMap<>();
+  private final Map<Double,JMenuItem>   gridMap = new HashMap<>();
 
   /**
    * Generate and add Grid Menu Items to LaserCut Grid Menu
@@ -639,14 +640,14 @@ public class DrawSurface extends JPanel implements Runnable {
     return bOut.toByteArray();
   }
 
-  private ArrayList<LaserCut.CADShape> bytesToShapeList(byte[] bytes) throws Exception {
+  private ArrayList<CADShape> bytesToShapeList(byte[] bytes) throws Exception {
     ByteArrayInputStream bIn = new ByteArrayInputStream(bytes);
     ObjectInputStream in = new ObjectInputStream(bIn);
-    LaserCut.CADShape sel = (LaserCut.CADShape) in.readObject();
+    CADShape sel = (CADShape) in.readObject();
     if (sel != null) {
       setSelected(sel);
     }
-    return (ArrayList<LaserCut.CADShape>) in.readObject();
+    return (ArrayList<CADShape>) in.readObject();
   }
 
   void pushToUndoStack () {
@@ -710,16 +711,16 @@ public class DrawSurface extends JPanel implements Runnable {
     }
   }
 
-  List<LaserCut.CADShape> getDesign () {
+  List<CADShape> getDesign () {
     return shapes;
   }
 
-  ArrayList<LaserCut.CADShape> getSelectedAsDesign () {
-    ArrayList<LaserCut.CADShape> design = new ArrayList<>();
+  ArrayList<CADShape> getSelectedAsDesign () {
+    ArrayList<CADShape> design = new ArrayList<>();
     design.add(selected);
-    LaserCut.CADShapeGroup grp = selected.getGroup();
+    CADShapeGroup grp = selected.getGroup();
     if (grp != null) {
-      for (LaserCut.CADShape shape : grp.getGroupList()) {
+      for (CADShape shape : grp.getGroupList()) {
         if (shape != selected) {
           design.add(shape);
         }
@@ -747,7 +748,7 @@ public class DrawSurface extends JPanel implements Runnable {
     return crc.getValue();
   }
 
-  void setDesign (List<LaserCut.CADShape> shapes, LaserCut.SurfaceSettings settings) {
+  void setDesign (List<CADShape> shapes, LaserCut.SurfaceSettings settings) {
     this.shapes = shapes;
     if (settings != null) {
       setZoomFactor(settings.zoomFactor);
@@ -759,13 +760,13 @@ public class DrawSurface extends JPanel implements Runnable {
     repaint();
   }
 
-  void addShape (LaserCut.CADShape addShape) {
+  void addShape (CADShape addShape) {
     pushToUndoStack();
     shapes.add(addShape);
     repaint();
   }
 
-  private void addShapes (List<LaserCut.CADShape> addShapes) {
+  private void addShapes (List<CADShape> addShapes) {
     pushToUndoStack();
     shapes.addAll(addShapes);
     repaint();
@@ -775,8 +776,8 @@ public class DrawSurface extends JPanel implements Runnable {
     this.infoText = itemInfo;
   }
 
-  void placeShape (LaserCut.CADShape shape) {
-    List<LaserCut.CADShape> items = new ArrayList<>();
+  void placeShape (CADShape shape) {
+    List<CADShape> items = new ArrayList<>();
     items.add(shape);
     // Copy location of cadShape to Placer object, then zero cadShape's location
     Point2D.Double newLoc = new Point2D.Double(shape.xLoc, shape.yLoc);
@@ -789,11 +790,11 @@ public class DrawSurface extends JPanel implements Runnable {
     repaint();
   }
 
-  void placeShapes (List<LaserCut.CADShape> shapes) {
+  void placeShapes (List<CADShape> shapes) {
     if (shapes.size() > 0) {
       Rectangle2D bounds = getSetBounds(shapes);
       // Subtract offset from all the shapes to position set at 0,0
-      for (LaserCut.CADShape shape : shapes) {
+      for (CADShape shape : shapes) {
         shape.movePosition(new Point2D.Double(-bounds.getX(), -bounds.getY()));
       }
       placer = new Placer(shapes);
@@ -805,12 +806,12 @@ public class DrawSurface extends JPanel implements Runnable {
   }
 
   // Compute bounds for a set of CADShape objects
-  private static Rectangle2D getSetBounds (List<LaserCut.CADShape> shapes) {
+  private static Rectangle2D getSetBounds (List<CADShape> shapes) {
     double minX = Double.MAX_VALUE;
     double minY = Double.MAX_VALUE;
     double maxWid = 0;
     double maxHyt = 0;
-    for (LaserCut.CADShape shape : shapes) {
+    for (CADShape shape : shapes) {
       Rectangle2D bounds = shape.getShapeBounds();
       minX = Math.min(minX, bounds.getX());
       minY = Math.min(minY, bounds.getY());
@@ -835,7 +836,7 @@ public class DrawSurface extends JPanel implements Runnable {
   void roundSelected (double radius) {
     pushToUndoStack();
     Shape oldShape = selected.buildShape();
-    LaserCut.CADShape tmp = new LaserCut.CADShape(CornerFinder.roundCorners(oldShape, radius), selected.xLoc,
+    CADShape tmp = new CADShape(CornerFinder.roundCorners(oldShape, radius), selected.xLoc,
                                                   selected.yLoc, 0, selected.centered);
     shapes.remove(selected);
     shapes.add(tmp);
@@ -844,13 +845,13 @@ public class DrawSurface extends JPanel implements Runnable {
   }
 
   void addOrSubtractSelectedShapes (boolean add) {
-    LaserCut.CADShapeGroup group = selected.getGroup();
+    CADShapeGroup group = selected.getGroup();
     if (group != null) {
       pushToUndoStack();
       Shape base = selected.getLocallyTransformedShape();
       Area newShape = new Area(base);
       shapes.remove(selected);
-      for (LaserCut.CADShape gItem : group.getGroupList()) {
+      for (CADShape gItem : group.getGroupList()) {
         if (gItem != selected) {
           Shape shape = gItem.getLocallyTransformedShape();
           AffineTransform at = AffineTransform.getTranslateInstance(gItem.xLoc - selected.xLoc, gItem.yLoc - selected.yLoc);
@@ -863,14 +864,14 @@ public class DrawSurface extends JPanel implements Runnable {
         }
       }
       if (selected.centered) {
-        LaserCut.CADShape tmp = new LaserCut.CADShape(newShape, selected.xLoc, selected.yLoc, 0, true);
+        CADShape tmp = new CADShape(newShape, selected.xLoc, selected.yLoc, 0, true);
         shapes.add(tmp);
         setSelected(tmp);
       } else {
         Rectangle2D bounds = newShape.getBounds2D();
         AffineTransform at = AffineTransform.getTranslateInstance(-bounds.getWidth() / 2, -bounds.getHeight() / 2);
         newShape.transform(at);
-        LaserCut.CADShape tmp = new LaserCut.CADShape(newShape, selected.xLoc, selected.yLoc, 0, selected.centered);
+        CADShape tmp = new CADShape(newShape, selected.xLoc, selected.yLoc, 0, selected.centered);
         shapes.add(tmp);
         setSelected(tmp);
       }
@@ -879,10 +880,10 @@ public class DrawSurface extends JPanel implements Runnable {
   }
 
   void alignSelectedShapes (boolean alignX, boolean alignY) {
-    LaserCut.CADShapeGroup group = selected.getGroup();
+    CADShapeGroup group = selected.getGroup();
     if (group != null) {
       pushToUndoStack();
-      for (LaserCut.CADShape gItem : group.getGroupList()) {
+      for (CADShape gItem : group.getGroupList()) {
         if (gItem != selected) {
           if (alignX) {
             gItem.xLoc = selected.xLoc;
@@ -917,14 +918,14 @@ public class DrawSurface extends JPanel implements Runnable {
       pushToUndoStack();
       Point2D.Double delta = new Point2D.Double(xOff, yOff);
       if (dragList.size() > 0) {
-        for (LaserCut.CADShape shape : dragList) {
+        for (CADShape shape : dragList) {
           shape.movePosition(delta);
         }
       } else {
         selected.movePosition(delta);
-        LaserCut.CADShapeGroup group = selected.getGroup();
+        CADShapeGroup group = selected.getGroup();
         if (group != null) {
-          for (LaserCut.CADShape shape : group.getGroupList()) {
+          for (CADShape shape : group.getGroupList()) {
             if (shape != selected) {
               shape.movePosition(delta);
             }
@@ -955,9 +956,9 @@ public class DrawSurface extends JPanel implements Runnable {
       }
       pushToUndoStack();
       AffineTransform center = AffineTransform.getRotateInstance(Math.toRadians(angle), selected.xLoc, selected.yLoc);
-      LaserCut.CADShapeGroup group = selected.getGroup();
+      CADShapeGroup group = selected.getGroup();
       if (group != null) {
-        for (LaserCut.CADShape gItem : group.getGroupList()) {
+        for (CADShape gItem : group.getGroupList()) {
           if (gItem != selected || rotateSelected) {
             Point2D.Double pt = new Point2D.Double(gItem.xLoc, gItem.yLoc);
             center.transform(pt, pt);
@@ -996,7 +997,7 @@ public class DrawSurface extends JPanel implements Runnable {
     } else  if (selected != null) {
       pushToUndoStack();
       shapes.remove(selected);
-      LaserCut.CADShapeGroup group = selected.getGroup();
+      CADShapeGroup group = selected.getGroup();
       if (group != null) {
         shapes.removeAll(group.getGroupList());
       }
@@ -1007,8 +1008,8 @@ public class DrawSurface extends JPanel implements Runnable {
 
   void groupDragSelected () {
     pushToUndoStack();
-    LaserCut.CADShapeGroup group = new LaserCut.CADShapeGroup();
-    for (LaserCut.CADShape shape : dragList) {
+    CADShapeGroup group = new CADShapeGroup();
+    for (CADShape shape : dragList) {
       group.addToGroup(shape);
       shape.setGroup(group);
     }
@@ -1021,8 +1022,8 @@ public class DrawSurface extends JPanel implements Runnable {
       pushToUndoStack();
       Path2D.Double path = new Path2D.Double();
       AffineTransform at = AffineTransform.getTranslateInstance(0, 0);
-      for (LaserCut.CADShape shape : dragList) {
-        if (!(shape instanceof LaserCut.CADReference)) {
+      for (CADShape shape : dragList) {
+        if (!(shape instanceof CADReference)) {
           Shape work = shape.getWorkspaceTranslatedShape();
           path.append(work.getPathIterator(at), false);
           shapes.remove(shape);
@@ -1037,7 +1038,7 @@ public class DrawSurface extends JPanel implements Runnable {
         double yLoc = bnds.getY();
         AffineTransform at2 = AffineTransform.getTranslateInstance(-xLoc - bnds.getWidth() / 2, -yLoc - bnds.getHeight() / 2);
         shape = at2.createTransformedShape(shape);
-        LaserCut.CADShape cadShape = new LaserCut.CADShape(shape, xLoc, yLoc, 0, false);
+        CADShape cadShape = new CADShape(shape, xLoc, yLoc, 0, false);
         //items.addToGroup(cadShape);
         //cadShape.setGroup(items);
         shapes.add(cadShape);
@@ -1050,16 +1051,16 @@ public class DrawSurface extends JPanel implements Runnable {
   void duplicateSelected () {
     if (dragList.size() > 0) {
       pushToUndoStack();
-      List<LaserCut.CADShape> dupList = new ArrayList<>();
-      Map<LaserCut.CADShape,LaserCut.CADShape> alreadyDuped = new HashMap<>();
-      for (LaserCut.CADShape shape : dragList) {
-        LaserCut.CADShapeGroup group = shape.getGroup();
+      List<CADShape> dupList = new ArrayList<>();
+      Map<CADShape, CADShape> alreadyDuped = new HashMap<>();
+      for (CADShape shape : dragList) {
+        CADShapeGroup group = shape.getGroup();
         if (group != null) {
-          LaserCut.CADShapeGroup newGroup = new LaserCut.CADShapeGroup();
-          for (LaserCut.CADShape gShape : group.getGroupList()) {
+          CADShapeGroup newGroup = new CADShapeGroup();
+          for (CADShape gShape : group.getGroupList()) {
             if (!alreadyDuped.containsKey(gShape)) {
               alreadyDuped.put(gShape, gShape);
-              LaserCut.CADShape dup = gShape.copy();
+              CADShape dup = gShape.copy();
               newGroup.addToGroup(dup);
               dupList.add(dup);
               shapes.add(dup);
@@ -1068,7 +1069,7 @@ public class DrawSurface extends JPanel implements Runnable {
         } else {
           if (!alreadyDuped.containsKey(shape)) {
             alreadyDuped.put(shape, shape);
-            LaserCut.CADShape dup = shape.copy();
+            CADShape dup = shape.copy();
             dupList.add(dup);
             shapes.add(dup);
           }
@@ -1081,12 +1082,12 @@ public class DrawSurface extends JPanel implements Runnable {
       }
     } else if (selected != null) {
       pushToUndoStack();
-      LaserCut.CADShapeGroup group = selected.getGroup();
+      CADShapeGroup group = selected.getGroup();
       if (group != null) {
-        LaserCut.CADShapeGroup newGroup = new LaserCut.CADShapeGroup();
-        List<LaserCut.CADShape> dupList = new ArrayList<>();
-        for (LaserCut.CADShape shape : group.getGroupList()) {
-          LaserCut.CADShape dup = shape.copy();
+        CADShapeGroup newGroup = new CADShapeGroup();
+        List<CADShape> dupList = new ArrayList<>();
+        for (CADShape shape : group.getGroupList()) {
+          CADShape dup = shape.copy();
           if (shape == selected) {
             setSelected(dup);
           }
@@ -1099,7 +1100,7 @@ public class DrawSurface extends JPanel implements Runnable {
           moveSelected();
         }
       } else {
-        LaserCut.CADShape dup = selected.copy();
+        CADShape dup = selected.copy();
         setSelected(dup);
         placeShape(dup);
       }
@@ -1107,11 +1108,11 @@ public class DrawSurface extends JPanel implements Runnable {
     }
   }
 
-  LaserCut.CADShape getSelected () {
+  CADShape getSelected () {
     return selected;
   }
 
-  private void setSelected (LaserCut.CADShape newSelected) {
+  private void setSelected (CADShape newSelected) {
     selected = newSelected;
     for (LaserCut.ShapeSelectListener listener : selectListerners) {
       listener.shapeSelected(selected, selected != null);
@@ -1122,8 +1123,8 @@ public class DrawSurface extends JPanel implements Runnable {
   void unGroupSelected () {
     if (dragList.size() > 0) {
       pushToUndoStack();
-      for (LaserCut.CADShape shape : dragList) {
-        LaserCut.CADShapeGroup group = shape.getGroup();
+      for (CADShape shape : dragList) {
+        CADShapeGroup group = shape.getGroup();
         if (group != null) {
           group.removeAllFromGroup();
         }
@@ -1132,7 +1133,7 @@ public class DrawSurface extends JPanel implements Runnable {
       dragList.clear();
     } else if (selected != null) {
       pushToUndoStack();
-      LaserCut.CADShapeGroup group = selected.getGroup();
+      CADShapeGroup group = selected.getGroup();
       if (group != null) {
         group.removeAllFromGroup();
         repaint();
@@ -1148,11 +1149,11 @@ public class DrawSurface extends JPanel implements Runnable {
    * @param planPath if true, use PathPlanner to organize nested shapes
    * @return List of CADShape objects minus culled items
    */
-  List<LaserCut.CADShape> selectLaserItems (boolean cutItems, boolean planPath) {
+  List<CADShape> selectLaserItems (boolean cutItems, boolean planPath) {
     // Cull out items that will not be cut or that don't match cutItems
-    ArrayList<LaserCut.CADShape> cullShapes = new ArrayList<>();
-    for (LaserCut.CADShape shape : getDesign()) {
-      if (!(shape instanceof LaserCut.CADNoDraw) && shape.engrave != cutItems) {
+    ArrayList<CADShape> cullShapes = new ArrayList<>();
+    for (CADShape shape : getDesign()) {
+      if (!(shape instanceof CADNoDraw) && shape.engrave != cutItems) {
         cullShapes.add(shape);
       }
     }
@@ -1163,22 +1164,22 @@ public class DrawSurface extends JPanel implements Runnable {
    * Called by MiniCNC code to cull out items that cannot be cut via CNC
    * @return List of CADShape objects minus culled items
    */
-  List<LaserCut.CADShape> selectCncItems () {
+  List<CADShape> selectCncItems () {
     // Cull out items that will not CNC
-    ArrayList<LaserCut.CADShape> cullShapes = new ArrayList<>();
-    for (LaserCut.CADShape shape : getDesign()) {
-      if (shape instanceof LaserCut.CNCPath) {
+    ArrayList<CADShape> cullShapes = new ArrayList<>();
+    for (CADShape shape : getDesign()) {
+      if (shape instanceof CNCPath) {
         cullShapes.add(shape);
       }
     }
     return cullShapes;
   }
 
-  List<LaserCut.CADShape> selectCutterItems (boolean planPath) {
+  List<CADShape> selectCutterItems (boolean planPath) {
     // Cull out items that will not be cut or that don't match cutItems
-    ArrayList<LaserCut.CADShape> cullShapes = new ArrayList<>();
-    for (LaserCut.CADShape shape : getDesign()) {
-      if (!(shape instanceof LaserCut.CADNoDraw)) {
+    ArrayList<CADShape> cullShapes = new ArrayList<>();
+    for (CADShape shape : getDesign()) {
+      if (!(shape instanceof CADNoDraw)) {
         cullShapes.add(shape);
       }
     }
@@ -1208,12 +1209,13 @@ public class DrawSurface extends JPanel implements Runnable {
    * Timer thread that handles checking or pop up tooltips for Shape controls
    */
   public void run () {
-    while (true) {
+    while (threadRunning) {
       try {
         Thread.sleep(100);
         if (tipTimer < 10) {
           tipTimer++;
         } else if (tipTimer == 10) {
+          System.out.print(".");
           if (!mouseDown) {
             tipTimer++;
             if (selected != null) {
@@ -1228,8 +1230,8 @@ public class DrawSurface extends JPanel implements Runnable {
                 }
               } else if (selected.isShapeClicked(tipLoc, getZoomFactor())) {
                 StringBuilder buf = new StringBuilder();
-                if (selected instanceof LaserCut.CADShapeSpline) {
-                  LaserCut.CADShapeSpline spline = (LaserCut.CADShapeSpline) selected;
+                if (selected instanceof CADShapeSpline) {
+                  CADShapeSpline spline = (CADShapeSpline) selected;
                   if (spline.isPathClosed()) {
                     buf.append("Click and drag to move a control point, or\n" +
                                "click on outline to add new control point.\n - - \n");
@@ -1282,7 +1284,7 @@ public class DrawSurface extends JPanel implements Runnable {
         g2.draw(new Line2D.Double(0, row, rWid, row));
       }
     }
-    for (LaserCut.CADShape shape : new ArrayList<>(shapes)) {
+    for (CADShape shape : new ArrayList<>(shapes)) {
       shape.isSelected = shape == selected;
       shape.inGroup = selected != null && selected.getGroup() != null && selected.getGroup().contains(shape);
       shape.dragged = dragList != null && dragList.contains(shape);
