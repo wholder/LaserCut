@@ -92,6 +92,7 @@ public class LaserCut extends JFrame {
     shapeNames.put("CADBobbin",         "Bobbin");
     shapeNames.put("CADRasterImage",    "Raster Image");
     shapeNames.put("CADMusicStrip",     "Music Box Strip");
+    shapeNames.put("CADArbitraryPolygon",  "ArbitraryPolygon");
   }
 
   static class SurfaceSettings implements Serializable {

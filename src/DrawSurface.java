@@ -1215,41 +1215,34 @@ public class DrawSurface extends JPanel implements Runnable {
         if (tipTimer < 10) {
           tipTimer++;
         } else if (tipTimer == 10) {
-          System.out.print(".");
           if (!mouseDown) {
             tipTimer++;
-            if (selected != null) {
-              if (selected.isPositionClicked(tipLoc, getZoomFactor())) {
-                tipText = "Click and drag to\nreposition the " + selected.getName() + ".";
-              } else if (selected.isResizeOrRotateClicked(tipLoc, getZoomFactor())) {
-                if (selected instanceof LaserCut.Resizable && selected instanceof LaserCut.Rotatable) {
-                  tipText = "Click and drag to resize the " + selected.getName() + ".\n" +
-                            "Hold shift and drag to rotate it.";
-                } else if (selected instanceof LaserCut.Rotatable) {
-                  tipText = "Click and drag to rotate the " + selected.getName() + ".";
-                }
-              } else if (selected.isShapeClicked(tipLoc, getZoomFactor())) {
-                StringBuilder buf = new StringBuilder();
-                if (selected instanceof CADShapeSpline) {
-                  CADShapeSpline spline = (CADShapeSpline) selected;
-                  if (spline.isPathClosed()) {
-                    buf.append("Click and drag to move a control point, or\n" +
-                               "click on outline to add new control point.\n - - \n");
-                  } else {
-                    buf.append("Click and drag to move a control point, or\n" +
-                               "click anywhere else to add new one.\n - - \n");
+            if (selected instanceof LaserCut.StateMessages) {
+              tipText = ((LaserCut.StateMessages) selected).getStateMsg();
+            } else {
+              if (selected != null) {
+                if (selected.isPositionClicked(tipLoc, getZoomFactor())) {
+                  tipText = "Click and drag to\nreposition the " + selected.getName() + ".";
+                } else if (selected.isResizeOrRotateClicked(tipLoc, getZoomFactor())) {
+                  if (selected instanceof LaserCut.Resizable && selected instanceof LaserCut.Rotatable) {
+                    tipText = "Click and drag to resize the " + selected.getName() + ".\n" +
+                      "Hold shift and drag to rotate it.";
+                  } else if (selected instanceof LaserCut.Rotatable) {
+                    tipText = "Click and drag to rotate the " + selected.getName() + ".";
                   }
+                } else if (selected.isShapeClicked(tipLoc, getZoomFactor())) {
+                  StringBuilder buf = new StringBuilder();
+                  buf.append("Click outline of " + selected.getName() + " to select it, or click\n" +
+                    "anywhere else to deselect it.\n - - \n" +
+                    "Click another shape's outline while Shift is\n" +
+                    "down to group or ungroup with any already\n" +
+                    "selected shapes.");
+                  tipText = buf.toString();
                 }
-                buf.append("Click outline of " + selected.getName() + " to select it, or click\n" +
-                            "anywhere else to deselect it.\n - - \n" +
-                            "Click another shape's outline while Shift is\n" +
-                            "down to group or ungroup with any already\n" +
-                            "selected shapes.");
-                tipText = buf.toString();
               }
-              if (tipText != null) {
-                repaint();
-              }
+            }
+            if (tipText != null) {
+              repaint();
             }
           }
         }
