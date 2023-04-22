@@ -9,6 +9,8 @@ import java.util.List;
 import java.util.prefs.Preferences;
 import java.util.zip.CRC32;
 
+import static javax.swing.JOptionPane.showMessageDialog;
+
 public class DrawSurface extends JPanel implements Runnable {
   private final Preferences                   prefs;
   private Dimension                           workSize;
@@ -39,7 +41,7 @@ public class DrawSurface extends JPanel implements Runnable {
   private boolean                             mouseDown = false;
   private Point2D.Double                      tipLoc;
   private String                              tipText;
-  private boolean                             threadRunning = true;   // Note: need code to handle shutdown
+  private boolean                             threadRunning;   // Note: need code to handle shutdown
 
   static class Placer {
     private final List<CADShape>    shapes;
@@ -110,11 +112,6 @@ public class DrawSurface extends JPanel implements Runnable {
             placer.addToSurface(thisSurface);
             placer = null;
             setPlacerActive(false);
-            if (selected instanceof LaserCut.StateMessages) {
-              setInfoText(((LaserCut.StateMessages) selected).getStateMsg());
-            } else {
-              setInfoText("Shape placed");
-            }
           }
         } else if (ev.isControlDown()) {
           // Select cadShape and then do CTRL-Click on second cadShape to measure distance from origin to origin
@@ -200,9 +197,9 @@ public class DrawSurface extends JPanel implements Runnable {
             // Check for click on anchor point (used to drag cadShape to new location)
             if (selected.selectMovePoint(DrawSurface.this, newLoc, toGrid(newLoc))) {
               dragged = selected;
-              if (selected instanceof LaserCut.StateMessages) {
-                setInfoText(((LaserCut.StateMessages) selected).getStateMsg());
-              }
+              //if (selected instanceof LaserCut.StateMessages) {
+              //  setInfoText(((LaserCut.StateMessages) selected).getStateMsg());
+             // }
               repaint();
               return;
             }
@@ -221,11 +218,6 @@ public class DrawSurface extends JPanel implements Runnable {
             if (shape.isShapeClicked(newLoc, zoomFactor)) {
               pushToUndoStack();
               setSelected(shape);
-              if (selected instanceof LaserCut.StateMessages) {
-                setInfoText(((LaserCut.StateMessages) selected).getStateMsg());
-              } else {
-                setInfoText(shape.getInfo());
-              }
               showMeasure = false;
               repaint();
               return;
@@ -428,14 +420,17 @@ public class DrawSurface extends JPanel implements Runnable {
             placer = null;
             setPlacerActive(false);
             setSelected(null);
-            setInfoText("Place cadShape cancelled");
+            showInfoDialog("Placing shape cancelled");
             repaint();
           }
         }
       }
     });
     // Start tip timer
-    new Thread(this).start();
+    if (!threadRunning) {
+      threadRunning = true;
+      new Thread(this).start();
+    }
   }
 
   void setInfoText (String text) {
@@ -682,11 +677,6 @@ public class DrawSurface extends JPanel implements Runnable {
           for (LaserCut.ActionRedoListener lst : redoListerners) {
             lst.redoEnable(redoStack.size() > 0);
           }
-          if (selected instanceof LaserCut.StateMessages) {
-            setInfoText(((LaserCut.StateMessages) selected).getStateMsg());
-          } else {
-            setInfoText("");
-          }
           repaint();
         } catch (Exception ex) {
           ex.printStackTrace();
@@ -786,7 +776,6 @@ public class DrawSurface extends JPanel implements Runnable {
     placer.setPosition(newLoc);
     setPlacerActive(true);
     requestFocus();
-    setInfoText("Click to place " + shape.getName());
     repaint();
   }
 
@@ -800,7 +789,6 @@ public class DrawSurface extends JPanel implements Runnable {
       placer = new Placer(shapes);
       setPlacerActive(true);
       requestFocus();
-      setInfoText("Click to place imported Shapes");
     }
     repaint();
   }
@@ -1205,6 +1193,11 @@ public class DrawSurface extends JPanel implements Runnable {
     }
   }
 
+  public void setTipText (String test) {
+    tipText = test;
+    repaint();
+  }
+
   /**
    * Timer thread that handles checking or pop up tooltips for Shape controls
    */
@@ -1216,33 +1209,41 @@ public class DrawSurface extends JPanel implements Runnable {
           tipTimer++;
         } else if (tipTimer == 10) {
           if (!mouseDown) {
-            tipTimer++;
-            if (selected instanceof LaserCut.StateMessages) {
-              tipText = ((LaserCut.StateMessages) selected).getStateMsg();
+            if (placer != null) {
+              tipText = "Click to place " + placer.shapes.get(0).getName() + "\n - - \n" +
+                        "or ESC to cancel";
+              repaint();
             } else {
-              if (selected != null) {
-                if (selected.isPositionClicked(tipLoc, getZoomFactor())) {
-                  tipText = "Click and drag to\nreposition the " + selected.getName() + ".";
-                } else if (selected.isResizeOrRotateClicked(tipLoc, getZoomFactor())) {
-                  if (selected instanceof LaserCut.Resizable && selected instanceof LaserCut.Rotatable) {
-                    tipText = "Click and drag to resize the " + selected.getName() + ".\n" +
-                      "Hold shift and drag to rotate it.";
-                  } else if (selected instanceof LaserCut.Rotatable) {
-                    tipText = "Click and drag to rotate the " + selected.getName() + ".";
+              tipTimer = 0;
+              if (selected instanceof LaserCut.StateMessages) {
+                tipText = ((LaserCut.StateMessages) selected).getStateMsg();
+              } else {
+                if (selected != null) {
+                  if (selected.isPositionClicked(tipLoc, getZoomFactor())) {
+                    tipText = "Click and drag to\nreposition the " + selected.getName() + ".";
+                  } else if (selected.isResizeOrRotateClicked(tipLoc, getZoomFactor())) {
+                    if (selected instanceof LaserCut.Resizable && selected instanceof LaserCut.Rotatable) {
+                      tipText = "Click and drag to resize the " + selected.getName() + ".\n" +
+                        "Hold shift and drag to rotate it.";
+                    } else if (selected instanceof LaserCut.Rotatable) {
+                      tipText = "Click and drag to rotate the " + selected.getName() + ".";
+                    }
+                  } else if (selected.isShapeClicked(tipLoc, getZoomFactor())) {
+                    StringBuilder buf = new StringBuilder();
+                    buf.append("Click outline of " + selected.getName() + " to select it, or click\n" +
+                      "anywhere else to deselect it.\n - - \n" +
+                      "Click another shape's outline while Shift is\n" +
+                      "down to group or ungroup with any already\n" +
+                      "selected shapes.");
+                    tipText = buf.toString();
                   }
-                } else if (selected.isShapeClicked(tipLoc, getZoomFactor())) {
-                  StringBuilder buf = new StringBuilder();
-                  buf.append("Click outline of " + selected.getName() + " to select it, or click\n" +
-                    "anywhere else to deselect it.\n - - \n" +
-                    "Click another shape's outline while Shift is\n" +
-                    "down to group or ungroup with any already\n" +
-                    "selected shapes.");
-                  tipText = buf.toString();
+                } else {
+                  repaint();
                 }
               }
-            }
-            if (tipText != null) {
-              repaint();
+              if (tipText != null) {
+                repaint();
+              }
             }
           }
         }
@@ -1321,7 +1322,7 @@ public class DrawSurface extends JPanel implements Runnable {
     if (tipText != null && tipLoc != null) {
       // todo: need code to reposition tooltip when near lower, or right edges
       JTextArea tip = new JTextArea();
-      tip.setFont(new Font("Ariel", Font.PLAIN, 16));
+      tip.setFont(new Font("Ariel", Font.PLAIN, 12));
       tip.setText(tipText);
       tip.validate();
       Dimension dim = tip.getPreferredSize();
@@ -1379,5 +1380,9 @@ public class DrawSurface extends JPanel implements Runnable {
     }
     path.closePath();
     return path;
+  }
+
+  public void showInfoDialog (String msg) {
+    showMessageDialog(this, msg);
   }
 }

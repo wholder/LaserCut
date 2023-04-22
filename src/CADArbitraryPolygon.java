@@ -32,10 +32,11 @@ class CADArbitraryPolygon extends CADShape implements Serializable, LaserCut.Sta
   // Implement StateMessages interface
   public String getStateMsg () {
     if (closePath) {
-      return "Click and drag am existing point to move it, or click on line to add new point";
+      return "Click and drag am existing point to move it\n - - \nclick on line to add new point" +
+        "\n - - \nor SHIFT click on lower right bound point to rotate";
     } else {
       String[] nextPnt = {"first", "second", "third", "additional"};
-      return "Click to add " + (nextPnt[Math.min(nextPnt.length - 1, points.size())]) + " control point" +
+      return "Click to add " + (nextPnt[Math.min(nextPnt.length - 1, points.size())]) + " point" +
         (points.size() >= (nextPnt.length - 1) ? " (or click 1st point to complete polygon)" : "");
     }
   }

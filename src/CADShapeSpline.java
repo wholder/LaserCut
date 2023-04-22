@@ -32,7 +32,8 @@ class CADShapeSpline extends CADShape implements Serializable, LaserCut.StateMes
   // Implement StateMessages interface
   public String getStateMsg () {
     if (pathClosed) {
-      return "Click and drag on spline curve to move a control point, or click onspline curve to add new control point";
+      return "Click and drag am existing point to move it\n - - \nclick on line to add new point" +
+             "\n - - \nor SHIFT click on lower right bound point to rotate";
     } else {
       String[] nextPnt = {"first", "second", "third", "additional"};
       return "Click to add " + (nextPnt[Math.min(nextPnt.length - 1, points.size())]) + " control point" +

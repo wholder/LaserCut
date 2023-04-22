@@ -81,18 +81,18 @@ public class LaserCut extends JFrame {
   private final Map<String,String>    shapeNames = new LinkedHashMap<>();
 
   {
-    shapeNames.put("CADReference",      "Reference Point");
-    shapeNames.put("CADRectangle",      "Rectangle");
-    shapeNames.put("CADOval",           "Oval");
-    shapeNames.put("CADPolygon",        "Regular Polygon");
-    shapeNames.put("CADText",           "Text");
-    shapeNames.put("CADShapeSpline",    "Spline Curve");
-    shapeNames.put("CADGear",           "Gear");
-    shapeNames.put("CADNemaMotor",      "NEMA Stepper");
-    shapeNames.put("CADBobbin",         "Bobbin");
-    shapeNames.put("CADRasterImage",    "Raster Image");
-    shapeNames.put("CADMusicStrip",     "Music Box Strip");
-    shapeNames.put("CADArbitraryPolygon",  "ArbitraryPolygon");
+    shapeNames.put("CADReference",        "Reference Point");
+    shapeNames.put("CADRectangle",        "Rectangle");
+    shapeNames.put("CADOval",             "Oval");
+    shapeNames.put("CADPolygon",          "Regular Polygon");
+    shapeNames.put("CADText",             "Text");
+    shapeNames.put("CADShapeSpline",      "Spline Curve");
+    shapeNames.put("CADGear",             "Gear");
+    shapeNames.put("CADNemaMotor",        "NEMA Stepper");
+    shapeNames.put("CADBobbin",           "Bobbin");
+    shapeNames.put("CADRasterImage",      "Raster Image");
+    shapeNames.put("CADMusicStrip",       "Music Box Strip");
+    shapeNames.put("CADArbitraryPolygon", "Arbitrary Polygon");
   }
 
   static class SurfaceSettings implements Serializable {
