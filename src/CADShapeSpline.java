@@ -37,7 +37,7 @@ class CADShapeSpline extends CADShape implements Serializable, LaserCut.StateMes
     } else {
       String[] nextPnt = {"first", "second", "third", "additional"};
       return "Click to add " + (nextPnt[Math.min(nextPnt.length - 1, points.size())]) + " control point" +
-        (points.size() >= (nextPnt.length - 1) ? " (or click 1st control point to complete cadShape)" : "");
+        (points.size() >= (nextPnt.length - 1) ? "\n - - \nor click 1st control point to complete spline" : "");
     }
   }
 

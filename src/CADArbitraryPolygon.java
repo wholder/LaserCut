@@ -37,7 +37,7 @@ class CADArbitraryPolygon extends CADShape implements Serializable, LaserCut.Sta
     } else {
       String[] nextPnt = {"first", "second", "third", "additional"};
       return "Click to add " + (nextPnt[Math.min(nextPnt.length - 1, points.size())]) + " point" +
-        (points.size() >= (nextPnt.length - 1) ? " (or click 1st point to complete polygon)" : "");
+        (points.size() >= (nextPnt.length - 1) ? "\n - -\nor click 1st point to complete polygon)" : "");
     }
   }
 
