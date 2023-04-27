@@ -5,13 +5,13 @@ import java.io.Serializable;
 
 class CADGear extends CADShape implements Serializable {
   private static final long serialVersionUID = 2334548672295293845L;
-  public final double module;
-  public final double pressAngle;
-  public final double profileShift;
-  public final double holeSize;
-  public final double diameter;
-  public final int numTeeth;
-  public final int numPoints;
+  public double module;
+  public double pressAngle;
+  public double profileShift;
+  public double holeSize;
+  public double diameter;
+  public int    numTeeth;
+  public int    numPoints;
 
   /**
    * Default constructor is used to instantiate subclasses in "Shapes" Menu

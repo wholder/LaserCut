@@ -76,9 +76,9 @@ public class LaserCut extends JFrame {
   private boolean               displayGrid = prefs.getBoolean("displayGrid", true);
   private String                onStartup = prefs.get("onStartup", "demo");
   private OutputDevice          outputDevice;
-  private final int                   deviceMenuSlot;
-  private final Map<String,String>    menuToShape = new HashMap<>();
-  private final Map<String,String>    shapeNames = new LinkedHashMap<>();
+  private int                   deviceMenuSlot;
+  private Map<String,String>    menuToShape = new HashMap<>();
+  private Map<String,String>    shapeNames = new LinkedHashMap<>();
 
   {
     shapeNames.put("CADReference",        "Reference Point");

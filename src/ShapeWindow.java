@@ -14,8 +14,8 @@ class ShapeWindow extends JFrame {
   static class ShapeCanvas extends Canvas {
     private transient Image   offScr;
     private Dimension         lastDim;
-    private final Shape[]           shapes;
-    private final double            border;
+    private Shape[]           shapes;
+    private double            border;
 
     ShapeCanvas (Shape[] shapes, double border) {
       this.shapes = shapes;

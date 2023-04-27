@@ -21,8 +21,8 @@ import java.util.*;
 public class PathPlanner {
 
   static class PathTrie {
-    final CADShape cadShape;
-    final List<PathTrie>   items = new ArrayList<>();
+    CADShape cadShape;
+    List<PathTrie>   items = new ArrayList<>();
 
     PathTrie (CADShape shape) {
       this.cadShape = shape;
@@ -58,8 +58,8 @@ public class PathPlanner {
   }
 
   static class ShapeArea implements Comparable<ShapeArea> {
-    final CADShape cadShape;
-    final double  area;
+    CADShape cadShape;
+    double  area;
 
     ShapeArea (CADShape cadShape) {
       this.cadShape = cadShape;

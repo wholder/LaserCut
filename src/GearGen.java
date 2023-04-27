@@ -148,7 +148,7 @@ public class GearGen {
   static class ShapeWindow extends JFrame {
     private transient Image   offScr;
     private Dimension         lastDim;
-    private final ArrayList<Shape>  shapes = new ArrayList<>();
+    private ArrayList<Shape>  shapes = new ArrayList<>();
 
     ShapeWindow () {
       setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);

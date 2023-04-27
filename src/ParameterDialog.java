@@ -251,7 +251,7 @@ class ParameterDialog extends JDialog {
    * Subclass of JComboBox that displays a list of fonts showing the typeface in the component
    */
   static class FontList extends JComboBox<String> {
-    private final Dimension   dim;
+    private Dimension   dim;
 
     FontList (String[] fonts) {
       super(fonts);
@@ -434,7 +434,7 @@ class ParameterDialog extends JDialog {
           if (parm.key != null && info.containsKey(parm.key)) {
             try {
               String msg = info.getProperty(parm.key);
-              final String[] tmp = msg.split("--");
+              String[] tmp = msg.split("--");
               ImageIcon icon = new ImageIcon(Objects.requireNonNull(getClass().getResource("/images/info.png")));
               JButton iBut = new JButton(icon);
               Dimension dim = iBut.getPreferredSize();
@@ -546,7 +546,7 @@ class ParameterDialog extends JDialog {
   }
 
   static class BField extends JPanel {
-    final JCheckBox[] chks;
+    JCheckBox[] chks;
 
     BField (String[] fields, int value) {
       setLayout(new GridLayout(1, fields.length));

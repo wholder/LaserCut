@@ -23,9 +23,9 @@ import java.util.Map;
 
 public class ShapeOptimizer {
   static class ShapeSeg {
-    final int       type;
+    int       type;
     double    sx, sy, ex, ey;
-    final double[]  coords;
+    double[]  coords;
     boolean   used;
 
     ShapeSeg (int type, double sx, double sy, double[] coords) {
@@ -96,7 +96,7 @@ public class ShapeOptimizer {
   }
 
   static class Vert {
-    final List<ShapeSeg>  segs = new ArrayList<>();
+    List<ShapeSeg>  segs = new ArrayList<>();
 
     ShapeSeg getSeg (ShapeSeg from, Point2D.Float vert) {
       for (ShapeSeg seg : segs) {

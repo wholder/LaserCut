@@ -106,9 +106,9 @@ import static javax.swing.JOptionPane.*;
    */
 
 abstract class GRBLBase {
-  final JSSCPort      jPort;
-  final LaserCut      laserCut;
-  final String        dUnits;
+  JSSCPort      jPort;
+  LaserCut      laserCut;
+  String        dUnits;
 
   abstract String getPrefix ();
 

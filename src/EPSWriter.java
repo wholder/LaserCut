@@ -14,10 +14,10 @@ import java.util.Date;
  */
 
 public class EPSWriter {
-  private final StringBuilder   doc = new StringBuilder();
+  private StringBuilder   doc = new StringBuilder();
   private boolean         closed;
   private Rectangle2D     bounds;
-  private final String          title;
+  private String          title;
 
   EPSWriter (String title) {
     this.title = title;

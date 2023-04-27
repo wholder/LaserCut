@@ -23,8 +23,8 @@ class ZingLaser implements LaserCut.OutputDevice {
   private static final int                  ZING_RASTER_POWER_DEFAUlT = 50;
   private static final Rectangle2D.Double   zingFullSize = new Rectangle2D.Double(0, 0, 16, 12);
   private static final Rectangle2D.Double   zing12x12Size = new Rectangle2D.Double(0, 0, 12, 12);
-  private final LaserCut                          laserCut;
-  private final String                            dUnits;
+  private LaserCut                          laserCut;
+  private String                            dUnits;
 
   ZingLaser (LaserCut laserCut) {
     this.laserCut = laserCut;

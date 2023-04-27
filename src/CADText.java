@@ -14,9 +14,9 @@ import java.util.Map;
 class CADText extends CADShape implements Serializable, LaserCut.Rotatable, LaserCut.Resizable {
   private static final long serialVersionUID = 4314642313295298841L;
   public String text, fontName, fontStyle;
-  public int fontSize;
+  public int    fontSize;
   public double tracking;
-  private static  Map<String, Integer> styles = new HashMap<>();
+  private static Map<String, Integer> styles = new HashMap<>();
   private static final List<String> fonts = new ArrayList<>();
 
   static {

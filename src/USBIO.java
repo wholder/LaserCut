@@ -14,10 +14,10 @@ import java.nio.IntBuffer;
 class USBIO {
   private static final int  TIMEOUT = 500;
   private DeviceHandle      handle;
-  private final Context           context = new Context();
-  private final byte              iFace;
-  private final byte outEnd;
-  private final byte inEnd;
+  private Context           context = new Context();
+  private byte              iFace;
+  private byte              outEnd;
+  private byte              inEnd;
 
   USBIO (short vendorId, short productId, byte iFace, byte outEnd, byte inEnd) {
     this.iFace = iFace;

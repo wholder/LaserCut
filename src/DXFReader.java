@@ -51,9 +51,9 @@ public class DXFReader {
   private boolean               drawText;
   private boolean               drawMText;
   private boolean               drawDimen;
-  private final ArrayList<DrawItem>   entities = new ArrayList<>();
+  private ArrayList<DrawItem>   entities = new ArrayList<>();
   private ArrayList<Entity>     stack = new ArrayList<>();
-  private final Map<String,Block>     blockDict = new TreeMap<>();
+  private Map<String,Block>     blockDict = new TreeMap<>();
   private Entity                cEntity = null;
   private Rectangle2D           bounds;
   private double                uScale = 0.039370078740157; // default to millimeters as units
@@ -78,7 +78,7 @@ public class DXFReader {
   }
 
   static class Entity {
-    private final String        type;
+    private String        type;
 
     Entity (String type) {
       this.type = type;
@@ -104,7 +104,7 @@ public class DXFReader {
   }
 
   class Section extends Entity {
-    private final Map<String,Map<Integer,String>>   attributes = new TreeMap<>();
+    private Map<String,Map<Integer,String>>   attributes = new TreeMap<>();
     private Map<Integer,String>               attValues;
     private String                            sType;
 
@@ -257,7 +257,7 @@ public class DXFReader {
    * Note: this code should use, or support vector fonts such as those by Hershey
    */
   class Text extends DrawItem implements AutoPop {
-    private final Canvas    canvas = new Canvas();
+    private Canvas    canvas = new Canvas();
     private double    ix, iy, ix2, iy2, textHeight, rotation;
     private int       hAdjust, vAdjust;
     private String    text;
@@ -431,7 +431,7 @@ public class DXFReader {
    *  BOLLARD,\PFOR W.H.\PPROTECTION
    */
   class MText extends DrawItem implements AutoPop {
-    private final Canvas    canvas = new Canvas();
+    private Canvas    canvas = new Canvas();
     private String    text;
     private double    ix, iy, textHeight, refWidth, xRot, yRot;
     private int       attachPoint;

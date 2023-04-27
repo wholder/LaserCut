@@ -32,14 +32,14 @@ class Silhouette implements LaserCut.OutputDevice {
   private final boolean                   simulate = false;
 
   static class Cutter {
-    final String  name;
+    String        name;
     final short   vend = (short) 0x0B4D;
-    final short prod;
-    final byte    intFace = 0;
-    final byte outEnd = (byte) 0x01;
-    final byte inEnd = (byte) 0x82;
-    final int     pens;
-    final Mat[]   mats;
+    short         prod;
+    byte          intFace = 0;
+    byte          outEnd = (byte) 0x01;
+    byte          inEnd = (byte) 0x82;
+    int           pens;
+    Mat[]         mats;
 
     /**
      * Silhouette, or Graphtec device Id and capabilities
