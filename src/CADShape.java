@@ -345,24 +345,29 @@ class CADShape implements Serializable {
       if (this instanceof LaserCut.Resizable) {
         if (keyShift) {
           g2.draw(new Ellipse2D.Double(mx - mWid, my - mWid, mWid * 2 - 1, mWid * 2 - 1));
-
-          // Create a copy of the Graphics instance
           Graphics2D g2d = (Graphics2D) g.create();
           g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
           g2d.setColor(Color.GRAY);
-          // Set the stroke of the copy, not the original
           Stroke dashed = new BasicStroke(1, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL, 0, new float[]{9}, 0);
           g2d.setStroke(dashed);
           double cx = xLoc * zoom * LaserCut.SCREEN_PPI;
           double cy = yLoc * zoom * LaserCut.SCREEN_PPI;
           g2d.draw(new Line2D.Double(cx, cy, mx, my));
           g2d.draw(new Line2D.Double(cx, cy, mx, my));
-
         } else {
           g2.draw(new Rectangle2D.Double(mx - mWid, my - mWid, mWid * 2 - 1, mWid * 2 - 1));
         }
       } else {
         g2.draw(new Ellipse2D.Double(mx - mWid, my - mWid, mWid * 2 - 1, mWid * 2 - 1));
+        Graphics2D g2d = (Graphics2D) g.create();
+        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g2d.setColor(Color.GRAY);
+        Stroke dashed = new BasicStroke(1, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL, 0, new float[]{9}, 0);
+        g2d.setStroke(dashed);
+        double cx = xLoc * zoom * LaserCut.SCREEN_PPI;
+        double cy = yLoc * zoom * LaserCut.SCREEN_PPI;
+        g2d.draw(new Line2D.Double(cx, cy, mx, my));
+        g2d.draw(new Line2D.Double(cx, cy, mx, my));
       }
     }
     g2.dispose();

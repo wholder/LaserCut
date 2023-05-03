@@ -13,7 +13,7 @@ class CADNemaMotor extends CADShape implements Serializable {
   private static final double[] ringDiameter = {0.5906, 0.865, 0.865, 0.865, 1.5};
   private static final double[] holeSpacing = {0.630, 0.91, 1.02, 1.22, 1.86};
   private static final double[] holeDiameter = {M2, M2_5, M3, M3, M4_5};
-  public final String type;   // Note: value is index into tables
+  public String                 type;   // Note: value is index into tables
 
   /**
    * Default constructor used to instantiate subclasses in "Shapes" Menu
