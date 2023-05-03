@@ -16,4 +16,14 @@ public class Utils2D {
     plus.lineTo(pnt.x + size, pnt.y);
     return plus;
   }
+
+  static Shape getDiamond (Point2D.Double pnt, double size) {
+    Path2D.Double diamone = new Path2D.Double();
+    diamone.moveTo(pnt.x, pnt.y - size);          // upper
+    diamone.lineTo(pnt.x + size, pnt.y);          // right
+    diamone.lineTo(pnt.x, pnt.y + size);          // lower
+    diamone.lineTo(pnt.x - size, pnt.y);          // left
+    diamone.lineTo(pnt.x, pnt.y - size);          // upper
+    return diamone;
+  }
 }

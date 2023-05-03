@@ -329,7 +329,7 @@ class CADShape implements Serializable {
     if (!(this instanceof CNCPath)) {
       if (isSelected || this instanceof CADReference || this instanceof CADShapeSpline) {
         // Draw move anchor point (+)
-        g2.draw(Utils2D.getPlus(new Point2D.Double(xLoc * zoom * LaserCut.SCREEN_PPI, yLoc * zoom * LaserCut.SCREEN_PPI), 3));
+        g2.draw(Utils2D.getPlus(new Point2D.Double(xLoc * zoom * LaserCut.SCREEN_PPI, yLoc * zoom * LaserCut.SCREEN_PPI), 4));
       }
     }
     if (isSelected && (this instanceof LaserCut.Resizable || this instanceof LaserCut.Rotatable)) {
@@ -337,10 +337,9 @@ class CADShape implements Serializable {
       Point2D.Double rGrab = rotateAroundPoint(getAnchorPoint(), getLRPoint(), rotation);
       double mx = rGrab.x * zoom * LaserCut.SCREEN_PPI;
       double my = rGrab.y * zoom * LaserCut.SCREEN_PPI;
-      double mWid = 3;
       if (this instanceof LaserCut.Resizable) {
         if (keyShift) {
-          g2.draw(new Ellipse2D.Double(mx - mWid, my - mWid, mWid * 2 - 1, mWid * 2 - 1));
+          g2.draw(Utils2D.getCircle(new Point2D.Double(mx, my), 4));
           Graphics2D g2d = (Graphics2D) g.create();
           g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
           g2d.setColor(Color.GRAY);
@@ -350,10 +349,13 @@ class CADShape implements Serializable {
           double cy = yLoc * zoom * LaserCut.SCREEN_PPI;
           g2d.draw(new Line2D.Double(cx, cy, mx, my));
         } else {
-          g2.draw(new Rectangle2D.Double(mx - mWid, my - mWid, mWid * 2 - 1, mWid * 2 - 1));
+          //g2.draw(new Rectangle2D.Double(mx - mWid, my - mWid, mWid * 2 - 1, mWid * 2 - 1));
+          g2.draw(Utils2D.getDiamond(new Point2D.Double(mx, my), 4));
+
+
         }
       } else {
-        g2.draw(new Ellipse2D.Double(mx - mWid, my - mWid, mWid * 2 - 1, mWid * 2 - 1));
+        g2.draw(Utils2D.getCircle(new Point2D.Double(mx, my), 4));
         Graphics2D g2d = (Graphics2D) g.create();
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         g2d.setColor(Color.GRAY);
