@@ -211,8 +211,8 @@ class CADShapeSpline extends CADShape implements Serializable, LaserCut.StateMes
   }
 
   @Override
-  void draw (Graphics g, double zoom) {
-    super.draw(g, zoom);
+  void draw (Graphics g, double zoom, boolean keyShift) {
+    super.draw(g, zoom, keyShift);
     Graphics2D g2 = (Graphics2D) g;
     // Draw all Catmull-Rom Control Points
     g2.setColor(isSelected ? Color.red : pathClosed ? Color.lightGray : Color.darkGray);

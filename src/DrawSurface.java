@@ -42,6 +42,7 @@ public class DrawSurface extends JPanel implements Runnable {
   private Point2D.Double                      tipLoc;
   private String                              tipText;
   private boolean                             threadRunning;   // Note: need code to handle shutdown
+  private boolean                             keyShift;
 
   static class Placer {
     private final List<CADShape>    shapes;
@@ -61,7 +62,7 @@ public class DrawSurface extends JPanel implements Runnable {
 
     void draw (Graphics2D g2, double scale) {
       for (CADShape shape : shapes) {
-        shape.draw(g2, scale);
+        shape.draw(g2, scale, false);
       }
     }
 
@@ -94,117 +95,71 @@ public class DrawSurface extends JPanel implements Runnable {
     DrawSurface thisSurface = this;
     // Set JPanel size to a temprary default size
     setPreferredSize(workSize = new Dimension(500, 500));
-    addMouseListener(new MouseAdapter() {
+    // Implement KeyListener to track state of shift key
+    addKeyListener(new KeyAdapter() {
       @Override
-      public void mousePressed (MouseEvent ev) {
-        mouseDown = true;
-        cancelTip();
-        requestFocus();
-        Point2D.Double newLoc = new Point2D.Double(ev.getX() / getScreenScale(), ev.getY() / getScreenScale());
-        if (placer != null) {
-          if (doSnap && gridSpacing > 0) {
-            newLoc = toGrid(newLoc);
-          }
+         public void keyPressed (KeyEvent e) {
+           if (e.getKeyCode() == KeyEvent.VK_SHIFT) {
+             keyShift = true;
+             repaint();
+           }
+         }
+
+         @Override
+         public void keyReleased (KeyEvent e) {
+           if (e.getKeyCode() == KeyEvent.VK_SHIFT) {
+             keyShift = false;
+             repaint();
+           }
+         }
+       });
+      addMouseListener(new MouseAdapter() {
+        @Override
+        public void mousePressed (MouseEvent ev) {
+          mouseDown = true;
+          cancelTip();
+          requestFocus();
+          Point2D.Double newLoc = new Point2D.Double(ev.getX() / getScreenScale(), ev.getY() / getScreenScale());
           if (placer != null) {
-            // Place into DrawSurface
-            pushToUndoStack();
-            placer.setPosition(newLoc);
-            placer.addToSurface(thisSurface);
-            placer = null;
-            setPlacerActive(false);
-          }
-        } else if (ev.isControlDown()) {
-          // Select cadShape and then do CTRL-Click on second cadShape to measure distance from origin to origin
-          if (selected != null) {
-            for (CADShape shape : shapes) {
-              // Check for mouse pointing to cadShape
-              if (shape.isPositionClicked(newLoc, zoomFactor) || shape.isShapeClicked(newLoc, zoomFactor)) {
-                double dx = shape.xLoc - selected.xLoc;
-                double dy = shape.yLoc - selected.yLoc;
-                double diag = Math.sqrt(dx * dx + dy * dy);
-                setInfoText(" dx: " + LaserCut.df.format(dx) + "in," +
-                            " dy: " + LaserCut.df.format(dy) + "in, " +
-                            " diagonal: " + LaserCut.df.format(diag) + "in  " +
-                            "(" + LaserCut.df.format(LaserCut.inchesToMM(dx)) + " mm," +
-                            " " + LaserCut.df.format(LaserCut.inchesToMM(dy)) + " mm," +
-                            " " + LaserCut.df.format(LaserCut.inchesToMM(diag)) + " mm)"
-                    );
-                measure1 = new Point2D.Double(selected.xLoc * zoomFactor * LaserCut.SCREEN_PPI,
-                                              selected.yLoc * zoomFactor * LaserCut.SCREEN_PPI);
-                measure2 = new Point2D.Double(shape.xLoc * zoomFactor * LaserCut.SCREEN_PPI,
-                                              shape.yLoc * zoomFactor * LaserCut.SCREEN_PPI);
-                showMeasure = true;
-                break;
-              }
+            if (doSnap && gridSpacing > 0) {
+              newLoc = toGrid(newLoc);
             }
-          }
-        } else if (ev.isShiftDown()) {
-          if (selected instanceof LaserCut.Resizable || selected instanceof LaserCut.Rotatable) {
-            // Check for click on resizeOrRotate point (used to drag cadShape to new size, or orientation)
-            if (selected.isResizeOrRotateClicked(newLoc, zoomFactor)) {
-              resizeOrRotate = selected;
-              setInfoText(selected.getInfo());
-              repaint();
-              return;
-            }
-          }
-          for (CADShape shape : shapes) {
-            // Add or remove clicked cadShape from dragList
-            if (shape.isShapeClicked(newLoc, zoomFactor)) {
-              if (shape != selected && selected != null) {
-                dragList.add(selected);
-              }
-              if (dragList.contains(shape)) {
-                dragList.remove(shape);
-              } else {
-                dragList.add(shape);
-              }
-              setSelected(null);
-              for (LaserCut.ShapeDragSelectListener listener : dragSelectListerners) {
-                listener.shapeDragSelect(dragList.size() > 0);
-              }
-              repaint();
-              return;
-            }
-          }
-          // Setup for shift-drag to add to dragList
-          dragStart = new Point2D.Double(newLoc.x, newLoc.y);
-          setSelected(null);
-        } else {
-          if (selected != null) {
-            // Check for click and drag on selected cadShape's position anchor
-            if (selected.isPositionClicked(newLoc, zoomFactor)) {
-              dragged = selected;
-              showMeasure = false;
-              return;
-            }
-            for (CADShape shape : shapes) {
-              // Check for click and drag of another cadShape's position anchor
-              if (shape.isPositionClicked(newLoc, zoomFactor)) {
-                dragged = shape;
-                setSelected(shape);
-                setInfoText(shape.getShapePositionInfo());
-                showMeasure = false;
-                return;
-              }
-            }
-            // Check for click inside cadShape if it implements Updatable (used by CADMusicStrip)
-            if (selected instanceof LaserCut.Updatable && ((LaserCut.Updatable) selected).updateInternalState(newLoc)) {
+            if (placer != null) {
+              // Place into DrawSurface
               pushToUndoStack();
-              repaint();
-              return;
+              placer.setPosition(newLoc);
+              placer.addToSurface(thisSurface);
+              placer = null;
+              setPlacerActive(false);
             }
-            // Check for click on anchor point (used to drag cadShape to new location)
-            if (selected.selectMovePoint(DrawSurface.this, newLoc, toGrid(newLoc))) {
-              dragged = selected;
-              //if (selected instanceof LaserCut.StateMessages) {
-              //  setInfoText(((LaserCut.StateMessages) selected).getStateMsg());
-             // }
-              repaint();
-              return;
+          } else if (ev.isControlDown()) {
+            // Select cadShape and then do CTRL-Click on second cadShape to measure distance from origin to origin
+            if (selected != null) {
+              for (CADShape shape : shapes) {
+                // Check for mouse pointing to cadShape
+                if (shape.isPositionClicked(newLoc, zoomFactor) || shape.isShapeClicked(newLoc, zoomFactor)) {
+                  double dx = shape.xLoc - selected.xLoc;
+                  double dy = shape.yLoc - selected.yLoc;
+                  double diag = Math.sqrt(dx * dx + dy * dy);
+                  setInfoText(" dx: " + LaserCut.df.format(dx) + "in," +
+                    " dy: " + LaserCut.df.format(dy) + "in, " +
+                    " diagonal: " + LaserCut.df.format(diag) + "in  " +
+                    "(" + LaserCut.df.format(LaserCut.inchesToMM(dx)) + " mm," +
+                    " " + LaserCut.df.format(LaserCut.inchesToMM(dy)) + " mm," +
+                    " " + LaserCut.df.format(LaserCut.inchesToMM(diag)) + " mm)"
+                  );
+                  measure1 = new Point2D.Double(selected.xLoc * zoomFactor * LaserCut.SCREEN_PPI,
+                    selected.yLoc * zoomFactor * LaserCut.SCREEN_PPI);
+                  measure2 = new Point2D.Double(shape.xLoc * zoomFactor * LaserCut.SCREEN_PPI,
+                    shape.yLoc * zoomFactor * LaserCut.SCREEN_PPI);
+                  showMeasure = true;
+                  break;
+                }
+              }
             }
+          } else if (ev.isShiftDown()) {
             if (selected instanceof LaserCut.Resizable || selected instanceof LaserCut.Rotatable) {
-              // Check for click on resizeOrRotate point (used to drag cadShape to new size or orientation)
+              // Check for click on resizeOrRotate point (used to drag cadShape to new size, or orientation)
               if (selected.isResizeOrRotateClicked(newLoc, zoomFactor)) {
                 resizeOrRotate = selected;
                 setInfoText(selected.getInfo());
@@ -212,124 +167,188 @@ public class DrawSurface extends JPanel implements Runnable {
                 return;
               }
             }
-          }
-          for (CADShape shape : shapes) {
-            // Check for selection or deselection of shapes
-            if (shape.isShapeClicked(newLoc, zoomFactor)) {
+            for (CADShape shape : shapes) {
+              // Add or remove clicked cadShape from dragList
+              if (shape.isShapeClicked(newLoc, zoomFactor)) {
+                if (shape != selected && selected != null) {
+                  dragList.add(selected);
+                }
+                if (dragList.contains(shape)) {
+                  dragList.remove(shape);
+                } else {
+                  dragList.add(shape);
+                }
+                setSelected(null);
+                for (LaserCut.ShapeDragSelectListener listener : dragSelectListerners) {
+                  listener.shapeDragSelect(dragList.size() > 0);
+                }
+                repaint();
+                return;
+              }
+            }
+            // Setup for shift-drag to add to dragList
+            dragStart = new Point2D.Double(newLoc.x, newLoc.y);
+            setSelected(null);
+          } else {
+            if (selected != null) {
+              // Check for click and drag on selected cadShape's position anchor
+              if (selected.isPositionClicked(newLoc, zoomFactor)) {
+                dragged = selected;
+                showMeasure = false;
+                return;
+              }
+              for (CADShape shape : shapes) {
+                // Check for click and drag of another cadShape's position anchor
+                if (shape.isPositionClicked(newLoc, zoomFactor)) {
+                  dragged = shape;
+                  setSelected(shape);
+                  setInfoText(shape.getShapePositionInfo());
+                  showMeasure = false;
+                  return;
+                }
+              }
+              // Check for click inside cadShape if it implements Updatable (used by CADMusicStrip)
+              if (selected instanceof LaserCut.Updatable && ((LaserCut.Updatable) selected).updateInternalState(newLoc)) {
+                pushToUndoStack();
+                repaint();
+                return;
+              }
+              // Check for click on anchor point (used to drag cadShape to new location)
+              if (selected.selectMovePoint(DrawSurface.this, newLoc, toGrid(newLoc))) {
+                dragged = selected;
+                //if (selected instanceof LaserCut.StateMessages) {
+                //  setInfoText(((LaserCut.StateMessages) selected).getStateMsg());
+                // }
+                repaint();
+                return;
+              }
+              if (selected instanceof LaserCut.Resizable || selected instanceof LaserCut.Rotatable) {
+                // Check for click on resizeOrRotate point (used to drag cadShape to new size or orientation)
+                if (selected.isResizeOrRotateClicked(newLoc, zoomFactor)) {
+                  resizeOrRotate = selected;
+                  setInfoText(selected.getInfo());
+                  repaint();
+                  return;
+                }
+              }
+            }
+            for (CADShape shape : shapes) {
+              // Check for selection or deselection of shapes
+              if (shape.isShapeClicked(newLoc, zoomFactor)) {
+                pushToUndoStack();
+                setSelected(shape);
+                showMeasure = false;
+                repaint();
+                return;
+              }
+            }
+            if (ev.isMetaDown()) {
+              // Clicked on nothing with Meta Down, so setup to drag workspace
               pushToUndoStack();
-              setSelected(shape);
+              setSelected(null);
+              setInfoText("");
               showMeasure = false;
-              repaint();
-              return;
+              scrollPoint = newLoc;
+              setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            } else {
+              // Clicked on nothing, so clear dragging and selection
+              dragStart = new Point2D.Double(newLoc.x, newLoc.y);
+              clearDragList();
+              setSelected(null);
+              setInfoText("");
+              showMeasure = false;
             }
           }
-          if (ev.isMetaDown()) {
-            // Clicked on nothing with Meta Down, so setup to drag workspace
-            pushToUndoStack();
-            setSelected(null);
-            setInfoText("");
-            showMeasure = false;
-            scrollPoint = newLoc;
-            setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-          } else {
-            // Clicked on nothing, so clear dragging and selection
-            dragStart = new Point2D.Double(newLoc.x, newLoc.y);
-            clearDragList();
-            setSelected(null);
-            setInfoText("");
-            showMeasure = false;
-          }
+          repaint();
         }
-        repaint();
-      }
 
-      @Override
-      public void mouseClicked (MouseEvent ev) {
-        super.mouseClicked(ev);
-        if (useDblClkZoom && ev.getClickCount() == 2) {
-          // Double click to zoom in or out on location clicked
-          double newZoom;
-          int newX, newY;
-          Point pos = scrollPane.getViewport().getViewPosition();
-          if (ev.isShiftDown()) {
-            newZoom = Math.max(zoomFactor / 2, 1);
-            newX = pos.x - ev.getX() / 2;
-            newY = pos.y - ev.getY() / 2;
-          } else {
-            newZoom = Math.min(zoomFactor * 2, (zoomFactors[zoomFactors.length - 1]));
-            newX = pos.x + ev.getX();
-            newY = pos.y + ev.getY();
-          }
-          if (newZoom != zoomFactor) {
-            zoomFactor = newZoom;
-            setSize(new Dimension((int) (workSize.getWidth() * zoomFactor), (int) (workSize.getHeight() * zoomFactor)));
-            scrollPane.getViewport().setViewPosition(new Point(newX, newY));
-            scrollPane.revalidate();
-            repaint();
-            for (int ii = 0; ii < zoomFactors.length; ii++) {
-              if (newZoom == zoomFactors[ii]) {
-                for (LaserCut.ZoomListener listener : zoomListeners) {
-                  listener.setZoom(ii);
+        @Override
+        public void mouseClicked (MouseEvent ev) {
+          super.mouseClicked(ev);
+          if (useDblClkZoom && ev.getClickCount() == 2) {
+            // Double click to zoom in or out on location clicked
+            double newZoom;
+            int newX, newY;
+            Point pos = scrollPane.getViewport().getViewPosition();
+            if (ev.isShiftDown()) {
+              newZoom = Math.max(zoomFactor / 2, 1);
+              newX = pos.x - ev.getX() / 2;
+              newY = pos.y - ev.getY() / 2;
+            } else {
+              newZoom = Math.min(zoomFactor * 2, (zoomFactors[zoomFactors.length - 1]));
+              newX = pos.x + ev.getX();
+              newY = pos.y + ev.getY();
+            }
+            if (newZoom != zoomFactor) {
+              zoomFactor = newZoom;
+              setSize(new Dimension((int) (workSize.getWidth() * zoomFactor), (int) (workSize.getHeight() * zoomFactor)));
+              scrollPane.getViewport().setViewPosition(new Point(newX, newY));
+              scrollPane.revalidate();
+              repaint();
+              for (int ii = 0; ii < zoomFactors.length; ii++) {
+                if (newZoom == zoomFactors[ii]) {
+                  for (LaserCut.ZoomListener listener : zoomListeners) {
+                    listener.setZoom(ii);
+                  }
                 }
               }
             }
           }
         }
-      }
 
-      /**
-       * Checks, whether the given rectangle1 fully contains rectangle 2 (even if rectangle 2 has a height or
-       * width of zero!). Unlike the way Java2D handlies this!
-       * @author David Gilbert
-       * @param rect1  the first rectangle.
-       * @param rect2  the second rectangle.
-       *
-       * @return true if first contains second.
-       */
+        /**
+         * Checks, whether the given rectangle1 fully contains rectangle 2 (even if rectangle 2 has a height or
+         * width of zero!). Unlike the way Java2D handlies this!
+         *
+         * @param rect1 the first rectangle.
+         * @param rect2 the second rectangle.
+         * @return true if first contains second.
+         * @author David Gilbert
+         */
 
-      private boolean contains (Rectangle2D rect1, Rectangle2D rect2) {
-        final double x0 = rect1.getX();
-        final double y0 = rect1.getY();
-        final double x = rect2.getX();
-        final double y = rect2.getY();
-        final double w = rect2.getWidth();
-        final double h = rect2.getHeight();
-        return ((x >= x0) && (y >= y0) && ((x + w) <= (x0 + rect1.getWidth()))  && ((y + h) <= (y0 + rect1.getHeight())));
-      }
-
-      @Override
-      public void mouseReleased (MouseEvent ev) {
-        mouseDown = false;
-        cancelTip();
-        dragged = null;
-        resizeOrRotate = null;
-        scrollPoint = null;
-        setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
-        pushedToStack = false;
-        if (selected != null) {
-          selected.cancelMove();
+        private boolean contains (Rectangle2D rect1, Rectangle2D rect2) {
+          final double x0 = rect1.getX();
+          final double y0 = rect1.getY();
+          final double x = rect2.getX();
+          final double y = rect2.getY();
+          final double w = rect2.getWidth();
+          final double h = rect2.getHeight();
+          return ((x >= x0) && (y >= y0) && ((x + w) <= (x0 + rect1.getWidth())) && ((y + h) <= (y0 + rect1.getHeight())));
         }
-        if (dragBox != null) {
-          setSelected(null);
-          // Add all Shapes inside dragBox to dragList
-          for (CADShape shape : shapes) {
-            if (contains(dragBox, shape.getShapeBounds())) {
-              if (dragList.contains(shape)) {
-                dragList.remove(shape);
-              } else {
-                dragList.add(shape);
+
+        @Override
+        public void mouseReleased (MouseEvent ev) {
+          mouseDown = false;
+          cancelTip();
+          dragged = null;
+          resizeOrRotate = null;
+          scrollPoint = null;
+          setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+          pushedToStack = false;
+          if (selected != null) {
+            selected.cancelMove();
+          }
+          if (dragBox != null) {
+            setSelected(null);
+            // Add all Shapes inside dragBox to dragList
+            for (CADShape shape : shapes) {
+              if (contains(dragBox, shape.getShapeBounds())) {
+                if (dragList.contains(shape)) {
+                  dragList.remove(shape);
+                } else {
+                  dragList.add(shape);
+                }
               }
             }
+            dragBox = null;
+            for (LaserCut.ShapeDragSelectListener listener : dragSelectListerners) {
+              listener.shapeDragSelect(dragList.size() > 0);
+            }
+            repaint();
           }
-          dragBox = null;
-          for (LaserCut.ShapeDragSelectListener listener : dragSelectListerners) {
-            listener.shapeDragSelect(dragList.size() > 0);
-          }
-          repaint();
+          dragStart = null;
         }
-        dragStart = null;
-      }
-    });
+      });
     addMouseMotionListener(new MouseMotionAdapter() {
       @Override
       public void mouseDragged (MouseEvent ev) {
@@ -348,7 +367,7 @@ public class DrawSurface extends JPanel implements Runnable {
             setInfoText(dragged.getShapePositionInfo());
             CADShapeGroup group = dragged.getGroup();
             if (group != null) {
-              for (CADShape shape : group.getShapesInGroup()) {
+              for (CADShape shape : group.getGroupList()) {
                 if (shape != dragged) {
                   shape.movePosition(delta);
                 }
@@ -1280,7 +1299,7 @@ public class DrawSurface extends JPanel implements Runnable {
     }
     for (CADShape shape : new ArrayList<>(shapes)) {
       shape.isSelected = shape == selected;
-      shape.inGroup = selected != null && selected.getGroup() != null && selected.getGroup().contains(shape);
+      shape.inGroup = selected != null && selected.getGroup() != null && selected.getGroup().containsShape(shape);
       shape.dragged = dragList != null && dragList.contains(shape);
       if (false) {
         // Test code to view FlatteningPathIterator-generated lines
@@ -1293,7 +1312,7 @@ public class DrawSurface extends JPanel implements Runnable {
           }
         }
       } else {
-        shape.draw(g2, zoomFactor);
+        shape.draw(g2, zoomFactor, keyShift);
       }
     }
     if (showMeasure) {

@@ -70,7 +70,7 @@ class CADMusicStrip extends CADShape implements Serializable, LaserCut.Updatable
   }
 
   @Override
-  void draw (Graphics g, double zoom) {
+  void draw (Graphics g, double zoom, boolean keyShift) {
     Graphics2D g2 = (Graphics2D) g.create();
     Stroke thick = new BasicStroke(1.0f);
     Stroke thin = new BasicStroke(0.8f);
@@ -95,7 +95,7 @@ class CADMusicStrip extends CADShape implements Serializable, LaserCut.Updatable
       }
     }
     g2.dispose();
-    super.draw(g, zoom);
+    super.draw(g, zoom, false);
   }
 
   // Implement Updatable interface

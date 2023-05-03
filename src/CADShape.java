@@ -49,6 +49,20 @@ import java.util.List;
  * <p>
  * You cannot change the name of the class or the package it belongs to, as that information is written
  * to the stream during serialization.
+ *
+ * void 			createAndPlace (DrawSurface surface, LaserCut laserCut)
+ * String 		getName ()
+ * String 		getShapePositionInfo ()
+ * Shape 		buildShape ()
+ * Color 		getShapeColor ()
+ * float 		getStrokeWidth ()
+ * Stroke 		getShapeStroke (float strokeWidth)
+ * boolean 	doMovePoints (Point2D.Double point)
+ * boolean 	selectMovePoint (DrawSurface surface, Point2D.Double point, Point2D.Double gPoint)
+ * void 			cancelMove ()
+ * void 			updateStateAfterParameterEdit ()
+ * String[] 	getParameterNames ()
+ * void 			hookParameters (Map<String, ParameterDialog.ParmItem> pNames)
  */
 class CADShape implements Serializable {
   private static final long serialVersionUID = 3716741066289930874L;
@@ -84,7 +98,7 @@ class CADShape implements Serializable {
     setLocationAndOrientation(xLoc, yLoc, rotation, centered);
   }
 
-  // Overriddne in subclasses such as CADRasterImage and CADShapeSpline
+  // Override in subclasses such as CADRasterImage and CADShapeSpline
   void createAndPlace (DrawSurface surface, LaserCut laserCut) {
     if (placeParameterDialog(surface, laserCut.displayUnits)) {
       surface.placeShape(this);
@@ -96,11 +110,6 @@ class CADShape implements Serializable {
   // Override in subclasses
   String getName () {
     return "Shape";
-  }
-
-  // Override in subclasses
-  boolean isPathClosed () {
-    return false;
   }
 
   void addChangeListener (LaserCut.ChangeListener subscriber) {
@@ -307,7 +316,7 @@ class CADShape implements Serializable {
    * @param g    Graphics object
    * @param zoom Zoom factor (ratio)
    */
-  void draw (Graphics g, double zoom) {
+  void draw (Graphics g, double zoom, boolean keyShift) {
     Graphics2D g2 = (Graphics2D) g.create();
     Shape dShape = getWorkspaceTranslatedShape();
     // Resize Shape to scale and draw it
@@ -334,7 +343,24 @@ class CADShape implements Serializable {
       double my = rGrab.y * zoom * LaserCut.SCREEN_PPI;
       double mWid = 3;
       if (this instanceof LaserCut.Resizable) {
-        g2.draw(new Rectangle2D.Double(mx - mWid, my - mWid, mWid * 2 - 1, mWid * 2 - 1));
+        if (keyShift) {
+          g2.draw(new Ellipse2D.Double(mx - mWid, my - mWid, mWid * 2 - 1, mWid * 2 - 1));
+
+          // Create a copy of the Graphics instance
+          Graphics2D g2d = (Graphics2D) g.create();
+          g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+          g2d.setColor(Color.GRAY);
+          // Set the stroke of the copy, not the original
+          Stroke dashed = new BasicStroke(1, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL, 0, new float[]{9}, 0);
+          g2d.setStroke(dashed);
+          double cx = xLoc * zoom * LaserCut.SCREEN_PPI;
+          double cy = yLoc * zoom * LaserCut.SCREEN_PPI;
+          g2d.draw(new Line2D.Double(cx, cy, mx, my));
+          g2d.draw(new Line2D.Double(cx, cy, mx, my));
+
+        } else {
+          g2.draw(new Rectangle2D.Double(mx - mWid, my - mWid, mWid * 2 - 1, mWid * 2 - 1));
+        }
       } else {
         g2.draw(new Ellipse2D.Double(mx - mWid, my - mWid, mWid * 2 - 1, mWid * 2 - 1));
       }

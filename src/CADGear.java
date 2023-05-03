@@ -58,8 +58,8 @@ class CADGear extends CADShape implements Serializable {
   }
 
   @Override
-  void draw (Graphics g, double zoom) {
-    super.draw(g, zoom);
+  void draw (Graphics g, double zoom, boolean ksyShift) {
+    super.draw(g, zoom, ksyShift);
     Graphics2D g2 = (Graphics2D) g;
     // Draw dashed line in magenta to show effective gear diameter
     g2.setColor(Color.MAGENTA);

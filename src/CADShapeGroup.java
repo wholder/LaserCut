@@ -11,24 +11,18 @@ class CADShapeGroup implements Serializable {
   void addToGroup (CADShape shape) {
     CADShapeGroup old = shape.getGroup();
     if (old != null) {
-      old.removeFromGroup(shape);
+      old.shapesInGroup.remove(shape);
+      shape.setGroup(null);
+      if (old.shapesInGroup.size() == 1) {
+        CADShape newSelected = old.shapesInGroup.get(0);
+        newSelected.setGroup(null);
+        old.shapesInGroup.clear();
+      }
     }
     if (!shapesInGroup.contains(shape)) {
       shapesInGroup.add(shape);
       shape.setGroup(this);
     }
-  }
-
-  private CADShape removeFromGroup (CADShape shape) {
-    shapesInGroup.remove(shape);
-    shape.setGroup(null);
-    if (shapesInGroup.size() == 1) {
-      CADShape newSelected = shapesInGroup.get(0);
-      newSelected.setGroup(null);
-      shapesInGroup.clear();
-      return newSelected;
-    }
-    return shapesInGroup.get(0);
   }
 
   void removeAllFromGroup () {
@@ -38,15 +32,11 @@ class CADShapeGroup implements Serializable {
     shapesInGroup.clear();
   }
 
-  boolean contains (CADShape shape) {
+  boolean containsShape (CADShape shape) {
     return shapesInGroup.contains(shape);
   }
 
   ArrayList<CADShape> getGroupList () {
-    return shapesInGroup;
-  }
-
-  ArrayList<CADShape> getShapesInGroup () {
     return shapesInGroup;
   }
 }

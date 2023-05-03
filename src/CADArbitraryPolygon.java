@@ -217,8 +217,8 @@ class CADArbitraryPolygon extends CADShape implements Serializable, LaserCut.Sta
   }
 
   @Override
-  void draw (Graphics g, double zoom) {
-    super.draw(g, zoom);
+  void draw (Graphics g, double zoom, boolean keyShift) {
+    super.draw(g, zoom, keyShift);
     Graphics2D g2 = (Graphics2D) g;
     // Draw all Catmull-Rom Control Points
     g2.setColor(isSelected ? Color.red : closePath ? Color.lightGray : Color.darkGray);

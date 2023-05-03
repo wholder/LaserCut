@@ -142,7 +142,7 @@ class CADRasterImage extends CADShape implements Serializable, LaserCut.Resizabl
   }
 
   @Override
-  void draw (Graphics g, double zoom) {
+  void draw (Graphics g, double zoom, boolean keyShift) {
     Graphics2D g2 = (Graphics2D) g.create();
     BufferedImage bufimg;
     if (engrave) {
@@ -170,7 +170,7 @@ class CADRasterImage extends CADShape implements Serializable, LaserCut.Resizabl
     g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.4f));
     g2.drawImage(bufimg, at, null);
     g2.dispose();
-    super.draw(g, zoom);
+    super.draw(g, zoom, keyShift);
   }
 
   /**
