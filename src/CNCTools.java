@@ -158,7 +158,7 @@ class CNCTools {
   /*
    * Computes intersection point for two lines
    */
-  private static  Point2D.Double getIntersection (Line2D.Double l1, Line2D.Double l2) {
+  public static Point2D.Double getIntersection (Line2D.Double l1, Line2D.Double l2) {
     return (new PLine(l1)).intersects(new PLine(l2));
   }
 

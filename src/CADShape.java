@@ -328,12 +328,8 @@ class CADShape implements Serializable {
     g2.setStroke(new BasicStroke(getStrokeWidth()));
     if (!(this instanceof CNCPath)) {
       if (isSelected || this instanceof CADReference || this instanceof CADShapeSpline) {
-        // Draw move anchor point
-        double mx = xLoc * zoom * LaserCut.SCREEN_PPI;
-        double my = yLoc * zoom * LaserCut.SCREEN_PPI;
-        double mWid = 3;
-        g2.draw(new Line2D.Double(mx - mWid, my, mx + mWid, my));
-        g2.draw(new Line2D.Double(mx, my - mWid, mx, my + mWid));
+        // Draw move anchor point (+)
+        g2.draw(Utils2D.getPlus(new Point2D.Double(xLoc * zoom * LaserCut.SCREEN_PPI, yLoc * zoom * LaserCut.SCREEN_PPI), 3));
       }
     }
     if (isSelected && (this instanceof LaserCut.Resizable || this instanceof LaserCut.Rotatable)) {
@@ -353,7 +349,6 @@ class CADShape implements Serializable {
           double cx = xLoc * zoom * LaserCut.SCREEN_PPI;
           double cy = yLoc * zoom * LaserCut.SCREEN_PPI;
           g2d.draw(new Line2D.Double(cx, cy, mx, my));
-          g2d.draw(new Line2D.Double(cx, cy, mx, my));
         } else {
           g2.draw(new Rectangle2D.Double(mx - mWid, my - mWid, mWid * 2 - 1, mWid * 2 - 1));
         }
@@ -366,7 +361,6 @@ class CADShape implements Serializable {
         g2d.setStroke(dashed);
         double cx = xLoc * zoom * LaserCut.SCREEN_PPI;
         double cy = yLoc * zoom * LaserCut.SCREEN_PPI;
-        g2d.draw(new Line2D.Double(cx, cy, mx, my));
         g2d.draw(new Line2D.Double(cx, cy, mx, my));
       }
     }

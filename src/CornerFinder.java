@@ -77,19 +77,6 @@ public class CornerFinder {
     return a1;
   }
 
-  static Shape getCircle (Point2D.Double pnt, double radius) {
-    return new Ellipse2D.Double(pnt.x - radius, pnt.y - radius, radius * 2, radius * 2);
-  }
-
-  static Shape getPlus (Point2D.Double pnt, double size) {
-    Path2D.Double plus = new Path2D.Double();
-    plus.moveTo(pnt.x, pnt.y - size / 2);
-    plus.lineTo(pnt.x, pnt.y + size / 2);
-    plus.moveTo(pnt.x - size / 2, pnt.y);
-    plus.lineTo(pnt.x + size / 2, pnt.y);
-    return plus;
-  }
-
   private static ArrayList<Point2D.Double> getPoints (Shape shape) {
     PathIterator pi = shape.getPathIterator(null);
     ArrayList<Point2D.Double> points = new ArrayList<>();
