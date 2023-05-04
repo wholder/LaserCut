@@ -43,9 +43,8 @@ class CADReference extends CADShape implements Serializable, CADNoDraw {
   }
 
   @Override
-  BasicStroke getShapeStroke (float strokeWidth) {
-    final float[] dash1 = {3.0f};
-    return new BasicStroke(strokeWidth, BasicStroke.CAP_SQUARE, BasicStroke.JOIN_MITER, 1.0f, dash1, 0.5f);
+  BasicStroke getShapeStroke () {
+    return Utils2D.getDashedStroke(getStrokeWidth(), 3.0f, 3.0f);
   }
 
   @Override

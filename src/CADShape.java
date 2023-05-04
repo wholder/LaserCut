@@ -70,6 +70,7 @@ class CADShape implements Serializable {
   public boolean            centered, engrave;      // Note: must be public for reflection
   CADShapeGroup             group;
   Shape                     shape;
+  static final Color        DRAG_COLOR = new Color(238, 54, 199);
   transient Shape           builtShape;
   transient boolean         isSelected, inGroup, dragged;
   transient java.util.List<LaserCut.ChangeListener> changeSubscribers;
@@ -322,52 +323,40 @@ class CADShape implements Serializable {
     // Resize Shape to scale and draw it
     AffineTransform atScale = AffineTransform.getScaleInstance(zoom * LaserCut.SCREEN_PPI, zoom * LaserCut.SCREEN_PPI);
     dShape = atScale.createTransformedShape(dShape);
-    g2.setStroke(getShapeStroke(getStrokeWidth()));
+    g2.setStroke(new BasicStroke(getStrokeWidth()));
     g2.setColor(getShapeColor());
     g2.draw(dShape);
     g2.setStroke(new BasicStroke(getStrokeWidth()));
     if (!(this instanceof CNCPath)) {
       if (isSelected || this instanceof CADReference || this instanceof CADShapeSpline) {
-        // Draw move anchor point (+)
+        // Draw (+) grab point for move option
         g2.draw(Utils2D.getPlus(new Point2D.Double(xLoc * zoom * LaserCut.SCREEN_PPI, yLoc * zoom * LaserCut.SCREEN_PPI), 4));
       }
     }
-    if (isSelected && (this instanceof LaserCut.Resizable || this instanceof LaserCut.Rotatable)) {
+    if (isSelected) {
       // Draw grab point for resizing image
       Point2D.Double rGrab = rotateAroundPoint(getAnchorPoint(), getLRPoint(), rotation);
       double mx = rGrab.x * zoom * LaserCut.SCREEN_PPI;
       double my = rGrab.y * zoom * LaserCut.SCREEN_PPI;
-      if (this instanceof LaserCut.Resizable) {
-        if (keyShift) {
-          g2.draw(Utils2D.getCircle(new Point2D.Double(mx, my), 4));
-          Graphics2D g2d = (Graphics2D) g.create();
-          g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-          g2d.setColor(Color.GRAY);
-          Stroke dashed = new BasicStroke(1, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL, 0, new float[]{9}, 0);
-          g2d.setStroke(dashed);
-          double cx = xLoc * zoom * LaserCut.SCREEN_PPI;
-          double cy = yLoc * zoom * LaserCut.SCREEN_PPI;
-          g2d.draw(new Line2D.Double(cx, cy, mx, my));
-        } else {
-          //g2.draw(new Rectangle2D.Double(mx - mWid, my - mWid, mWid * 2 - 1, mWid * 2 - 1));
-          g2.draw(Utils2D.getDiamond(new Point2D.Double(mx, my), 4));
-
-
-        }
-      } else {
+      if (keyShift && this instanceof LaserCut.Rotatable) {
+        // Draw circle for Rotatable interface
         g2.draw(Utils2D.getCircle(new Point2D.Double(mx, my), 4));
         Graphics2D g2d = (Graphics2D) g.create();
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-        g2d.setColor(Color.GRAY);
-        Stroke dashed = new BasicStroke(1, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL, 0, new float[]{9}, 0);
-        g2d.setStroke(dashed);
+        // Draw dashed line to connect axis if rotation to grap point
+        g2d.setColor(getShapeColor());
+        g2d.setStroke(Utils2D.getDashedStroke(1, 3.0f, 9.0f));
         double cx = xLoc * zoom * LaserCut.SCREEN_PPI;
         double cy = yLoc * zoom * LaserCut.SCREEN_PPI;
         g2d.draw(new Line2D.Double(cx, cy, mx, my));
+      } else if (this instanceof LaserCut.Resizable) {
+        // Draw diamond grap point for Resizable interface
+        g2.draw(Utils2D.getDiamond(new Point2D.Double(mx, my), 4));
       }
     }
     g2.dispose();
   }
+
 
   /**
    * Override in subclass, as needed
@@ -376,25 +365,25 @@ class CADShape implements Serializable {
    */
   Color getShapeColor () {
     if (dragged) {
-      return new Color(238, 54, 199);
+      return new Color(238, 54, 199);           // Dragged color
     } else {
       if (isSelected) {
         if (engrave) {
-          return new Color(255, 113, 21);
+          return new Color(255, 113, 21);       // isSelected and engrave color
         } else {
-          return new Color(29, 40, 255);
+          return new Color(29, 40, 255);        // isSelected color
         }
       } else if (inGroup) {
         if (engrave) {
-          return new Color(255, 170, 45);
+          return new Color(255, 170, 45);       // isSelected, InGroup and engrave color
         } else {
-          return new Color(57, 108, 255);
+          return new Color(57, 108, 255);       // Selected and ingroup color
         }
       } else {
         if (engrave) {
-          return new Color(255, 200, 0);
+          return new Color(255, 200, 0);        // Not isSelected Engrave color
         } else {
-          return new Color(0, 0, 0);
+          return new Color(0, 0, 0);            // Not isSelected color
         }
       }
     }
@@ -407,14 +396,14 @@ class CADShape implements Serializable {
    */
   float getStrokeWidth () {
     if (dragged) {
-      return 1.8f;
+      return 1.8f;              // dragged
     } else {
       if (isSelected) {
-        return 1.8f;
+        return 1.8f;            // isSelected
       } else if (inGroup) {
-        return 1.4f;
+        return 1.4f;            // Not isSelected and inGroup
       } else {
-        return 1.0f;
+        return 1.0f;            // Not isSelected and not inGroup
       }
     }
   }
@@ -424,8 +413,8 @@ class CADShape implements Serializable {
    *
    * @return Stroke used to draw cadShape in its current state
    */
-  Stroke getShapeStroke (float strokeWidth) {
-    return new BasicStroke(strokeWidth);
+  Stroke getShapeStroke () {
+    return new BasicStroke(getStrokeWidth());
   }
 
   /**

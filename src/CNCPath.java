@@ -46,11 +46,6 @@ class CNCPath extends CADShape implements Serializable, LaserCut.ChangeListener 
     return new Color(0, 153, 0);
   }
 
-  //  @Override
-  //BasicStroke getShapeStroke (float strokeWidth) {
-  //  return new BasicStroke(strokeWidth, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER,  5.0f, new float[] {5.0f}, 0.0f);
-  //}
-
   @Override
   protected Shape getLocallyTransformedShape () {
     Shape dShape = getShape();

@@ -3,7 +3,7 @@ import java.awt.geom.Ellipse2D;
 import java.awt.geom.Rectangle2D;
 import java.io.Serializable;
 
-class CADGear extends CADShape implements Serializable {
+class CADGear extends CADShape implements Serializable, LaserCut.Rotatable {
   private static final long serialVersionUID = 2334548672295293845L;
   public double module;
   public double pressAngle;
@@ -63,8 +63,7 @@ class CADGear extends CADShape implements Serializable {
     Graphics2D g2 = (Graphics2D) g;
     // Draw dashed line in magenta to show effective gear diameter
     g2.setColor(Color.MAGENTA);
-    BasicStroke dashed = new BasicStroke(1.0f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 10.0f, new float[]{10.0f}, 0.0f);
-    g2.setStroke(dashed);
+    g2.setStroke(Utils2D.getDashedStroke(getStrokeWidth(), 108.0f, 10.0f));
     double diam = module * numTeeth;
     double scale = zoom * LaserCut.SCREEN_PPI;
     if (centered) {

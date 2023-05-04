@@ -98,16 +98,16 @@ public class DrawSurface extends JPanel implements Runnable {
     // Implement KeyListener to track state of shift key
     addKeyListener(new KeyAdapter() {
       @Override
-         public void keyPressed (KeyEvent e) {
-           if (e.getKeyCode() == KeyEvent.VK_SHIFT) {
+         public void keyPressed (KeyEvent ev) {
+           if (ev.getKeyCode() == KeyEvent.VK_SHIFT) {
              keyShift = true;
              repaint();
            }
          }
 
          @Override
-         public void keyReleased (KeyEvent e) {
-           if (e.getKeyCode() == KeyEvent.VK_SHIFT) {
+         public void keyReleased (KeyEvent ev) {
+           if (ev.getKeyCode() == KeyEvent.VK_SHIFT) {
              keyShift = false;
              repaint();
            }
@@ -132,7 +132,7 @@ public class DrawSurface extends JPanel implements Runnable {
               placer = null;
               setPlacerActive(false);
             }
-          } else if (ev.isControlDown()) {
+          } else if (ev.isControlDown()) {    // Process CTRL key (VK_CONTROL)
             // Select cadShape and then do CTRL-Click on second cadShape to measure distance from origin to origin
             if (selected != null) {
               for (CADShape shape : shapes) {
@@ -157,7 +157,7 @@ public class DrawSurface extends JPanel implements Runnable {
                 }
               }
             }
-          } else if (ev.isShiftDown()) {
+          } else if (ev.isShiftDown()) {        // Process SHIFT key (VK_SHIFT)
             if (selected instanceof LaserCut.Resizable || selected instanceof LaserCut.Rotatable) {
               // Check for click on resizeOrRotate point (used to drag cadShape to new size, or orientation)
               if (selected.isResizeOrRotateClicked(newLoc, zoomFactor)) {
@@ -242,7 +242,7 @@ public class DrawSurface extends JPanel implements Runnable {
                 return;
               }
             }
-            if (ev.isMetaDown()) {
+            if (ev.isMetaDown()) {      // Process CMD key (VK_META)
               // Clicked on nothing with Meta Down, so setup to drag workspace
               pushToUndoStack();
               setSelected(null);
@@ -380,7 +380,7 @@ public class DrawSurface extends JPanel implements Runnable {
             pushedToStack = true;
             pushToUndoStack();
           }
-          if (ev.isShiftDown()) {
+          if (ev.isShiftDown()) {       // Process SHIFT key (VK_SHIFT)
             resizeOrRotate.resizeOrRotateShape(newLoc, workSize, true);
           } else {
             if (doSnap && gridSpacing > 0) {
@@ -1243,17 +1243,17 @@ public class DrawSurface extends JPanel implements Runnable {
                   } else if (selected.isResizeOrRotateClicked(tipLoc, getZoomFactor())) {
                     if (selected instanceof LaserCut.Resizable && selected instanceof LaserCut.Rotatable) {
                       tipText = "Click and drag to resize the " + selected.getName() + ".\n" +
-                        "Hold shift and drag to rotate it.";
+                                "Hold shift and drag to rotate it.";
                     } else if (selected instanceof LaserCut.Rotatable) {
                       tipText = "Click and drag to rotate the " + selected.getName() + ".";
                     }
                   } else if (selected.isShapeClicked(tipLoc, getZoomFactor())) {
                     StringBuilder buf = new StringBuilder();
                     buf.append("Click outline of " + selected.getName() + " to select it, or click\n" +
-                      "anywhere else to deselect it.\n - - \n" +
-                      "Click another shape's outline while Shift is\n" +
-                      "down to group or ungroup with any already\n" +
-                      "selected shapes.");
+                                "anywhere else to deselect it.\n - - \n" +
+                                "Click another shape's outline while Shift is\n" +
+                                "down to group or ungroup with any already\n" +
+                                "selected shapes.");
                     tipText = buf.toString();
                   }
                 } else {
@@ -1301,19 +1301,7 @@ public class DrawSurface extends JPanel implements Runnable {
       shape.isSelected = shape == selected;
       shape.inGroup = selected != null && selected.getGroup() != null && selected.getGroup().containsShape(shape);
       shape.dragged = dragList != null && dragList.contains(shape);
-      if (false) {
-        // Test code to view FlatteningPathIterator-generated lines
-        g2.setStroke(shape.getShapeStroke(shape.getStrokeWidth()));
-        g2.setColor(shape.getShapeColor());
-        List<Line2D.Double[]> sets = shape.getListOfScaledLines(zoomFactor * LaserCut.SCREEN_PPI, .01);
-        for (Line2D.Double[] lines : sets) {
-          for (Line2D.Double line : lines) {
-            g2.draw(line);
-          }
-        }
-      } else {
-        shape.draw(g2, zoomFactor, keyShift);
-      }
+      shape.draw(g2, zoomFactor, keyShift);
     }
     if (showMeasure) {
       g2.setColor(Color.gray);
@@ -1366,9 +1354,7 @@ public class DrawSurface extends JPanel implements Runnable {
     }
     if (dragBox != null) {
       g2.setColor(Color.black);
-      float[] dash = {10.0f};
-      BasicStroke dashed = new BasicStroke(1.0f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 10.0f, dash, 0.0f);
-      g2.setStroke(dashed);
+      g2.setStroke(Utils2D.getDashedStroke(1, 10.0f, 10.0f));
       double scale = getScreenScale();
       g2.draw(new Rectangle2D.Double(dragBox.x * scale, dragBox.y * scale, dragBox.width * scale, dragBox.height * scale));
     }

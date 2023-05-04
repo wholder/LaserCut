@@ -3,7 +3,7 @@ import java.awt.geom.Area;
 import java.awt.geom.Ellipse2D;
 import java.io.Serializable;
 
-class CADNemaMotor extends CADShape implements Serializable {
+class CADNemaMotor extends CADShape implements Serializable, LaserCut.Rotatable {
   private static final long serialVersionUID = 2518641166287730832L;
   private static final double M2 = LaserCut.mmToInches(2);
   private static final double M2_5 = LaserCut.mmToInches(2.5);

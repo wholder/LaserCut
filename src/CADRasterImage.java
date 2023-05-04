@@ -285,9 +285,8 @@ class CADRasterImage extends CADShape implements Serializable, LaserCut.Resizabl
   }
 
   @Override
-  BasicStroke getShapeStroke (float strokeWidth) {
-    final float[] dash1 = {8.0f};
-    return new BasicStroke(strokeWidth, BasicStroke.CAP_SQUARE, BasicStroke.JOIN_MITER, 1.0f, dash1, 0.5f);
+  BasicStroke getShapeStroke () {
+    return Utils2D.getDashedStroke(getStrokeWidth(), 8.0f, 8.0f);
   }
 
   /**
