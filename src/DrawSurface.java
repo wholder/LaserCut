@@ -10,7 +10,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.prefs.Preferences;
 import java.util.zip.CRC32;
 
@@ -164,7 +163,7 @@ public class DrawSurface extends JPanel {
           } else if (ev.isShiftDown()) {        // Process SHIFT key (VK_SHIFT)
             if (selected instanceof LaserCut.Resizable || selected instanceof LaserCut.Rotatable) {
               // Check for click on resizeOrRotate point (used to drag cadShape to new size, or orientation)
-              if (selected.isResizeOrRotateClicked(newLoc, zoomFactor)) {
+              if (selected.isResizeOrRotateClicked(newLoc)) {
                 resizeOrRotate = selected;
                 setInfoText(selected.getInfo());
                 repaint();
@@ -228,7 +227,7 @@ public class DrawSurface extends JPanel {
               }
               if (selected instanceof LaserCut.Resizable || selected instanceof LaserCut.Rotatable) {
                 // Check for click on resizeOrRotate point (used to drag cadShape to new size or orientation)
-                if (selected.isResizeOrRotateClicked(newLoc, zoomFactor)) {
+                if (selected.isResizeOrRotateClicked(newLoc)) {
                   resizeOrRotate = selected;
                   setInfoText(selected.getInfo());
                   repaint();
@@ -1240,7 +1239,7 @@ public class DrawSurface extends JPanel {
                 if (selected != null) {
                   if (selected.isPositionClicked(tipLoc, getZoomFactor())) {
                     tipText = "Click and drag to\nreposition the " + selected.getName() + ".";
-                  } else if (selected.isResizeOrRotateClicked(tipLoc, getZoomFactor())) {
+                  } else if (selected.isResizeOrRotateClicked(tipLoc)) {
                     if (selected instanceof LaserCut.Resizable && selected instanceof LaserCut.Rotatable) {
                       tipText = "Click and drag to resize the " + selected.getName() + ".\n" +
                         "Hold shift and drag to rotate it.";

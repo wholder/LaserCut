@@ -349,6 +349,10 @@ class CADShape implements Serializable {
         double cx = xLoc * zoom * LaserCut.SCREEN_PPI;
         double cy = yLoc * zoom * LaserCut.SCREEN_PPI;
         g2d.draw(new Line2D.Double(cx, cy, mx, my));
+        // Draw text indicating currrent angle of rotation
+        int angle = (int) rotation;
+        g2d.setFont(new Font("Arial", Font.PLAIN, 14));
+        g2d.drawString("(θ=" + angle + ")", (float) mx + 10, (float) my + 4);
       } else if (this instanceof LaserCut.Resizable) {
         // Draw diamond grap point for Resizable interface
         g2.draw(Utils2D.getDiamond(new Point2D.Double(mx, my), 4));
@@ -709,10 +713,9 @@ class CADShape implements Serializable {
    * Implement Resizeble to check if 'point' is close to cadShape's resize handle
    *
    * @param point      Location click on screen in model coordinates (inches)
-   * @param zoomFactor Zoom factor (ratio)
    * @return true if close enough to consider a 'touch'
    */
-  public boolean isResizeOrRotateClicked (Point2D.Double point, double zoomFactor) {
+  public boolean isResizeOrRotateClicked (Point2D.Double point) {
     Point2D.Double grab = rotateAroundPoint(getAnchorPoint(), getLRPoint(), rotation);
     double dist = point.distance(grab.x, grab.y) * LaserCut.SCREEN_PPI;
     return dist < 5;
