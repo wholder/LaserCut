@@ -4,7 +4,6 @@ import java.awt.font.GlyphVector;
 import java.awt.font.TextAttribute;
 import java.awt.geom.*;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.text.DecimalFormat;
@@ -51,9 +50,9 @@ public class DXFReader {
   private boolean               drawText;
   private boolean               drawMText;
   private boolean               drawDimen;
-  private ArrayList<DrawItem>   entities = new ArrayList<>();
+  private final ArrayList<DrawItem>   entities = new ArrayList<>();
   private ArrayList<Entity>     stack = new ArrayList<>();
-  private Map<String,Block>     blockDict = new TreeMap<>();
+  private final Map<String,Block>     blockDict = new TreeMap<>();
   private Entity                cEntity = null;
   private Rectangle2D           bounds;
   private double                uScale = 0.039370078740157; // default to millimeters as units
@@ -78,7 +77,7 @@ public class DXFReader {
   }
 
   static class Entity {
-    private String        type;
+    private final String        type;
 
     Entity (String type) {
       this.type = type;
@@ -92,7 +91,7 @@ public class DXFReader {
     void close () { }
   }
 
-  class DrawItem extends Entity {
+  static class DrawItem extends Entity {
 
     DrawItem (String type) {
       super(type);
@@ -103,8 +102,8 @@ public class DXFReader {
     }
   }
 
-  class Section extends Entity {
-    private Map<String,Map<Integer,String>>   attributes = new TreeMap<>();
+  static class Section extends Entity {
+    private final Map<String,Map<Integer,String>>   attributes = new TreeMap<>();
     private Map<Integer,String>               attValues;
     private String                            sType;
 
@@ -257,7 +256,7 @@ public class DXFReader {
    * Note: this code should use, or support vector fonts such as those by Hershey
    */
   class Text extends DrawItem implements AutoPop {
-    private Canvas    canvas = new Canvas();
+    private final Canvas    canvas = new Canvas();
     private double    ix, iy, ix2, iy2, textHeight, rotation;
     private int       hAdjust, vAdjust;
     private String    text;
@@ -293,13 +292,13 @@ public class DXFReader {
                 // Ignored
                 break;
               case 'd':                             // Draws degrees symbol (°)
-                buf.append("\u00B0");
+                buf.append("°");
                 break;
               case 'p':                             // Draws plus/minus tolerance symbol (±)
-                buf.append("\u00B1");
+                buf.append("±");
                 break;
               case 'c':                             // Draws circle diameter dimensioning symbol (Ø)
-                buf.append("\u00D8");
+                buf.append("Ø");
                 break;
               case 'o':                             // Toggles overscoring on and off
                 // Ignored
@@ -431,7 +430,7 @@ public class DXFReader {
    *  BOLLARD,\PFOR W.H.\PPROTECTION
    */
   class MText extends DrawItem implements AutoPop {
-    private Canvas    canvas = new Canvas();
+    private final Canvas    canvas = new Canvas();
     private String    text;
     private double    ix, iy, textHeight, refWidth, xRot, yRot;
     private int       attachPoint;
@@ -465,25 +464,25 @@ public class DXFReader {
                 if (cc == 'S') {                      // Stacking Fractions (1/2, 1/3, etc)
                   switch (val) {
                     case "1/2":
-                      buf.append("\u00BD");             // Unicode for 1/2
+                      buf.append("½");             // Unicode for 1/2
                       break;
                     case "1/3":
-                      buf.append("\u2153");           // Unicode for 1/3
+                      buf.append("⅓");           // Unicode for 1/3
                       break;
                     case "1/4":
-                      buf.append("\u00BC");             // Unicode for 1/4
+                      buf.append("¼");             // Unicode for 1/4
                       break;
                     case "2/3":
-                      buf.append("\u2154");             // Unicode for 2/3
+                      buf.append("⅔");             // Unicode for 2/3
                       break;
                     case "3/4":
-                      buf.append("\u00BE");             // Unicode for 3/4
+                      buf.append("¾");             // Unicode for 3/4
                       break;
                     default:
                       String[] parts = val.split("/");
                       if (parts.length == 2) {
                         buf.append(parts[0]);
-                        buf.append("\u2044");
+                        buf.append("⁄");
                         buf.append(parts[1]);
                       }
                       break;
@@ -1284,12 +1283,11 @@ public class DXFReader {
         push();
         block.addEntity(entity);
       }
-      cEntity = entity;
     } else {
       push();
       entities.add(entity);
-      cEntity = entity;
     }
+    cEntity = entity;
   }
 
   private void debugPrint (String value) {

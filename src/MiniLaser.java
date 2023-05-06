@@ -219,10 +219,10 @@ class MiniLaser extends GRBLBase implements LaserCut.OutputDevice {
    */
 
   static class RasterSettings {
-    private int   rasterDpi;          // Raster Size used for Engraving
-    private int   feedRate;           // in inches/sec
-    private int   laserMin;           // Laser Minimum Power for Engraving
-    private int   laserMax;           // Laser Maximum Power for Engraving
+    private final int   rasterDpi;          // Raster Size used for Engraving
+    private final int   feedRate;           // in inches/sec
+    private final int   laserMin;           // Laser Minimum Power for Engraving
+    private final int   laserMax;           // Laser Maximum Power for Engraving
 
     RasterSettings (int rasterDpi, int feedRate, int laserMin, int laserMax) {
       this.rasterDpi = rasterDpi;

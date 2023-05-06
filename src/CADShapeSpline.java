@@ -10,7 +10,7 @@ import java.util.List;
 
 class CADShapeSpline extends CADShape implements Serializable, LaserCut.StateMessages, LaserCut.Rotatable {
   private static final long           serialVersionUID = 1175193935200692376L;
-  private List<Point2D.Double>        points = new ArrayList<>();
+  private final List<Point2D.Double>        points = new ArrayList<>();
   private Point2D.Double              movePoint;
   private boolean pathClosed;
   private Path2D.Double               path = new Path2D.Double();

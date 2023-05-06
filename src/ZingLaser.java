@@ -23,8 +23,8 @@ class ZingLaser implements LaserCut.OutputDevice {
   private static final int                  ZING_RASTER_POWER_DEFAUlT = 50;
   private static final Rectangle2D.Double   zingFullSize = new Rectangle2D.Double(0, 0, 16, 12);
   private static final Rectangle2D.Double   zing12x12Size = new Rectangle2D.Double(0, 0, 12, 12);
-  private LaserCut                          laserCut;
-  private String                            dUnits;
+  private final LaserCut                          laserCut;
+  private final String                            dUnits;
 
   ZingLaser (LaserCut laserCut) {
     this.laserCut = laserCut;
@@ -88,7 +88,7 @@ class ZingLaser implements LaserCut.OutputDevice {
             double[] scale = raster.getScale(ZING_PPI);
             Rectangle2D bb = raster.getScaledRotatedBounds(scale);
             AffineTransform at = raster.getScaledRotatedTransform(bb, scale);
-            BufferedImage scaledImg = raster.getScaledRotatedImage(at, bb, scale);
+            BufferedImage scaledImg = raster.getScaledRotatedImage(bb, scale);
             Point2D.Double offset = raster.getScaledRotatedOrigin(at, bb);
             int xLoc = (int) Math.round(shape.xLoc * ZING_PPI - offset.x);
             int yLoc = (int) Math.round(shape.yLoc * ZING_PPI - offset.y);

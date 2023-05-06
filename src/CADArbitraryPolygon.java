@@ -173,8 +173,7 @@ class CADArbitraryPolygon extends CADShape implements Serializable, LaserCut.Sta
   private Path2D.Double convert (Point2D.Double[] points, boolean close) {
     Path2D.Double path = new Path2D.Double();
     path.moveTo(points[0].x, points[0].y);
-    for (int ii = 0; ii < points.length; ii++) {
-      Point2D.Double point = points[ii];
+    for (Point2D.Double point : points) {
       path.lineTo(point.x, point.y);
     }
     /*

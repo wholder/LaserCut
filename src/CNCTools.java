@@ -8,7 +8,7 @@ class CNCTools {
   static class PLine {
     private static final double LARGE = 1.0e12;   // Avoid divide by zero...
     private double              slope;
-    private double              intercept;
+    private final double              intercept;
 
     /**
      * PLine class represents a line of infinite length.  This constructor creates a line that passes

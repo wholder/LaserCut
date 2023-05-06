@@ -8,7 +8,7 @@ import java.util.List;
 
 class CNCPath extends CADShape implements Serializable, LaserCut.ChangeListener {
   private static final long serialVersionUID = 940023721688314265L;
-  private CADShape          baseShape;
+  private final CADShape          baseShape;
   public double             radius;
   public boolean            inset;
 

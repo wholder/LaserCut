@@ -49,9 +49,9 @@ class CADNemaMotor extends CADShape implements Serializable, LaserCut.Rotatable 
     double hr = hd / 2;
     Area a1 = new Area(new Ellipse2D.Double(-diameter / 2, -diameter / 2, diameter, diameter));
     a1.add(new Area(new Ellipse2D.Double(-off - hr, -off - hr, hd, hd)));
-    a1.add(new Area(new Ellipse2D.Double(+off - hr, -off - hr, hd, hd)));
-    a1.add(new Area(new Ellipse2D.Double(-off - hr, +off - hr, hd, hd)));
-    a1.add(new Area(new Ellipse2D.Double(+off - hr, +off - hr, hd, hd)));
+    a1.add(new Area(new Ellipse2D.Double( off - hr, -off - hr, hd, hd)));
+    a1.add(new Area(new Ellipse2D.Double(-off - hr,  off - hr, hd, hd)));
+    a1.add(new Area(new Ellipse2D.Double( off - hr,  off - hr, hd, hd)));
     return a1;
   }
 }

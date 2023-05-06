@@ -237,12 +237,11 @@ class CADRasterImage extends CADShape implements Serializable, LaserCut.Resizabl
    * Generate a scaled and rotated image that fits inside the bounding box computed by getScaledRotatedBounds()
    * Note: used by ZingLaser
    *
-   * @param at    AffineTransform used to scale and rotate
    * @param bb    Bounding box computed by getScaledRotatedBounds()
    * @param scale Array of double from getScale() where [0] is x scale and [1] is y scale
    * @return BufferedImage containing scaled and rotated image
    */
-  BufferedImage getScaledRotatedImage (AffineTransform at, Rectangle2D bb, double[] scale) {
+  BufferedImage getScaledRotatedImage (Rectangle2D bb, double[] scale) {
     // Create new BufferedImage the size of the bounding for for the scaled and rotated image
     int wid = (int) Math.round(bb.getWidth());
     int hyt = (int) Math.round(bb.getHeight());
@@ -251,7 +250,7 @@ class CADRasterImage extends CADShape implements Serializable, LaserCut.Resizabl
     g2.setColor(Color.white);
     g2.fillRect(0, 0, wid, hyt);
     // Draw scaled and rotated image into newly-created BufferedImage
-    at = new AffineTransform();
+    AffineTransform at = new AffineTransform();
     at.translate(-bb.getX(), -bb.getY());
     at.scale(scale[0], scale[1]);
     at.rotate(Math.toRadians(rotation), (double) img.getWidth() / 2, (double) img.getHeight() / 2);
@@ -297,8 +296,7 @@ class CADRasterImage extends CADShape implements Serializable, LaserCut.Resizabl
    * @throws IOException
    */
   static Dimension getImageDPI (File file) throws IOException {
-    ImageInputStream iis = ImageIO.createImageInputStream(file);
-    try {
+    try (ImageInputStream iis = ImageIO.createImageInputStream(file)) {
       Iterator<ImageReader> it = ImageIO.getImageReaders(iis);
       if (it.hasNext()) {
         ImageReader reader = (ImageReader) it.next();
@@ -340,8 +338,6 @@ class CADRasterImage extends CADShape implements Serializable, LaserCut.Resizabl
           reader.dispose();
         }
       }
-    } finally {
-      iis.close();
     }
     // Assume it's 72 DPI if there's no Metadata that specifies it
     return new Dimension(72, 72);

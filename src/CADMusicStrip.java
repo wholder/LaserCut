@@ -13,12 +13,12 @@ class CADMusicStrip extends CADShape implements Serializable, LaserCut.Updatable
   private static final long serialVersionUID = 7398125917619364676L;
   private static final String[] symb = {"6E", "6D", "6C", "5B", "5A#", "5A", "5G#", "5G", "5F#", "5F", "5E", "5D#", "5D", "5C#", "5C",
                                         "4B", "4A#", "4A", "4G#", "4G", "4F#", "4F", "4E", "4D", "4C", "3B", "3A", "3G", "3D", "3C"};
-  private static Map<String, Integer> noteIndex = new HashMap<>();
-  private static double               xStep = 4.0;
-  private static double               yStep = 2.017;
-  private static double               xOff = LaserCut.mmToInches(12);
-  private static double               yOff = LaserCut.mmToInches(6);
-  private static double               holeDiam = LaserCut.mmToInches(2.4);
+  private static final Map<String, Integer> noteIndex = new HashMap<>();
+  private static final double               xStep = 4.0;
+  private static final double               yStep = 2.017;
+  private static final double               xOff = LaserCut.mmToInches(12);
+  private static final double               yOff = LaserCut.mmToInches(6);
+  private static final double               holeDiam = LaserCut.mmToInches(2.4);
   private boolean                     checkClicked;
   public int                          columns = 60;
   public double                       width, height;
@@ -159,11 +159,6 @@ class CADMusicStrip extends CADShape implements Serializable, LaserCut.Updatable
       }
     }
     return path;
-  }
-
-  @Override
-  String[] getParameterNames () {
-    return new String[0];
   }
 
   @Override

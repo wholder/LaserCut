@@ -16,7 +16,7 @@ class CADText extends CADShape implements Serializable, LaserCut.Rotatable, Lase
   public String text, fontName, fontStyle;
   public int    fontSize;
   public double tracking;
-  private static Map<String, Integer> styles = new HashMap<>();
+  private static final Map<String, Integer> styles = new HashMap<>();
   private static final List<String> fonts = new ArrayList<>();
 
   static {
@@ -60,7 +60,7 @@ class CADText extends CADShape implements Serializable, LaserCut.Rotatable, Lase
     return "Text";
   }
 
-  private static void addIfAvailable (Map avail, String font) {
+  private static void addIfAvailable (Map<String, String> avail, String font) {
     if (avail.containsKey(font)) {
       fonts.add(font);
     }

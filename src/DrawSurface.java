@@ -6,12 +6,17 @@ import java.awt.image.BufferedImage;
 import java.io.*;
 import java.util.*;
 import java.util.List;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.prefs.Preferences;
 import java.util.zip.CRC32;
 
 import static javax.swing.JOptionPane.showMessageDialog;
 
-public class DrawSurface extends JPanel implements Runnable {
+public class DrawSurface extends JPanel {
   private final Preferences                   prefs;
   private Dimension                           workSize;
   private JTextField                          infoText;
@@ -28,20 +33,19 @@ public class DrawSurface extends JPanel implements Runnable {
   private Rectangle2D.Double                  dragBox;
   private boolean                             useDblClkZoom;
   private final List<CADShape>                dragList = new ArrayList<>();
-  private List<LaserCut.ShapeSelectListener>  selectListerners = new ArrayList<>();
-  private List<LaserCut.ShapeDragSelectListener>  dragSelectListerners = new ArrayList<>();
-  private List<LaserCut.ActionUndoListener>   undoListerners = new ArrayList<>();
-  private List<LaserCut.ActionRedoListener>   redoListerners = new ArrayList<>();
-  private List<LaserCut.ZoomListener>         zoomListeners = new ArrayList<>();
-  private LinkedList<byte[]>                  undoStack = new LinkedList<>();
-  private LinkedList<byte[]>                  redoStack = new LinkedList<>();
+  private final List<LaserCut.ShapeSelectListener>  selectListerners = new ArrayList<>();
+  private final List<LaserCut.ShapeDragSelectListener>  dragSelectListerners = new ArrayList<>();
+  private final List<LaserCut.ActionUndoListener>   undoListerners = new ArrayList<>();
+  private final List<LaserCut.ActionRedoListener>   redoListerners = new ArrayList<>();
+  private final List<LaserCut.ZoomListener>         zoomListeners = new ArrayList<>();
+  private final LinkedList<byte[]>                  undoStack = new LinkedList<>();
+  private final LinkedList<byte[]>                  redoStack = new LinkedList<>();
   private boolean                             pushedToStack, showMeasure, doSnap, showGrid;
   private String                              dUnits;
   private int                                 tipTimer;
   private boolean                             mouseDown = false;
   private Point2D.Double                      tipLoc;
   private String                              tipText;
-  private boolean                             threadRunning;   // Note: need code to handle shutdown
   private boolean                             keyShift;
 
   static class Placer {
@@ -446,10 +450,13 @@ public class DrawSurface extends JPanel implements Runnable {
       }
     });
     // Start tip timer
-    if (!threadRunning) {
-      threadRunning = true;
-      new Thread(this).start();
-    }
+//    if (!threadRunning) {
+//      threadRunning = true;
+//      new Thread(this).start();
+//    }
+    PeriodicEvent pe = new PeriodicEvent();
+    pe.runPeriodic();
+
   }
 
   void setInfoText (String text) {
@@ -1038,7 +1045,6 @@ public class DrawSurface extends JPanel implements Runnable {
       }
       List<Shape> opt = ShapeOptimizer.optimizeShape(path);
       // Group Optimized shapes
-      //LaserCut.CADShapeGroup items = new LaserCut.CADShapeGroup();
       for (Shape shape : opt) {
         Rectangle2D bnds = shape.getBounds2D();
         double xLoc = bnds.getX();
@@ -1046,8 +1052,6 @@ public class DrawSurface extends JPanel implements Runnable {
         AffineTransform at2 = AffineTransform.getTranslateInstance(-xLoc - bnds.getWidth() / 2, -yLoc - bnds.getHeight() / 2);
         shape = at2.createTransformedShape(shape);
         CADShape cadShape = new CADShape(shape, xLoc, yLoc, 0, false);
-        //items.addToGroup(cadShape);
-        //cadShape.setGroup(items);
         shapes.add(cadShape);
       }
       clearDragList();
@@ -1212,25 +1216,21 @@ public class DrawSurface extends JPanel implements Runnable {
     }
   }
 
-  public void setTipText (String test) {
-    tipText = test;
-    repaint();
-  }
+  class PeriodicEvent {
+    private static final int  INITIAL_DELAY = 1;
+    private static final int  PERIODIC_RATE = 1;
 
-  /**
-   * Timer thread that handles checking or pop up tooltips for Shape controls
-   */
-  public void run () {
-    while (threadRunning) {
-      try {
-        Thread.sleep(100);
+    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+
+    public void runPeriodic () {
+      final Runnable periodic = () -> {
         if (tipTimer < 10) {
           tipTimer++;
         } else if (tipTimer == 10) {
           if (!mouseDown) {
             if (placer != null) {
               tipText = "Click to place " + placer.shapes.get(0).getName() + "\n - - \n" +
-                        "or ESC to cancel";
+                "or ESC to cancel";
               repaint();
             } else {
               tipTimer = 0;
@@ -1243,18 +1243,16 @@ public class DrawSurface extends JPanel implements Runnable {
                   } else if (selected.isResizeOrRotateClicked(tipLoc, getZoomFactor())) {
                     if (selected instanceof LaserCut.Resizable && selected instanceof LaserCut.Rotatable) {
                       tipText = "Click and drag to resize the " + selected.getName() + ".\n" +
-                                "Hold shift and drag to rotate it.";
+                        "Hold shift and drag to rotate it.";
                     } else if (selected instanceof LaserCut.Rotatable) {
                       tipText = "Click and drag to rotate the " + selected.getName() + ".";
                     }
                   } else if (selected.isShapeClicked(tipLoc, getZoomFactor())) {
-                    StringBuilder buf = new StringBuilder();
-                    buf.append("Click outline of " + selected.getName() + " to select it, or click\n" +
-                                "anywhere else to deselect it.\n - - \n" +
-                                "Click another shape's outline while Shift is\n" +
-                                "down to group or ungroup with any already\n" +
-                                "selected shapes.");
-                    tipText = buf.toString();
+                    tipText = "Click outline of " + selected.getName() + " to select it, or click\n" +
+                      "anywhere else to deselect it.\n - - \n" +
+                      "Click another shape's outline while Shift is\n" +
+                      "down to group or ungroup with any already\n" +
+                      "selected shapes.";
                   }
                 } else {
                   repaint();
@@ -1266,9 +1264,9 @@ public class DrawSurface extends JPanel implements Runnable {
             }
           }
         }
-      } catch (InterruptedException ex) {
-        ex.printStackTrace();
-      }
+      };
+      // Run every second for 100 milliseconds'with initial an delay of 0 seconds
+      final ScheduledFuture<?> beeperHandle = scheduler.scheduleAtFixedRate(periodic, 0, 100, TimeUnit.MILLISECONDS);
     }
   }
 
@@ -1323,8 +1321,6 @@ public class DrawSurface extends JPanel implements Runnable {
       g2.fill(getArrow(maxX, measure1.y, maxX, measure2.y, true));
       // Draw diagonal
       g2.draw(new Line2D.Double(measure1.x, measure1.y, measure2.x, measure2.y));
-      //g2.fill(getArrow(measure1.x, measure1.y, measure2.x, measure2.y, false));
-      //g2.fill(getArrow(measure1.x, measure1.y, measure2.x, measure2.y, true));
     }
     if (tipText != null && tipLoc != null) {
       // todo: need code to reposition tooltip when near lower, or right edges

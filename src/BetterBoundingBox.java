@@ -38,9 +38,9 @@ class BetterBoundingBox {
               new Point2D.Double(crds[0], crds[1]),
               new Point2D.Double(crds[2], crds[3]),
               new Point2D.Double(crds[4], crds[5])};
-          int segments = 6;
-          for (int ii = 0; ii < segments; ii++) {
-            double t = ((double) ii) / (segments - 1);
+          int segmentsCubic = 6;
+          for (int ii = 0; ii < segmentsCubic; ii++) {
+            double t = ((double) ii) / (segmentsCubic - 1);
             for (int jj = 0; jj < cControl.length; jj++)
               tmp[jj] = new Point2D.Double(cControl[jj].x, cControl[jj].y);
             for (int qq = 0; qq < cControl.length - 1; qq++) {
@@ -56,15 +56,15 @@ class BetterBoundingBox {
           break;
         case PathIterator.SEG_QUADTO:
           // Decompose 3 point, quadratic bezier curve into line segments
-          segments = 5;
+          int segmentsQuad = 5;
           Point2D.Double start = new Point2D.Double(xLoc, yLoc);
           Point2D.Double control = new Point2D.Double(crds[0], crds[1]);
           Point2D.Double end = new Point2D.Double(crds[2], crds[3]);
           double xLast = start.x;
           double yLast = start.y;
-          for (int ii = 1; ii < segments; ii++) {
+          for (int ii = 1; ii < segmentsQuad; ii++) {
             // Use step as a ratio to subdivide lines
-            double step = (double) ii / segments;
+            double step = (double) ii / segmentsQuad;
             double x = (1 - step) * (1 - step) * start.x + 2 * (1 - step) * step * control.x + step * step * end.x;
             double y = (1 - step) * (1 - step) * start.y + 2 * (1 - step) * step * control.y + step * step * end.y;
             assert bounds != null;

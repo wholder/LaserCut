@@ -735,7 +735,7 @@ class CADShape implements Serializable {
         double angle2 = Math.toDegrees(Math.atan2(rp.y - lr.y, rp.x - lr.x)) + 135;
         double angle = angle1 - angle2;
         // Change angle in even, 1 degree steps
-        rotation = Math.floor((angle / 1) + 0.5) * 1;
+        rotation = Math.floor((angle) + 0.5) * 1;
         rotation = rotation >= 360 ? rotation - 360 : rotation < 0 ? rotation + 360 : rotation;
       }
     } else {

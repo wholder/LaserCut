@@ -76,9 +76,9 @@ public class LaserCut extends JFrame {
   private boolean               displayGrid = prefs.getBoolean("displayGrid", true);
   private String                onStartup = prefs.get("onStartup", "demo");
   private OutputDevice          outputDevice;
-  private int                   deviceMenuSlot;
-  private Map<String,String>    menuToShape = new HashMap<>();
-  private Map<String,String>    shapeNames = new LinkedHashMap<>();
+  private final int                   deviceMenuSlot;
+  private final Map<String,String>    menuToShape = new HashMap<>();
+  private final Map<String,String>    shapeNames = new LinkedHashMap<>();
 
   {
     shapeNames.put("CADReference",        "Reference Point");
@@ -112,7 +112,7 @@ public class LaserCut extends JFrame {
 
   interface OutputDevice {
     String getName();
-    JMenu getDeviceMenu () throws Exception;
+    JMenu getDeviceMenu ();
     void closeDevice () throws Exception;
     Rectangle2D.Double getWorkspaceSize ();
     double getZoomFactor ();
@@ -249,14 +249,11 @@ public class LaserCut extends JFrame {
         fileChooser.setFileFilter(nameFilter);
         fileChooser.setCurrentDirectory(new File(currentPath = prefs.get("default." + ext + ".dir", "/")));
         currentPath = fileChooser.getCurrentDirectory().getPath();
-        fileChooser.addPropertyChangeListener(new PropertyChangeListener() {
-          @Override
-          public void propertyChange (PropertyChangeEvent evt) {
-            String path = fileChooser.getCurrentDirectory().getPath();
-            if (!path.equals(currentPath)) {
-              currentPath = path;
-              prefs.put("default." + ext + ".dir", currentPath = path);
-            }
+        fileChooser.addPropertyChangeListener(evt -> {
+          String path = fileChooser.getCurrentDirectory().getPath();
+          if (!path.equals(currentPath)) {
+            currentPath = path;
+            prefs.put("default." + ext + ".dir", currentPath = path);
           }
         });
         if (openDialog(save)) {
@@ -530,12 +527,9 @@ public class LaserCut extends JFrame {
     });
     // Add Menu Bar to Window
     setJMenuBar(menuBar);
-    surface.addPlacerListener(new DrawSurface.PlacerListener() {
-      @Override
-      public void placeActive (boolean placing) {
-        for (int ii = 0; ii < menuBar.getMenuCount(); ii++) {
-          menuBar.getMenu(ii).setEnabled(!placing);
-        }
+    surface.addPlacerListener(placing -> {
+      for (int ii = 0; ii < menuBar.getMenuCount(); ii++) {
+        menuBar.getMenu(ii).setEnabled(!placing);
       }
     });
     /*
@@ -555,9 +549,7 @@ public class LaserCut extends JFrame {
       // Add "Preferences" Item to File Menu
       //
       JMenuItem preferencesBox = new JMenuItem("Preferences");
-      preferencesBox.addActionListener(ev -> {
-        showPreferencesBox();
-      });
+      preferencesBox.addActionListener(ev -> showPreferencesBox());
       fileMenu.add(preferencesBox);
     }
     fileMenu.addSeparator();
@@ -1389,11 +1381,11 @@ public class LaserCut extends JFrame {
     return menu;
   }
 
-  private static java.lang.reflect.Field getField(Class mClass, String fieldName) throws NoSuchFieldException {
+  private static java.lang.reflect.Field getField(Class<CADShape> mClass, String fieldName) throws NoSuchFieldException {
     try {
       return mClass.getDeclaredField(fieldName);
     } catch (NoSuchFieldException e) {
-      Class superClass = mClass.getSuperclass();
+      Class<CADShape> superClass = (Class<CADShape>) mClass.getSuperclass();
       if (superClass == null) {
         throw e;
       } else {
@@ -1403,7 +1395,7 @@ public class LaserCut extends JFrame {
   }
 
   public static void setFieldValue(Object object, String fieldName, Object valueTobeSet) throws NoSuchFieldException, IllegalAccessException {
-    java.lang.reflect.Field field = getField(object.getClass(), fieldName);
+    java.lang.reflect.Field field = getField((Class<CADShape>) object.getClass(), fieldName);
     field.setAccessible(true);
     field.set(object, valueTobeSet);
   }

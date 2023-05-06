@@ -251,7 +251,7 @@ class ParameterDialog extends JDialog {
    * Subclass of JComboBox that displays a list of fonts showing the typeface in the component
    */
   static class FontList extends JComboBox<String> {
-    private Dimension   dim;
+    private final Dimension   dim;
 
     FontList (String[] fonts) {
       super(fonts);
@@ -360,7 +360,6 @@ class ParameterDialog extends JDialog {
           gbc.gridwidth = GridBagConstraints.REMAINDER;
           fields.add((JComponent) parm.value, gbc);
         }
-        jj++;
       } else {
         boolean isLength = parm.units.equals("in");
         fields.add(parm.label = new JLabel(parm.name + ": "), getGbc(0, jj));
@@ -464,8 +463,8 @@ class ParameterDialog extends JDialog {
         if (parm.hint != null) {
           parm.field.setToolTipText(parm.hint);
         }
-        jj++;
       }
+      jj++;
       parm.hookActionListener();
     }
     // Define a custion action button so we can catch and save the screen coordinates where the "Place" button was clicked...

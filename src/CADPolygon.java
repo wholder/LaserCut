@@ -49,8 +49,6 @@ class CADPolygon extends CADShape implements Serializable, LaserCut.Resizable, L
     // Adjust angle, where needed, to draw shapes in familiar orientation
     if (sides % 2 == 0) {
       angle += Math.toRadians(180.0 / sides);
-    } else if (sides == 4) {                        // WRH: is this correct
-      angle += Math.toRadians(45.0);
     }
     boolean first = true;
     for (int i = 0; i < sides; ++i) {

@@ -69,7 +69,7 @@ public class GearGen {
     double V = 0.25 - 1.0;
     ArrayList<Point2D.Double> points = new ArrayList<>();
     // Generate Involute Points
-    double thetaMin = 2.0 / numTeeth * (U + (V + profileShift) * 1.0 / Math.tan(pressAngle));
+    double thetaMin = 2.0 / numTeeth * (U + (V + profileShift) / Math.tan(pressAngle));
     double thetaMax = 1.0 / (numTeeth * Math.cos(pressAngle)) * Math.sqrt(Math.pow((2 + numTeeth + 2 * profileShift), 2) -
         Math.pow(numTeeth * Math.cos(pressAngle), 2)) - (1 + 2 * profileShift / numTeeth) * Math.tan(pressAngle) -
         Math.PI / (2.0 * numTeeth);
@@ -148,7 +148,7 @@ public class GearGen {
   static class ShapeWindow extends JFrame {
     private transient Image   offScr;
     private Dimension         lastDim;
-    private ArrayList<Shape>  shapes = new ArrayList<>();
+    private final ArrayList<Shape>  shapes = new ArrayList<>();
 
     ShapeWindow () {
       setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
