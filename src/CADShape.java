@@ -335,7 +335,7 @@ class CADShape implements Serializable {
     }
     if (isSelected) {
       // Draw grab point for resizing image
-      Point2D.Double rGrab = rotateAroundPoint(getAnchorPoint(), getLRPoint(), rotation);
+      Point2D.Double rGrab = getRotatedGrabPoint();
       double mx = rGrab.x * zoom * LaserCut.SCREEN_PPI;
       double my = rGrab.y * zoom * LaserCut.SCREEN_PPI;
       if (keyShift && this instanceof LaserCut.Rotatable) {
@@ -349,7 +349,7 @@ class CADShape implements Serializable {
         double cx = xLoc * zoom * LaserCut.SCREEN_PPI;
         double cy = yLoc * zoom * LaserCut.SCREEN_PPI;
         g2d.draw(new Line2D.Double(cx, cy, mx, my));
-        // Draw text indicating currrent angle of rotation
+        // Draw text indicating current angle of rotation
         int angle = (int) rotation;
         g2d.setFont(new Font("Arial", Font.PLAIN, 14));
         g2d.drawString("(θ=" + angle + ")", (float) mx + 10, (float) my + 4);
@@ -688,13 +688,17 @@ class CADShape implements Serializable {
    * @param angle Angle to rotate
    * @return Rotated 2D point
    */
-  private Point2D.Double rotateAroundPoint (Point2D.Double anchor, Point2D.Double point, double angle) {
+  private static Point2D.Double rotateAroundPoint (Point2D.Double anchor, Point2D.Double point, double angle) {
     AffineTransform center = AffineTransform.getRotateInstance(Math.toRadians(angle), anchor.x, anchor.y);
     Point2D.Double np = new Point2D.Double();
     center.transform(point, np);
     return np;
   }
 
+  /**
+   * Get shape's anchor point based on state of "centered"
+   * @return adjusted location of anchor point
+   */
   private Point2D.Double getAnchorPoint () {
     Rectangle2D bnds = getShapeBounds();
     if (centered) {
@@ -704,19 +708,31 @@ class CADShape implements Serializable {
     }
   }
 
-  private Point2D.Double getLRPoint () {
+  /**
+   * Get location of unrotated point for resize/rotate control
+   * @return unrotated location of grab point
+   */
+  private Point2D.Double getGrabPoint () {
     Rectangle2D bnds = getShapeBounds();
     return new Point2D.Double(bnds.getX() + bnds.getWidth(), bnds.getY() + bnds.getHeight());
   }
 
   /**
-   * Implement Resizeble to check if 'point' is close to cadShape's resize handle
+   * Get location of rotated point for resize/rotate control
+   * @return rotated location of grab point
+   */
+  private Point2D.Double getRotatedGrabPoint () {
+    return rotateAroundPoint(getAnchorPoint(), getGrabPoint(), rotation);
+  }
+
+  /**
+   * Implement Resizeble to check if 'point' is close to cadShape's resize/rotate handle
    *
    * @param point      Location click on screen in model coordinates (inches)
    * @return true if close enough to consider a 'touch'
    */
   public boolean isResizeOrRotateClicked (Point2D.Double point) {
-    Point2D.Double grab = rotateAroundPoint(getAnchorPoint(), getLRPoint(), rotation);
+    Point2D.Double grab = getRotatedGrabPoint();
     double dist = point.distance(grab.x, grab.y) * LaserCut.SCREEN_PPI;
     return dist < 5;
   }
@@ -728,27 +744,22 @@ class CADShape implements Serializable {
    * @param workSize size of workspace in screen units
    */
   public void resizeOrRotateShape (Point2D.Double newLoc, Dimension workSize, boolean doRotate) {
-    double x = Math.max(Math.min(newLoc.x, workSize.width / LaserCut.SCREEN_PPI), 0);
-    double y = Math.max(Math.min(newLoc.y, workSize.height / LaserCut.SCREEN_PPI), 0);
-    if (doRotate || (this instanceof LaserCut.Rotatable && !(this instanceof LaserCut.Resizable))) {
-      if (this instanceof LaserCut.Rotatable) {
-        Point2D.Double rp = getAnchorPoint();
-        Point2D.Double lr = getLRPoint();
-        double angle1 = Math.toDegrees(Math.atan2(rp.y - newLoc.y, rp.x - newLoc.x)) + 135;
-        double angle2 = Math.toDegrees(Math.atan2(rp.y - lr.y, rp.x - lr.x)) + 135;
-        double angle = angle1 - angle2;
-        // Change angle in even, 1 degree steps
-        rotation = Math.floor((angle) + 0.5) * 1;
-        rotation = rotation >= 360 ? rotation - 360 : rotation < 0 ? rotation + 360 : rotation;
-      }
-    } else {
-      if (this instanceof LaserCut.Resizable) {
-        // Counter rotate mouse loc into cadShape's coordinate space to measure stretch/shrink
-        Point2D.Double grab = rotateAroundPoint(getAnchorPoint(), new Point2D.Double(x, y), -rotation);
-        double dx = grab.x - xLoc;
-        double dy = grab.y - yLoc;
-        ((LaserCut.Resizable) this).resize(dx, dy);
-      }
+    if (this instanceof LaserCut.Rotatable && doRotate) {
+      Point2D.Double ap = getAnchorPoint();
+      Point2D.Double gp = getGrabPoint();
+      double angle1 = Math.toDegrees(Math.atan2(ap.y - newLoc.y, ap.x - newLoc.x));
+      double angle2 = Math.toDegrees(Math.atan2(ap.y - gp.y, ap.x - gp.x));
+      // Change angle in even, 1 degree steps
+      rotation = Math.floor((angle1 - angle2) + 0.5);
+      rotation = rotation >= 360 ? rotation - 360 : rotation < 0 ? rotation + 360 : rotation;
+    } else if (this instanceof LaserCut.Resizable) {
+      // Counter rotate mouse loc into cadShape's coordinate space to measure stretch/shrink
+      double tx = Math.max(Math.min(newLoc.x, workSize.width / LaserCut.SCREEN_PPI), 0);
+      double ty = Math.max(Math.min(newLoc.y, workSize.height / LaserCut.SCREEN_PPI), 0);
+      Point2D.Double grab = rotateAroundPoint(getAnchorPoint(), new Point2D.Double(tx, ty), -rotation);
+      double dx = grab.x - xLoc;
+      double dy = grab.y - yLoc;
+      ((LaserCut.Resizable) this).resize(dx, dy);
     }
     updateShape();
   }
