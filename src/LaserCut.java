@@ -9,8 +9,6 @@ import java.awt.*;
 //import java.awt.desktop.*;
 import java.awt.event.*;
 import java.awt.geom.*;
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -59,26 +57,26 @@ import static javax.swing.JOptionPane.*;
   */
 
 public class LaserCut extends JFrame {
-  static final String           VERSION = "1.1 beta";
-  static final double           SCREEN_PPI = java.awt.Toolkit.getDefaultToolkit().getScreenResolution();
-  static final DecimalFormat    df = new DecimalFormat("#0.0###");
-  private static final int      cmdMask = Toolkit.getDefaultToolkit().getMenuShortcutKeyMask();
-  final transient Preferences   prefs = Preferences.userRoot().node(this.getClass().getName());
-  DrawSurface                   surface;
-  private final JScrollPane     scrollPane;
-  private final JMenuBar        menuBar = new JMenuBar();
-  private final JMenuItem       gerberZip;
-  private int                   pxDpi = prefs.getInt("svg.pxDpi", 96);
-  private long                  savedCrc;
-  String                        displayUnits = prefs.get("displayUnits", "in");
-  private boolean               useMouseWheel = prefs.getBoolean("useMouseWheel", false);
-  private boolean               snapToGrid = prefs.getBoolean("snapToGrid", true);
-  private boolean               displayGrid = prefs.getBoolean("displayGrid", true);
-  private String                onStartup = prefs.get("onStartup", "demo");
-  private OutputDevice          outputDevice;
-  private final int                   deviceMenuSlot;
-  private final Map<String,String>    menuToShape = new HashMap<>();
-  private final Map<String,String>    shapeNames = new LinkedHashMap<>();
+  static final String               VERSION = "1.2 beta";
+  static final double               SCREEN_PPI = java.awt.Toolkit.getDefaultToolkit().getScreenResolution();
+  static final DecimalFormat        df = new DecimalFormat("#0.0###");
+  private static final int          cmdMask = Toolkit.getDefaultToolkit().getMenuShortcutKeyMask();
+  final transient Preferences       prefs = Preferences.userRoot().node(this.getClass().getName());
+  DrawSurface                       surface;
+  private final JScrollPane         scrollPane;
+  private final JMenuBar            menuBar = new JMenuBar();
+  private final JMenuItem           gerberZip;
+  private int                       pxDpi = prefs.getInt("svg.pxDpi", 96);
+  private long                      savedCrc;
+  String                            displayUnits = prefs.get("displayUnits", "in");
+  private boolean                   useMouseWheel = prefs.getBoolean("useMouseWheel", false);
+  private boolean                   snapToGrid = prefs.getBoolean("snapToGrid", true);
+  private boolean                   displayGrid = prefs.getBoolean("displayGrid", true);
+  private String                    onStartup = prefs.get("onStartup", "demo");
+  private OutputDevice              outputDevice;
+  private final int                  deviceMenuSlot;
+  private final Map<String,String>   menuToShape = new HashMap<>();
+  private final Map<String,String>   shapeNames = new LinkedHashMap<>();
 
   {
     shapeNames.put("CADReference",        "Reference Point");
@@ -146,7 +144,7 @@ public class LaserCut extends JFrame {
     } catch (Throwable ex) {
       ex.printStackTrace();
     }
-    showMessageDialog(this,
+    showMessageDialog (this,
         "By: Wayne Holder\n" +
         "  Java Version: " + System.getProperty("java.version") + "\n" +
         "  LibLaserCut " + com.t_oster.liblasercut.LibInfo.getVersion() + "\n" +
@@ -230,7 +228,7 @@ public class LaserCut extends JFrame {
     }
   }
 
-  abstract class FileChooserMenu extends JMenuItem {
+  class FileChooserMenu extends JMenuItem {
     final JFileChooser  fileChooser;
     String        currentPath;
 
@@ -285,16 +283,16 @@ public class LaserCut extends JFrame {
       }
     }
 
-    abstract void processFile (File sFile) throws Exception;
+    void processFile (File sFile) throws Exception {}
 
     // Override in subclass
     void addAccessory () {}
   }
 
-  abstract class DxfFileChooserMenu extends FileChooserMenu {
+  class DxfFileChooserMenu extends FileChooserMenu {
     private List<JCheckBox> checkboxes;
     private String          selected;
-    private final String dUnits;
+    private final String    dUnits;
 
     DxfFileChooserMenu (String type, String ext, boolean save, String dUnits) {
       super(type, ext, save);
@@ -337,79 +335,6 @@ public class LaserCut extends JFrame {
         panel.add(getPanel("Include:", importPanel));
       }
       fileChooser.setAccessory(panel);
-    }
-
-    private JPanel getPanel (String heading, JComponent guts) {
-      JPanel panel = new JPanel(new BorderLayout());
-      panel.setBackground(Color.WHITE);
-      JLabel label = new JLabel(heading, JLabel.CENTER);
-      label.setBorder(BorderFactory.createLineBorder(Color.BLACK));
-      panel.add(label, BorderLayout.NORTH);
-      panel.add(guts, BorderLayout.CENTER);
-      return panel;
-    }
-
-    String getSelectedUnits () {
-      return selected;
-    }
-
-    boolean isOptionSelected (String name) {
-      for (JCheckBox checkbox : checkboxes) {
-        if (checkbox.getText().equals(name)) {
-          return checkbox.isSelected();
-        }
-      }
-      return false;
-    }
-  }
-
-  /**
-   * Custom file choose for DXF files that allows selective import of TEXT, MTEXT and DIMENSION elements
-   */
-
-  static class DxfFileChooser extends JFileChooser {
-    private final List<JCheckBox> checkboxes = new ArrayList<>();
-    private String          selected;
-
-    public DxfFileChooser (String dUnits, boolean save) {
-      setDialogTitle(save ? "Export DXF File" : "Import DXF File");
-      setDialogType(save ? JFileChooser.SAVE_DIALOG : JFileChooser.OPEN_DIALOG);
-      FileNameExtensionFilter nameFilter = new FileNameExtensionFilter("AutoCad DXF files (*.dxf)", "dxf");
-      addChoosableFileFilter(nameFilter);
-      // Widen JChooser by 25%
-      Dimension dim = getPreferredSize();
-      setPreferredSize(new Dimension((int) (dim.width * 1.25), dim.height));
-      setFileFilter(nameFilter);
-      setAcceptAllFileFilterUsed(true);
-      String[] units = {"Inches:in", "Centimeters:cm", "Millimeters:mm"};
-      JPanel unitsPanel = new JPanel(new GridLayout(0, 1));
-      ButtonGroup group = new ButtonGroup();
-      for (String unit : units) {
-        String[] parts = unit.split(":");
-        JRadioButton button = new JRadioButton(parts[0]);
-        if (parts[1].equals(dUnits)){
-          button.setSelected(true);
-          selected = parts[1];
-        }
-        group.add(button);
-        unitsPanel.add(button);
-        button.addActionListener(ev -> selected = parts[1]);
-      }
-      JPanel panel = new JPanel(new GridLayout(0, 1));
-      panel.add(getPanel(save ? "File Units:" : "Default Units:", unitsPanel));
-      if (save) {
-        panel.add(new JPanel());
-      } else {
-        String[] options = {"TEXT", "MTEXT", "DIMENSION"};
-        JPanel importPanel = new JPanel(new GridLayout(0, 1));
-        for (String option : options) {
-          JCheckBox checkbox = new JCheckBox(option);
-          importPanel.add(checkbox);
-          checkboxes.add(checkbox);
-        }
-        panel.add(getPanel("Include:", importPanel));
-      }
-      setAccessory(panel);
     }
 
     private JPanel getPanel (String heading, JComponent guts) {
@@ -1610,6 +1535,10 @@ public class LaserCut extends JFrame {
   }
 
   public static void main (String[] s) {
+    //System.setProperty("apple.laf.useScreenMenuBar", "true");
+    //System.setProperty("com.apple.mrj.application.apple.menu.about.name", "LaserCut");
+    //System.setProperty("apple.awt.textantialiasing", "true");
+    //System.setProperty("apple.awt.graphics.EnableQ2DX","true");
     SwingUtilities.invokeLater(LaserCut::new);
   }
 }

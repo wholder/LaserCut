@@ -1,4 +1,5 @@
 import javax.swing.*;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
 import java.awt.font.GlyphVector;
 import java.awt.font.TextAttribute;
@@ -249,6 +250,79 @@ public class DXFReader {
    */
   public void enableDimen (boolean enable) {
     drawDimen = enable;
+  }
+
+  /**
+   * Custom file choose for DXF files that allows selective import of TEXT, MTEXT and DIMENSION elements
+   */
+
+  static class DxfFileChooser extends JFileChooser {
+    private final List<JCheckBox> checkboxes = new ArrayList<>();
+    private String          selected;
+
+    public DxfFileChooser (String dUnits, boolean save) {
+      setDialogTitle(save ? "Export DXF File" : "Import DXF File");
+      setDialogType(save ? JFileChooser.SAVE_DIALOG : JFileChooser.OPEN_DIALOG);
+      FileNameExtensionFilter nameFilter = new FileNameExtensionFilter("AutoCad DXF files (*.dxf)", "dxf");
+      addChoosableFileFilter(nameFilter);
+      // Widen JChooser by 25%
+      Dimension dim = getPreferredSize();
+      setPreferredSize(new Dimension((int) (dim.width * 1.25), dim.height));
+      setFileFilter(nameFilter);
+      setAcceptAllFileFilterUsed(true);
+      String[] units = {"Inches:in", "Centimeters:cm", "Millimeters:mm"};
+      JPanel unitsPanel = new JPanel(new GridLayout(0, 1));
+      ButtonGroup group = new ButtonGroup();
+      for (String unit : units) {
+        String[] parts = unit.split(":");
+        JRadioButton button = new JRadioButton(parts[0]);
+        if (parts[1].equals(dUnits)){
+          button.setSelected(true);
+          selected = parts[1];
+        }
+        group.add(button);
+        unitsPanel.add(button);
+        button.addActionListener(ev -> selected = parts[1]);
+      }
+      JPanel panel = new JPanel(new GridLayout(0, 1));
+      panel.add(getPanel(save ? "File Units:" : "Default Units:", unitsPanel));
+      if (save) {
+        panel.add(new JPanel());
+      } else {
+        String[] options = {"TEXT", "MTEXT", "DIMENSION"};
+        JPanel importPanel = new JPanel(new GridLayout(0, 1));
+        for (String option : options) {
+          JCheckBox checkbox = new JCheckBox(option);
+          importPanel.add(checkbox);
+          checkboxes.add(checkbox);
+        }
+        panel.add(getPanel("Include:", importPanel));
+      }
+      setAccessory(panel);
+    }
+
+    private JPanel getPanel (String heading, JComponent guts) {
+      JPanel panel = new JPanel(new BorderLayout());
+      panel.setBackground(Color.WHITE);
+      JLabel label = new JLabel(heading, JLabel.CENTER);
+      label.setBorder(BorderFactory.createLineBorder(Color.BLACK));
+      panel.add(label, BorderLayout.NORTH);
+      panel.add(guts, BorderLayout.CENTER);
+      return panel;
+    }
+
+    String getSelectedUnits () {
+      return selected;
+    }
+
+    boolean isOptionSelected (String name) {
+      for (JCheckBox checkbox : checkboxes) {
+        if (checkbox.getText().equals(name)) {
+          return checkbox.isSelected();
+        }
+      }
+      return false;
+    }
   }
 
   /**
