@@ -103,6 +103,12 @@ import static javax.swing.JOptionPane.*;
    *
    *  G-Code Referances:
    *    http://linuxcnc.org/docs/html/gcode.html
+   *
+   *   Engraving with G-Code:
+   *    https://github.com/nebarnix/img2gco/
+   *    https://github.com/magdesign/Raster2Gcode
+   *    https://github.com/Uthayne/3dpBurner-Image2Gcode
+   *    https://www.picengrave.com/Pic%20Programs%20Page/PDF%20Files/misc/Understanding%20Gcode.pdf
    */
 
 abstract class GRBLBase {

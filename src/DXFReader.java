@@ -38,6 +38,10 @@ import java.util.List;
  *  The above copyright notice and this permission notice shall be included in all copies or substantial portions of
  *  the Software.
  *
+ *   Import/Export to/from DXF
+ *    https://jsevy.com/wordpress/index.php/java-and-android/jdxf-java-dxf-library/
+ *    https://www.codeproject.com/Articles/3398/CadLib-for-creating-DXF-Drawing-Interchange-Format
+ *
  *  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO
  *  THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
  *  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,

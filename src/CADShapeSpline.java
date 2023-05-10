@@ -8,6 +8,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+  /*
+    Bézier Curves:
+      https://pomax.github.io/bezierinfo/
+   */
+
 class CADShapeSpline extends CADShape implements Serializable, LaserCut.StateMessages, LaserCut.Rotatable {
   private static final long           serialVersionUID = 1175193935200692376L;
   private final List<Point2D.Double>        points = new ArrayList<>();

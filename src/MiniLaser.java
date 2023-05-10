@@ -16,6 +16,15 @@ import java.util.List;
 
 import static javax.swing.JOptionPane.*;
 
+  /*
+    Mini Laser Engravers:
+      K3 Laser:   https://github.com/RBEGamer/K3_LASER_ENGRAVER_PROTOCOL
+      EzGrazer:   https://github.com/camrein/EzGraver
+                  https://github.com/camrein/EzGraver/issues/43
+      nejePrint:  https://github.com/AxelTB/nejePrint
+    L aserGRBL:  http://lasergrbl.com/en/ and https://github.com/arkypita/LaserGRBL
+   */
+
 class MiniLaser extends GRBLBase implements LaserCut.OutputDevice {
   private static final int      MINI_CPOWER_DEFAULT = 50;     // Default Cutting Power (%)
   private static final int      MINI_CSPEED_DEFAULT = 100;    // Default Cutting Speed (inches/min)

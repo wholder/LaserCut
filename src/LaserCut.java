@@ -32,28 +32,8 @@ import static javax.swing.JOptionPane.*;
 
   Marlin Renderer: https://github.com/bourgesl/marlin-renderer
 
-  Bézier Curves:
-    https://pomax.github.io/bezierinfo/
-
   Fun with Java2D - Strokes:
     http://www.jhlabs.com/java/java2d/strokes/
-
-  Engraving with G-Code:
-    https://github.com/nebarnix/img2gco/
-    https://github.com/magdesign/Raster2Gcode
-    https://github.com/Uthayne/3dpBurner-Image2Gcode
-    https://www.picengrave.com/Pic%20Programs%20Page/PDF%20Files/misc/Understanding%20Gcode.pdf
-
-  Import/Export to/from DXF
-    https://jsevy.com/wordpress/index.php/java-and-android/jdxf-java-dxf-library/
-    https://www.codeproject.com/Articles/3398/CadLib-for-creating-DXF-Drawing-Interchange-Format
-
-  Mini Laser Engravers:
-    K3 Laser:   https://github.com/RBEGamer/K3_LASER_ENGRAVER_PROTOCOL
-    EzGrazer:   https://github.com/camrein/EzGraver
-                https://github.com/camrein/EzGraver/issues/43
-    nejePrint:  https://github.com/AxelTB/nejePrint
-    LaserGRBL:  http://lasergrbl.com/en/ and https://github.com/arkypita/LaserGRBL
   */
 
 public class LaserCut extends JFrame {
