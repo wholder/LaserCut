@@ -329,6 +329,78 @@ public class DXFReader {
     }
   }
 
+  static class DxfFileChooserMenu extends LaserCut.FileChooserMenu {
+    private List<JCheckBox> checkboxes;
+    private String          selected;
+    private final String    dUnits;
+
+    DxfFileChooserMenu (LaserCut lCut, String type, String ext, boolean save, String dUnits) {
+      super(lCut, type, ext, save);
+      this.dUnits = dUnits;
+    }
+
+    @Override
+    void buildInterface (String type, String ext, boolean save){
+      super.buildInterface(type, ext, save);
+      checkboxes = new ArrayList<>();
+      // Widen JChooser by 25%
+      Dimension dim = getPreferredSize();
+      setPreferredSize(new Dimension((int) (dim.width * 1.25), dim.height));
+      String[] units = {"Inches:in", "Centimeters:cm", "Millimeters:mm"};
+      JPanel unitsPanel = new JPanel(new GridLayout(0, 1));
+      ButtonGroup group = new ButtonGroup();
+      for (String unit : units) {
+        String[] parts = unit.split(":");
+        JRadioButton button = new JRadioButton(parts[0]);
+        if (parts[1].equals(dUnits)){
+          button.setSelected(true);
+          selected = parts[1];
+        }
+        group.add(button);
+        unitsPanel.add(button);
+        button.addActionListener(ev -> selected = parts[1]);
+      }
+      JPanel panel = new JPanel(new GridLayout(0, 1));
+      panel.add(getPanel(save ? "File Units:" : "Default Units:", unitsPanel));
+      if (save) {
+        panel.add(new JPanel());
+      } else {
+        String[] options = {"TEXT", "MTEXT", "DIMENSION"};
+        JPanel importPanel = new JPanel(new GridLayout(0, 1));
+        for (String option : options) {
+          JCheckBox checkbox = new JCheckBox(option);
+          importPanel.add(checkbox);
+          checkboxes.add(checkbox);
+        }
+        panel.add(getPanel("Include:", importPanel));
+      }
+      fileChooser.setAccessory(panel);
+    }
+
+    private JPanel getPanel (String heading, JComponent guts) {
+      JPanel panel = new JPanel(new BorderLayout());
+      panel.setBackground(Color.WHITE);
+      JLabel label = new JLabel(heading, JLabel.CENTER);
+      label.setBorder(BorderFactory.createLineBorder(Color.BLACK));
+      panel.add(label, BorderLayout.NORTH);
+      panel.add(guts, BorderLayout.CENTER);
+      return panel;
+    }
+
+    String getSelectedUnits () {
+      return selected;
+    }
+
+    boolean isOptionSelected (String name) {
+      for (JCheckBox checkbox : checkboxes) {
+        if (checkbox.getText().equals(name)) {
+          return checkbox.isSelected();
+        }
+      }
+      return false;
+    }
+  }
+
   /**
    * Crude implementation of TEXT using GlyphVector to create vector outlines of text
    * Note: this code should use, or support vector fonts such as those by Hershey

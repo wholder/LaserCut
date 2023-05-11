@@ -41,7 +41,7 @@ public class LaserCut extends JFrame {
   static final double               SCREEN_PPI = java.awt.Toolkit.getDefaultToolkit().getScreenResolution();
   static final DecimalFormat        df = new DecimalFormat("#0.0###");
   private static final int          cmdMask = Toolkit.getDefaultToolkit().getMenuShortcutKeyMask();
-  final transient Preferences       prefs = Preferences.userRoot().node(this.getClass().getName());
+  public final transient Preferences prefs = Preferences.userRoot().node(this.getClass().getName());
   DrawSurface                       surface;
   private final JScrollPane         scrollPane;
   private final JMenuBar            menuBar = new JMenuBar();
@@ -208,12 +208,14 @@ public class LaserCut extends JFrame {
     }
   }
 
-  class FileChooserMenu extends JMenuItem {
-    final JFileChooser  fileChooser;
-    String        currentPath;
+  static class FileChooserMenu extends JMenuItem {
+    final JFileChooser    fileChooser;
+    String                currentPath;
+    LaserCut              lCut;
 
-    FileChooserMenu (String type, String ext, boolean save) {
+    FileChooserMenu (LaserCut lCut, String type, String ext, boolean save) {
       super(save ? "Export to " + type + " File" :  "Import " + type + " File");
+      this.lCut = lCut;
       fileChooser = new JFileChooser();
       buildInterface(type, ext, save);
     }
@@ -225,13 +227,13 @@ public class LaserCut extends JFrame {
         FileNameExtensionFilter nameFilter = new FileNameExtensionFilter(type + " files (*." + ext + ")", ext);
         fileChooser.addChoosableFileFilter(nameFilter);
         fileChooser.setFileFilter(nameFilter);
-        fileChooser.setCurrentDirectory(new File(currentPath = prefs.get("default." + ext + ".dir", "/")));
+        fileChooser.setCurrentDirectory(new File(currentPath = lCut.prefs.get("default." + ext + ".dir", "/")));
         currentPath = fileChooser.getCurrentDirectory().getPath();
         fileChooser.addPropertyChangeListener(evt -> {
           String path = fileChooser.getCurrentDirectory().getPath();
           if (!path.equals(currentPath)) {
             currentPath = path;
-            prefs.put("default." + ext + ".dir", currentPath = path);
+            lCut.prefs.put("default." + ext + ".dir", currentPath = path);
           }
         });
         if (openDialog(save)) {
@@ -243,14 +245,14 @@ public class LaserCut extends JFrame {
             }
           }
           try {
-            if (!save || (!sFile.exists() || showWarningDialog("Overwrite Existing file?"))) {
+            if (!save || (!sFile.exists() || lCut.showWarningDialog("Overwrite Existing file?"))) {
               processFile(sFile);
             }
           } catch (Exception ex) {
-            showErrorDialog(save ? "Unable to save file" : "Unable to open file");
+            lCut.showErrorDialog(save ? "Unable to save file" : "Unable to open file");
             ex.printStackTrace();
           }
-          prefs.put("default." + ext, sFile.getAbsolutePath());
+          lCut.prefs.put("default." + ext, sFile.getAbsolutePath());
         }
       });
     }
@@ -267,78 +269,6 @@ public class LaserCut extends JFrame {
 
     // Override in subclass
     void addAccessory () {}
-  }
-
-  class DxfFileChooserMenu extends FileChooserMenu {
-    private List<JCheckBox> checkboxes;
-    private String          selected;
-    private final String    dUnits;
-
-    DxfFileChooserMenu (String type, String ext, boolean save, String dUnits) {
-      super(type, ext, save);
-      this.dUnits = dUnits;
-    }
-
-    @Override
-    void buildInterface (String type, String ext, boolean save){
-      super.buildInterface(type, ext, save);
-      checkboxes = new ArrayList<>();
-      // Widen JChooser by 25%
-      Dimension dim = getPreferredSize();
-      setPreferredSize(new Dimension((int) (dim.width * 1.25), dim.height));
-      String[] units = {"Inches:in", "Centimeters:cm", "Millimeters:mm"};
-      JPanel unitsPanel = new JPanel(new GridLayout(0, 1));
-      ButtonGroup group = new ButtonGroup();
-      for (String unit : units) {
-        String[] parts = unit.split(":");
-        JRadioButton button = new JRadioButton(parts[0]);
-        if (parts[1].equals(dUnits)){
-          button.setSelected(true);
-          selected = parts[1];
-        }
-        group.add(button);
-        unitsPanel.add(button);
-        button.addActionListener(ev -> selected = parts[1]);
-      }
-      JPanel panel = new JPanel(new GridLayout(0, 1));
-      panel.add(getPanel(save ? "File Units:" : "Default Units:", unitsPanel));
-      if (save) {
-        panel.add(new JPanel());
-      } else {
-        String[] options = {"TEXT", "MTEXT", "DIMENSION"};
-        JPanel importPanel = new JPanel(new GridLayout(0, 1));
-        for (String option : options) {
-          JCheckBox checkbox = new JCheckBox(option);
-          importPanel.add(checkbox);
-          checkboxes.add(checkbox);
-        }
-        panel.add(getPanel("Include:", importPanel));
-      }
-      fileChooser.setAccessory(panel);
-    }
-
-    private JPanel getPanel (String heading, JComponent guts) {
-      JPanel panel = new JPanel(new BorderLayout());
-      panel.setBackground(Color.WHITE);
-      JLabel label = new JLabel(heading, JLabel.CENTER);
-      label.setBorder(BorderFactory.createLineBorder(Color.BLACK));
-      panel.add(label, BorderLayout.NORTH);
-      panel.add(guts, BorderLayout.CENTER);
-      return panel;
-    }
-
-    String getSelectedUnits () {
-      return selected;
-    }
-
-    boolean isOptionSelected (String name) {
-      for (JCheckBox checkbox : checkboxes) {
-        if (checkbox.getText().equals(name)) {
-          return checkbox.isSelected();
-        }
-      }
-      return false;
-    }
   }
 
   //   Note: unable to use CMD-A, CMD-C, CMD-H, CMD-Q as shortcut keys
@@ -898,7 +828,7 @@ public class LaserCut extends JFrame {
     //
     // Add "Import SVG File" menu item
     //
-    importMenu.add(new FileChooserMenu("SVG", "svg", false) {
+    importMenu.add(new FileChooserMenu(this, "SVG", "svg", false) {
       void processFile (File sFile) throws Exception {
         SVGParser parser = new SVGParser();
         parser.setPxDpi(pxDpi);
@@ -922,7 +852,7 @@ public class LaserCut extends JFrame {
     //
     // Add "Import DXF File" menu item
     //
-    importMenu.add(new DxfFileChooserMenu("DXF", "dxf", false, displayUnits) {
+    importMenu.add(new DXFReader.DxfFileChooserMenu(this, "DXF", "dxf", false, displayUnits) {
       void processFile (File sFile) throws Exception {
         String importUnits = getSelectedUnits();
         DXFReader dxf = new DXFReader(importUnits);
@@ -956,7 +886,7 @@ public class LaserCut extends JFrame {
     //
     // Add "Import Gerber Zip" menu item
     //
-    importMenu.add(gerberZip = new FileChooserMenu("Gerber Zip", "zip", false) {
+    importMenu.add(gerberZip = new FileChooserMenu(this, "Gerber Zip", "zip", false) {
       void processFile (File sFile) throws Exception {
         GerberZip gerber = new GerberZip(sFile);
         List<GerberZip.ExcellonHole> holes = gerber.parseExcellon();
@@ -993,7 +923,7 @@ public class LaserCut extends JFrame {
     /*
      *  Add "Import Notes to MusicBox Strip" Menu
      */
-    importMenu.add(new FileChooserMenu("Notes to MusicBox Strip Text", "txt", false) {
+    importMenu.add(new FileChooserMenu(this, "Notes to MusicBox Strip Text", "txt", false) {
       void processFile (File sFile) throws Exception {
         Scanner lines = new Scanner(Files.newInputStream(sFile.toPath()));
         List<String[]> cols = new ArrayList<>();
@@ -1030,7 +960,7 @@ public class LaserCut extends JFrame {
     //
     // Add "Export to PDF File" Menu Item
     //
-    exportMenu.add(new FileChooserMenu("PDF", "pdf", true) {
+    exportMenu.add(new FileChooserMenu(this, "PDF", "pdf", true) {
       void processFile (File sFile) throws Exception {
         PDFTools.writePDF(surface.getDesign(), surface.getWorkSize(), sFile);
       }
@@ -1038,7 +968,7 @@ public class LaserCut extends JFrame {
     //
     // Add "Export to SVG File"" Menu Item
     //
-    exportMenu.add(new FileChooserMenu("SVG", "svg", true) {
+    exportMenu.add(new FileChooserMenu(this, "SVG", "svg", true) {
       void processFile (File sFile) throws Exception {
         List<Shape> sList = new ArrayList<>();
         for (CADShape item : surface.getDesign()) {
@@ -1059,7 +989,7 @@ public class LaserCut extends JFrame {
     // Based on: https://jsevy.com/wordpress/index.php/java-and-android/jdxf-java-dxf-library/
     //  by Jonathan Sevy (released under the MIT License; https://choosealicense.com/licenses/mit/)
     //
-    exportMenu.add(new DxfFileChooserMenu("DXF", "dxf", true, displayUnits) {
+    exportMenu.add(new DXFReader.DxfFileChooserMenu(this, "DXF", "dxf", true, displayUnits) {
       void processFile (File sFile) throws Exception {
         String units = getSelectedUnits();
         AffineTransform atExport = null;
@@ -1097,7 +1027,7 @@ public class LaserCut extends JFrame {
     //
     // Add "Export to EPS File"" Menu Item
     //
-    exportMenu.add(new FileChooserMenu("EPS", "eps", true) {
+    exportMenu.add(new FileChooserMenu(this, "EPS", "eps", true) {
       void processFile (File sFile) throws Exception {
         List<Shape> sList = new ArrayList<>();
         AffineTransform scale = AffineTransform.getScaleInstance(72.0, 72.0);
