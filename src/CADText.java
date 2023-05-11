@@ -127,7 +127,12 @@ class CADText extends CADShape implements Serializable, LaserCut.Rotatable, Lase
       fontNames.append(":");
       fontNames.append(font);
     }
-    return new String[]{"text", fontNames.toString(), "fontStyle:plain:bold:italic:bold-italic", "fontSize|pts", "tracking"};
+    return new String[]{
+      "text{text to display}",
+      fontNames + "{font name}",
+      "fontStyle:plain:bold:italic:bold-italic{font style}",
+      "fontSize|pts{font size in points}",
+      "tracking{controls spacing of glyphs}"};
   }
 
   @Override

@@ -83,8 +83,17 @@ class CADRasterImage extends CADShape implements Serializable, LaserCut.Resizabl
   protected java.util.List<String> getEditFields () {
     width = (double) img.getWidth() / ppi.width * (scale / 100);
     height = (double) img.getHeight() / ppi.height * (scale / 100);
-    return Arrays.asList("xLoc|in", "yLoc|in", "*width|in", "*height|in", "*imagePpi", "rotation|deg",
-      "scale|%", "centered", "engrave", "engrave3D");
+    return Arrays.asList(
+      "xLoc|in",
+      "yLoc|in",
+      "*width|in{image width}",
+      "*height|in{image height}",
+      "*imagePpi{points per inch}",
+      "rotation|deg{degress to rotate}",
+      "scale|%",
+      "centered",     // boolean
+      "engrave",      // boolean
+      "engrave3D");   // boolean
   }
 
   @Override

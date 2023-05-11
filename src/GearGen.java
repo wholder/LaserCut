@@ -23,7 +23,7 @@ public class GearGen {
     DEBUG = true;
     ShapeWindow sWin = new ShapeWindow();
     if (true) {
-      Shape gear = generateGear(.45, 30, 10, 20, .25, LaserCut.mmToInches(3));
+      Shape gear = generateGear(.45, 30, 10, 20, .25, Utils2D.mmToInches(3));
       sWin.addShape(gear);
     } else {
       Scanner sc = new Scanner(System.in);

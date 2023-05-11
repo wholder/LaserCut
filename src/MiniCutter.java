@@ -76,6 +76,7 @@ class MiniCutter implements LaserCut.OutputDevice {
     jPort = new JSSCPort(getPrefix(), laserCut.prefs);
   }
 
+  // Implement abstract method in GRBLBase
   private String getPrefix () {
     return "mini.cutter.";
   }

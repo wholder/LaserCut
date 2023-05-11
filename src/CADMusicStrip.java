@@ -16,9 +16,9 @@ class CADMusicStrip extends CADShape implements Serializable, LaserCut.Updatable
   private static final Map<String, Integer> noteIndex = new HashMap<>();
   private static final double               xStep = 4.0;
   private static final double               yStep = 2.017;
-  private static final double               xOff = LaserCut.mmToInches(12);
-  private static final double               yOff = LaserCut.mmToInches(6);
-  private static final double               holeDiam = LaserCut.mmToInches(2.4);
+  private static final double               xOff = Utils2D.mmToInches(12);
+  private static final double               yOff = Utils2D.mmToInches(6);
+  private static final double               holeDiam = Utils2D.mmToInches(2.4);
   private boolean                     checkClicked;
   public int                          columns = 60;
   public double                       width, height;
@@ -49,8 +49,8 @@ class CADMusicStrip extends CADShape implements Serializable, LaserCut.Updatable
         }
       }
     }
-    width = LaserCut.mmToInches(song.length * 4 + 16);
-    height = LaserCut.mmToInches(70);
+    width = Utils2D.mmToInches(song.length * 4 + 16);
+    height = Utils2D.mmToInches(70);
   }
 
   @Override
@@ -65,8 +65,8 @@ class CADMusicStrip extends CADShape implements Serializable, LaserCut.Updatable
       }
       notes = nNotes;
     }
-    width = LaserCut.mmToInches(columns * 4 + 16);
-    height = LaserCut.mmToInches(70);
+    width = Utils2D.mmToInches(columns * 4 + 16);
+    height = Utils2D.mmToInches(70);
   }
 
   @Override
@@ -79,15 +79,15 @@ class CADMusicStrip extends CADShape implements Serializable, LaserCut.Updatable
     double zf = zoom / LaserCut.SCREEN_PPI;
     g2.setFont(new Font("Arial", Font.PLAIN, (int) (7 * zf)));
     for (int ii = 0; ii <= notes.length; ii++) {
-      double sx = mx + LaserCut.mmToInches(ii * xStep * zoom * LaserCut.SCREEN_PPI);
+      double sx = mx + Utils2D.mmToInches(ii * xStep * zoom * LaserCut.SCREEN_PPI);
       g2.setColor((ii & 1) == 0 ? Color.black : isSelected ? Color.black : Color.lightGray);
       g2.setStroke((ii & 1) == 0 ? thick : thin);
-      g2.draw(new Line2D.Double(sx, my, sx, my + LaserCut.mmToInches(29 * yStep * zoom * LaserCut.SCREEN_PPI)));
+      g2.draw(new Line2D.Double(sx, my, sx, my + Utils2D.mmToInches(29 * yStep * zoom * LaserCut.SCREEN_PPI)));
       for (int jj = 0; jj < 30; jj++) {
-        double sy = my + LaserCut.mmToInches(jj * yStep * zoom * LaserCut.SCREEN_PPI);
+        double sy = my + Utils2D.mmToInches(jj * yStep * zoom * LaserCut.SCREEN_PPI);
         g2.setColor(jj == 0 || jj == 29 ? Color.black : isSelected ? Color.black : Color.lightGray);
         g2.setStroke(jj == 0 || jj == 29 ? thick : thin);
-        g2.draw(new Line2D.Double(mx, sy, mx + LaserCut.mmToInches(columns * xStep * zoom * LaserCut.SCREEN_PPI), sy));
+        g2.draw(new Line2D.Double(mx, sy, mx + Utils2D.mmToInches(columns * xStep * zoom * LaserCut.SCREEN_PPI), sy));
         if (ii == lastCol) {
           g2.setColor(Color.red);
           g2.drawString(symb[jj], (int) (sx - 14 * zf), (int) (sy + 2.5 * zf));
@@ -101,8 +101,8 @@ class CADMusicStrip extends CADShape implements Serializable, LaserCut.Updatable
   // Implement Updatable interface
   public boolean updateInternalState (Point2D.Double point) {
     // See if user clicked on one of the note spots (Note: point in screen inch coords)
-    double xx = LaserCut.inchesToMM(point.x - xLoc - xOff);
-    double yy = LaserCut.inchesToMM(point.y - yLoc - yOff);
+    double xx = Utils2D.inchesToMM(point.x - xLoc - xOff);
+    double yy = Utils2D.inchesToMM(point.y - yLoc - yOff);
     double gridX = Math.floor((xx / xStep) + 0.5);
     double gridY = Math.floor((yy / yStep) + 0.5);
     double dX = xx - gridX * xStep;
@@ -150,9 +150,9 @@ class CADMusicStrip extends CADShape implements Serializable, LaserCut.Updatable
     // Draw the holes that need to be cut for active notes
     double rad = holeDiam / 2;
     for (int ii = 0; ii < notes.length; ii++) {
-      double sx = xx + xOff + LaserCut.mmToInches(ii * xStep);
+      double sx = xx + xOff + Utils2D.mmToInches(ii * xStep);
       for (int jj = 0; jj < 30; jj++) {
-        double sy = yy + yOff + LaserCut.mmToInches(jj * yStep);
+        double sy = yy + yOff + Utils2D.mmToInches(jj * yStep);
         if (notes[ii][jj]) {
           path.append(new Ellipse2D.Double(sx - rad, sy - rad, holeDiam, holeDiam), false);
         }
@@ -163,7 +163,10 @@ class CADMusicStrip extends CADShape implements Serializable, LaserCut.Updatable
 
   @Override
   protected java.util.List<String> getEditFields () {
-    return Arrays.asList("columns", "xLoc|in", "yLoc|in");
+    return Arrays.asList(
+      "columns",
+      "xLoc|in",
+      "yLoc|in");
   }
 
   @Override

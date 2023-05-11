@@ -145,11 +145,11 @@ class ZingLaser implements LaserCut.OutputDevice {
     zingMenu.add(sendToZing);
 
     // Build JComboBox List of Materials for "Zing Settings" parameters dialog
-    String[] materials = LaserCut.getResourceFile("/materials/zing.materials").split("===");
+    String[] materials = Utils2D.getResourceFile("/materials/zing.materials").split("===");
     JComboBox<Object> matMenu = new JComboBox<>();
     matMenu.addItem("");
     for (String material : materials) {
-      Properties props = laserCut.getProperties(material);
+      Properties props = Utils2D.getProperties(material);
       if (props.containsKey("name")) {
         String name = props.getProperty("name");
         matMenu.addItem(name);
@@ -182,7 +182,7 @@ class ZingLaser implements LaserCut.OutputDevice {
           String name = (String) matMenu.getSelectedItem();
           for (int ii = 0; ii <= materials.length; ii++) {
             boolean none = ii == materials.length;
-            Properties props = none ? new Properties() : laserCut.getProperties( materials[ii]);
+            Properties props = none ? new Properties() : Utils2D.getProperties( materials[ii]);
             if ((name != null && name.equals(props.getProperty("name"))) || none) {
               parmSet[4].setField(props.getProperty("power"));
               parmSet[5].setField(props.getProperty("speed"));

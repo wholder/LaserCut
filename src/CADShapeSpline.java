@@ -48,7 +48,10 @@ class CADShapeSpline extends CADShape implements Serializable, LaserCut.StateMes
 
   @Override
   protected List<String> getEditFields () {
-    return Arrays.asList("xLoc|in", "yLoc|in", "rotation|deg");
+    return Arrays.asList(
+      "xLoc|in",
+      "yLoc|in",
+      "rotation|deg{degrees to rotate}");
   }
 
   @Override
@@ -110,7 +113,7 @@ class CADShapeSpline extends CADShape implements Serializable, LaserCut.StateMes
     Point2D.Double mse = rotatePoint(new Point2D.Double(point.x - xLoc, point.y - yLoc), -rotation);
     int idx = 1;
     Point2D.Double chk = points.get(idx);
-    for (Line2D.Double[] lines : transformShapeToLines(getShape(), 1, .01)) {
+    for (Line2D.Double[] lines : Utils2D.transformShapeToLines(getShape(), 1, .01)) {
       for (Line2D.Double line : lines) {
         double dist = line.ptSegDist(mse) * LaserCut.SCREEN_PPI;
         if (dist < 5) {
@@ -165,17 +168,17 @@ class CADShapeSpline extends CADShape implements Serializable, LaserCut.StateMes
 
   private void updatePath () {
     if (pathClosed) {
-      path = convert(points.toArray(new Point2D.Double[0]), true);
+      path = convertPointsToBezier(points.toArray(new Point2D.Double[0]), true);
     } else {
       Point2D.Double[] pnts = points.toArray(new Point2D.Double[points.size() + 1]);
       // Duplicate last point so we can draw a curve through all points in the path
       pnts[pnts.length - 1] = pnts[pnts.length - 2];
-      path = convert(pnts, false);
+      path = convertPointsToBezier(pnts, false);
     }
     updateShape();
   }
 
-  private Path2D.Double convert (Point2D.Double[] points, boolean close) {
+  private static Path2D.Double convertPointsToBezier (Point2D.Double[] points, boolean close) {
     Path2D.Double path = new Path2D.Double();
     path.moveTo(points[0].x, points[0].y);
     int end = close ? points.length + 1 : points.length - 1;

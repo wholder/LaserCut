@@ -5,10 +5,10 @@ import java.io.Serializable;
 
 class CADNemaMotor extends CADShape implements Serializable, LaserCut.Rotatable {
   private static final long serialVersionUID = 2518641166287730832L;
-  private static final double M2 = LaserCut.mmToInches(2);
-  private static final double M2_5 = LaserCut.mmToInches(2.5);
-  private static final double M3 = LaserCut.mmToInches(3);
-  private static final double M4_5 = LaserCut.mmToInches(4.5);
+  private static final double M2 = Utils2D.mmToInches(2);
+  private static final double M2_5 = Utils2D.mmToInches(2.5);
+  private static final double M3 = Utils2D.mmToInches(3);
+  private static final double M4_5 = Utils2D.mmToInches(4.5);
   //                                           8      11     14     17     24
   private static final double[] ringDiameter = {0.5906, 0.865, 0.865, 0.865, 1.5};
   private static final double[] holeSpacing = {0.630, 0.91, 1.02, 1.22, 1.86};
@@ -37,7 +37,7 @@ class CADNemaMotor extends CADShape implements Serializable, LaserCut.Rotatable 
 
   @Override
   String[] getParameterNames () {
-    return new String[]{"type:Nema 8|0:Nema 11|1:Nema 14|2:Nema 17|3:Nema 23|4"};
+    return new String[] {"type:Nema 8|0:Nema 11|1:Nema 14|2:Nema 17|3:Nema 23|4{NEMA motor size}"};
   }
 
   @Override

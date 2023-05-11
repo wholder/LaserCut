@@ -47,10 +47,12 @@ class ParameterDialog extends JDialog {
       int idx1 = name.indexOf("{");
       int idx2 = name.indexOf("}");
       if (idx1 >= 0 && idx2 >= 0 && idx2 > idx1) {
+        // Extract tooltip string
         hint = name.substring(idx1 + 1, idx2);
         name = name.replace("{" + hint + "}", "");
       }
       if (name.startsWith("*")) {
+        // Set field to read only
         name = name.substring(1);
         readOnly = true;
       } else if (name.startsWith("@")) {
@@ -58,6 +60,7 @@ class ParameterDialog extends JDialog {
         lblValue = true;
       }
       if (name.contains(":")) {
+        // Example: "Motor:Nema 8|0:Nema 11|1:Nema 14|2:Nema 17|3:Nema 23|4"
         String[] parts = name.split(":");
         name = parts[0];
         for (int ii = 1; ii < parts.length; ii++) {
@@ -65,6 +68,7 @@ class ParameterDialog extends JDialog {
         }
         valueType = Arrays.copyOfRange(parts, 1, parts.length);
       } else if (name.contains("[")  &&  name.contains("]")) {
+        // Generate selector with rabge of values, such as "Pressure[1-33]}
         int ii = name.indexOf("[");
         int jj = name.indexOf("]");
         String range = name.substring(ii + 1, jj);
@@ -90,6 +94,7 @@ class ParameterDialog extends JDialog {
         this.name = name;
       } else {
         if (tmp[1].contains("(")  &&  tmp[1].contains(")")) {
+          // Extract value range
           int ii = tmp[1].indexOf("(");
           int jj = tmp[1].indexOf(")");
           this.units = tmp[1].substring(0, ii);
@@ -229,9 +234,9 @@ class ParameterDialog extends JDialog {
           }
           if (isLength) {
             if ("mm".equals(eUnits)) {
-              val = LaserCut.mmToInches(val);
+              val = Utils2D.mmToInches(val);
             } else if ("cm".equals(eUnits)) {
-              val = LaserCut.cmToInches(val);
+              val = Utils2D.cmToInches(val);
             }
           }
           this.value = val;
@@ -396,9 +401,9 @@ class ParameterDialog extends JDialog {
           String val;
           if (parm.value instanceof Double) {
             if (isLength && "mm".equals(dUnits)) {
-              val = LaserCut.df.format(LaserCut.inchesToMM((Double) parm.value));
+              val = LaserCut.df.format(Utils2D.inchesToMM((Double) parm.value));
             } else if (isLength && "cm".equals(dUnits)) {
-              val = LaserCut.df.format(LaserCut.inchesToCm((Double) parm.value));
+              val = LaserCut.df.format(Utils2D.inchesToCm((Double) parm.value));
             } else {
               val = LaserCut.df.format(parm.value);
             }

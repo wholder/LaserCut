@@ -248,67 +248,14 @@ class CADShape implements Serializable {
   }
 
   /**
-   * Uses FlatteningPathIterator to convert the Shape into List of arrays of lines.  The size input Shape
-   * is assumed to be defined in inches, but the AffineTransform parameter can be used to scale up to the
-   * final render resolution.  Note: cubic and quadratic bezier curves calculate an approximaiton of the
-   * arc length of the curve to determine the number of line segments used to approximate the curve.
-   *
-   * @param shape   Shape path to render
-   * @param scale   used to scale from inches to the render resolution, such as Screen or Laser DPI.
-   * @param flatten controls how closely the line segments follow the curve (smaller is closer)
-   * @return List of array of lines
-   */
-  static java.util.List<Line2D.Double[]> transformShapeToLines (Shape shape, double scale, double flatten) {
-    // Convert Shape into a series of lines defining a path
-    java.util.List<Line2D.Double[]> paths = new ArrayList<>();
-    AffineTransform at = scale != 1.0 ? AffineTransform.getScaleInstance(scale, scale) : null;
-    ArrayList<Line2D.Double> lines = new ArrayList<>();
-    // Use FlatteningPathIterator to convert to line segments
-    PathIterator pi = shape.getPathIterator(at);
-    FlatteningPathIterator fpi = new FlatteningPathIterator(pi, flatten, 8);
-    double[] coords = new double[4];
-    double lastX = 0, lastY = 0, firstX = 0, firstY = 0;
-    while (!fpi.isDone()) {
-      int type = fpi.currentSegment(coords);
-      switch (type) {
-        case FlatteningPathIterator.SEG_MOVETO:
-          if (lines.size() > 0) {
-            paths.add(lines.toArray(new Line2D.Double[0]));
-            lines = new ArrayList<>();
-          }
-          firstX = lastX = coords[0];
-          firstY = lastY = coords[1];
-          lines = new ArrayList<>();
-          break;
-        case FlatteningPathIterator.SEG_LINETO:
-          lines.add(new Line2D.Double(lastX, lastY, coords[0], coords[1]));
-          lastX = coords[0];
-          lastY = coords[1];
-          break;
-        case FlatteningPathIterator.SEG_CLOSE:
-          if (lastX != firstX || lastY != firstY) {
-            lines.add(new Line2D.Double(lastX, lastY, firstX, firstY));
-          }
-          break;
-      }
-      fpi.next();
-    }
-    if (lines.size() > 0) {
-      paths.add(lines.toArray(new Line2D.Double[0]));
-      lines = new ArrayList<>();
-    }
-    return paths;
-  }
-
-  /**
    * Transform cadShape to workspace and return as list of arrays of line segments where each array
    * in the list is the set of lines for a closed cadShape.
    *
    * @param scale scale factor
    * @return list of arrays of line segments
    */
-  java.util.List<Line2D.Double[]> getListOfScaledLines (double scale, double flatten) {
-    return transformShapeToLines(getWorkspaceTranslatedShape(), scale, flatten);
+  List<Line2D.Double[]> getListOfScaledLines (double scale, double flatten) {
+    return Utils2D.transformShapeToLines(getWorkspaceTranslatedShape(), scale, flatten);
   }
 
   /**
@@ -512,7 +459,7 @@ class CADShape implements Serializable {
     // Check if point clicked is within  bounding rectangle of cadShape
     if (bnds.contains(point)) {
       Point2D.Double sPoint = new Point2D.Double(point.x * zoomFactor * LaserCut.SCREEN_PPI, point.y * zoomFactor * LaserCut.SCREEN_PPI);
-      for (Line2D.Double[] lines : transformShapeToLines(lShape, zoomFactor * LaserCut.SCREEN_PPI, .01)) {
+      for (Line2D.Double[] lines : Utils2D.transformShapeToLines(lShape, zoomFactor * LaserCut.SCREEN_PPI, .01)) {
         for (Line2D.Double line : lines) {
           double dist = line.ptSegDist(sPoint);
           // return true if any is closer than 5 pixels to point
@@ -546,7 +493,12 @@ class CADShape implements Serializable {
 
   // Note: override in subclass, as needed
   protected java.util.List<String> getEditFields () {
-    return Arrays.asList("xLoc|in", "yLoc|in", "rotation|deg", "centered", "engrave");
+    return Arrays.asList(
+      "xLoc|in",
+      "yLoc|in",
+      "rotation|deg{degrees to rotate}",
+      "centered",
+      "engrave");
   }
 
   /**
@@ -566,7 +518,9 @@ class CADShape implements Serializable {
    * @return true if used clicked OK to save
    */
   boolean editParameterDialog (DrawSurface surface, String dUnits) {
-    return displayShapeParameterDialog(surface, new ArrayList<>(getEditFields()), "Save", dUnits);
+    return displayShapeParameterDialog(surface, new ArrayList<>(getEditFields()),
+      "Save",
+      dUnits);
   }
 
   // Override in subclass to attach Parameter listeners
@@ -582,7 +536,7 @@ class CADShape implements Serializable {
    * @param actionButton Text for action button, such as "Save" or "Place"
    * @return true if used clicked action button, else false if they clicked cancel.
    */
-  boolean displayShapeParameterDialog (DrawSurface surface, java.util.List<String> parmNames, String actionButton, String dUnits) {
+  private boolean displayShapeParameterDialog (DrawSurface surface, java.util.List<String> parmNames, String actionButton, String dUnits) {
     parmNames.addAll(Arrays.asList(getParameterNames()));
     ParameterDialog.ParmItem[] parmSet = new ParameterDialog.ParmItem[parmNames.size()];
     for (int ii = 0; ii < parmSet.length; ii++) {
@@ -639,8 +593,7 @@ class CADShape implements Serializable {
    */
   String getInfo () {
     StringBuilder buf = new StringBuilder(getName() + ": ");
-    List<String> parmNames = new ArrayList<>(Arrays.asList("xLoc|in", "yLoc|in", "width|in", "height|in",
-      "rotation|deg", "centered"));
+    List<String> parmNames = new ArrayList<>(Arrays.asList("xLoc|in", "yLoc|in", "width|in", "height|in", "rotation|deg", "centered"));
     parmNames.addAll(Arrays.asList(getParameterNames()));
     boolean first = true;
     Rectangle2D bnds = getShape().getBounds2D();
@@ -663,6 +616,7 @@ class CADShape implements Serializable {
           if (item.valueType instanceof String[]) {
             String[] labels = ParameterDialog.getLabels((String[]) item.valueType);
             String[] values = ParameterDialog.getValues((String[]) item.valueType);
+            //noinspection SuspiciousMethodCalls
             value = labels[Arrays.asList(values).indexOf(value)];
           }
           buf.append(((value instanceof Double) ? LaserCut.df.format(value) : value));
@@ -680,20 +634,6 @@ class CADShape implements Serializable {
   /*
    * * * * * * * Resize and Rotate Logic * * * * * * * *
    */
-
-  /**
-   * Rotate 2D point around anchor point
-   *
-   * @param point Point to rotate
-   * @param angle Angle to rotate
-   * @return Rotated 2D point
-   */
-  private static Point2D.Double rotateAroundPoint (Point2D.Double anchor, Point2D.Double point, double angle) {
-    AffineTransform center = AffineTransform.getRotateInstance(Math.toRadians(angle), anchor.x, anchor.y);
-    Point2D.Double np = new Point2D.Double();
-    center.transform(point, np);
-    return np;
-  }
 
   /**
    * Get shape's anchor point based on state of "centered"
@@ -722,7 +662,7 @@ class CADShape implements Serializable {
    * @return rotated location of grab point
    */
   private Point2D.Double getRotatedGrabPoint () {
-    return rotateAroundPoint(getAnchorPoint(), getGrabPoint(), rotation);
+    return Utils2D.rotateAroundPoint(getAnchorPoint(), getGrabPoint(), rotation);
   }
 
   /**
@@ -756,7 +696,7 @@ class CADShape implements Serializable {
       // Counter rotate mouse loc into cadShape's coordinate space to measure stretch/shrink
       double tx = Math.max(Math.min(newLoc.x, workSize.width / LaserCut.SCREEN_PPI), 0);
       double ty = Math.max(Math.min(newLoc.y, workSize.height / LaserCut.SCREEN_PPI), 0);
-      Point2D.Double grab = rotateAroundPoint(getAnchorPoint(), new Point2D.Double(tx, ty), -rotation);
+      Point2D.Double grab = Utils2D.rotateAroundPoint(getAnchorPoint(), new Point2D.Double(tx, ty), -rotation);
       double dx = grab.x - xLoc;
       double dy = grab.y - yLoc;
       ((LaserCut.Resizable) this).resize(dx, dy);

@@ -228,7 +228,7 @@ abstract class GRBLBase {
                 new ParameterDialog.ParmItem("Y Max travel|mm", sVals, "$131"),
                 new ParameterDialog.ParmItem("Z Max travel|mm", sVals, "$132"),
             };
-            Properties info = laserCut.getProperties(LaserCut.getResourceFile("grbl/grblparms.props"));
+            Properties info = Utils2D.getProperties(Utils2D.getResourceFile("grbl/grblparms.props"));
             ParameterDialog dialog = (new ParameterDialog("Edit Parameters", parmSet, new String[]{"Save", "Cancel"}, null, info));
             dialog.setLocationRelativeTo(laserCut);
             dialog.setVisible(true);              // Note: this call invokes dialog
@@ -349,13 +349,13 @@ abstract class GRBLBase {
               double mm = Double.parseDouble(tmp[ii]);
               switch (laserCut.displayUnits) {
                 case "in":
-                  lbl[ii].setText(fmtIn.format(LaserCut.mmToInches(mm)));
+                  lbl[ii].setText(fmtIn.format(Utils2D.mmToInches(mm)));
                   break;
                 case "mm":
                   lbl[ii].setText(fmtMm.format(mm));
                   break;
                 case "cm":
-                  lbl[ii].setText(fmtCm.format(LaserCut.mmToCm(mm)));
+                  lbl[ii].setText(fmtCm.format(Utils2D.mmToCm(mm)));
                   break;
               }
             }
@@ -963,8 +963,6 @@ abstract class GRBLBase {
           }
         }
         if (doAbort) {
-          //jPort.sendByte((byte) 0x18);        // Locks up GRBL (can't jog after issued)
-          //jPort.sendString("$X\n");           // Kill Alarm Lock
           for (String cmd : abortCmds) {
             jPort.sendString(cmd + "\n");     // Set abort command
             stepWait(1);

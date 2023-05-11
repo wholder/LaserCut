@@ -37,7 +37,10 @@ class CADRectangle extends CADShape implements Serializable, LaserCut.Resizable,
 
   @Override
   String[] getParameterNames () {
-    return new String[]{"width|in", "height|in", "radius|in"};
+    return new String[]{
+      "width|in{width of rectangle}",
+      "height|in{height of rectangle}",
+      "radius|in{radius of corner}"};
   }
 
   @Override

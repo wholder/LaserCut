@@ -54,23 +54,23 @@ public class LaserCut extends JFrame {
   private boolean                   displayGrid = prefs.getBoolean("displayGrid", true);
   private String                    onStartup = prefs.get("onStartup", "demo");
   private OutputDevice              outputDevice;
-  private final int                  deviceMenuSlot;
-  private final Map<String,String>   menuToShape = new HashMap<>();
-  private final Map<String,String>   shapeNames = new LinkedHashMap<>();
+  private final int                 deviceMenuSlot;
+  private final Map<String,String>  menuToShape = new HashMap<>();
+  private final Map<String,String>  shapeNames = new LinkedHashMap<>();
 
   {
     shapeNames.put("CADReference",        "Reference Point");
     shapeNames.put("CADRectangle",        "Rectangle");
     shapeNames.put("CADOval",             "Oval");
     shapeNames.put("CADPolygon",          "Regular Polygon");
-    shapeNames.put("CADText",             "Text");
+    shapeNames.put("CADArbitraryPolygon", "Arbitrary Polygon");
     shapeNames.put("CADShapeSpline",      "Spline Curve");
+    shapeNames.put("CADText",             "Text");
+    shapeNames.put("CADRasterImage",      "Raster Image");
     shapeNames.put("CADGear",             "Gear");
     shapeNames.put("CADNemaMotor",        "NEMA Stepper");
     shapeNames.put("CADBobbin",           "Bobbin");
-    shapeNames.put("CADRasterImage",      "Raster Image");
     shapeNames.put("CADMusicStrip",       "Music Box Strip");
-    shapeNames.put("CADArbitraryPolygon", "Arbitrary Polygon");
   }
 
   static class SurfaceSettings implements Serializable {
@@ -232,7 +232,6 @@ public class LaserCut extends JFrame {
         fileChooser.addPropertyChangeListener(evt -> {
           String path = fileChooser.getCurrentDirectory().getPath();
           if (!path.equals(currentPath)) {
-            currentPath = path;
             lCut.prefs.put("default." + ext + ".dir", currentPath = path);
           }
         });
@@ -268,6 +267,7 @@ public class LaserCut extends JFrame {
     void processFile (File sFile) throws Exception {}
 
     // Override in subclass
+    @SuppressWarnings("EmptyMethod")
     void addAccessory () {}
   }
 
@@ -833,9 +833,7 @@ public class LaserCut extends JFrame {
         SVGParser parser = new SVGParser();
         parser.setPxDpi(pxDpi);
         //parser.enableDebug(true);
-        Shape[] shapes = parser.parseSVG(sFile);
-        shapes = SVGParser.removeOffset(shapes);
-        Shape shape = SVGParser.combinePaths(shapes);
+        Shape shape = SVGParser.combinePaths(SVGParser.removeOffset(parser.parseSVG(sFile)));
         Rectangle2D bounds = BetterBoundingBox.getBounds(shape);
         double offX = bounds.getWidth() / 2;
         double offY = bounds.getHeight() / 2;
@@ -1144,7 +1142,7 @@ public class LaserCut extends JFrame {
       // Add 72 Point, 1 inch tall Text
       surface.addShape(new CADText(4.625, .25, "Belle", "Helvetica", "bold", 72, 0, 0, false));
       // Add Test Gear
-      surface.addShape(new CADGear(2.25, 2.25, .1, 30, 10, 20, .25, 0, mmToInches(3)));
+      surface.addShape(new CADGear(2.25, 2.25, .1, 30, 10, 20, .25, 0, Utils2D.mmToInches(3)));
     }
     savedCrc = surface.getDesignChecksum();   // Allow quit if unchanged
   }
@@ -1299,51 +1297,6 @@ public class LaserCut extends JFrame {
     showMessageDialog(this, scrollPane);
   }
 
-  static double mmToInches (double mm) {
-    return mm / 25.4;
-  }
-
-  static double inchesToMM (double inches) {
-    return inches * 25.4;
-  }
-
-  static double cmToInches (double cm) {
-    return cm / 2.54;
-  }
-
-  static double inchesToCm (double inches) {
-    return inches * 2.54;
-  }
-
-  static double mmToCm (double mm) {
-    return mm / 10;
-  }
-
-  public static String getResourceFile (String file) {
-    try {
-      InputStream fis = LaserCut.class.getResourceAsStream(file);
-      if (fis != null) {
-        byte[] data = new byte[fis.available()];
-        fis.read(data);
-        fis.close();
-        return new String(data);
-      }
-    } catch (Exception ex) {
-      ex.printStackTrace();
-    }
-    return "";
-  }
-
-  public Properties getProperties (String content) {
-    Properties props = new Properties();
-    try {
-      props.load(new StringReader(content));
-    } catch (Exception ex) {
-      ex.printStackTrace();
-    }
-    return props;
-  }
-
   /*
    * CADShape interfaces
    */
@@ -1368,7 +1321,7 @@ public class LaserCut extends JFrame {
 
   static class VectorFont {
     private static final Map<String,VectorFont> vFonts = new HashMap<>();
-    int[][][] font;
+    int[][][]       font;
     final int       height;
 
     VectorFont (String name) {
@@ -1395,7 +1348,7 @@ public class LaserCut extends JFrame {
     }
 
     private int[][][] getFontData (String name) {
-      String data = getResourceFile("fonts/" + name);
+      String data = Utils2D.getResourceFile("fonts/" + name);
       StringTokenizer tok = new StringTokenizer(data, "\n");
       int[][][] font = new int[128][][];
       while (tok.hasMoreElements()) {

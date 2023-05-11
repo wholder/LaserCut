@@ -48,8 +48,14 @@ class CADGear extends CADShape implements Serializable, LaserCut.Rotatable {
 
   @Override
   String[] getParameterNames () {
-    return new String[]{"module{module = diameter / numTeeth}", "numTeeth", "numPoints", "pressAngle|deg", "profileShift",
-      "*diameter|in{diameter = numTeeth * module}", "holeSize|in"};
+    return new String[]{
+      "module{module = diameter / numTeeth}",
+      "numTeeth",
+      "numPoints",
+      "pressAngle|deg",
+      "profileShift",
+      "*diameter|in{diameter = numTeeth * module}",
+      "holeSize|in"};
   }
 
   @Override

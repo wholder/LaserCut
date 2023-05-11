@@ -796,7 +796,7 @@ public class DXFReader {
   }
 
   // TODO: implement when I understand how this is supposed to work...
-  class Hatch extends DrawItem implements AutoPop {
+  static class Hatch extends DrawItem implements AutoPop {
     Hatch (String type) {
       super(type);
     }

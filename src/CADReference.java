@@ -59,6 +59,8 @@ class CADReference extends CADShape implements Serializable, CADNoDraw {
 
   @Override
   protected List<String> getEditFields () {
-    return Arrays.asList("xLoc|in", "yLoc|in");
+    return Arrays.asList(
+      "xLoc|in",
+      "yLoc|in");
   }
 }

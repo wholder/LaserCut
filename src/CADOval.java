@@ -36,7 +36,9 @@ class CADOval extends CADShape implements Serializable, LaserCut.Resizable, Lase
 
   @Override
   String[] getParameterNames () {
-    return new String[]{"width|in", "height|in"};
+    return new String[]{
+      "width|in",
+      "height|in"};
   }
 
   @Override

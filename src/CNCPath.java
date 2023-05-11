@@ -38,7 +38,9 @@ class CNCPath extends CADShape implements Serializable, LaserCut.ChangeListener 
 
   @Override
   protected List<String> getEditFields () {
-    return Arrays.asList("radius|in{radius of tool}", "inset{If checked, toolpath is inside cadShape, else outside}");
+    return Arrays.asList(
+      "radius|in{radius of tool}",
+      "inset{If checked, toolpath is inside cadShape, else outside}");
   }
 
   @Override
@@ -68,7 +70,7 @@ class CNCPath extends CADShape implements Serializable, LaserCut.ChangeListener 
     rotation = baseShape.rotation;
     Path2D.Double path = new Path2D.Double();
     boolean first = true;
-    for (Line2D.Double[] lines : transformShapeToLines(baseShape.getShape(), 1.0, .01)) {
+    for (Line2D.Double[] lines : Utils2D.transformShapeToLines(baseShape.getShape(), 1.0, .01)) {
       if (false) {
         DecimalFormat df = new DecimalFormat("#.###");
         for (Line2D.Double line : lines) {

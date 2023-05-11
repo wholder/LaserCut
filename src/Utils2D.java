@@ -1,7 +1,9 @@
 import java.awt.*;
-import java.awt.geom.Ellipse2D;
-import java.awt.geom.Path2D;
-import java.awt.geom.Point2D;
+import java.awt.geom.*;
+import java.io.InputStream;
+import java.io.StringReader;
+import java.util.ArrayList;
+import java.util.Properties;
 
 public class Utils2D {
   /**
@@ -45,6 +47,34 @@ public class Utils2D {
     return diamone;
   }
 
+
+  public static Path2D.Double getArrow (double x1, double y1, double x2, double y2, boolean atEnd) {
+    Path2D.Double path = new Path2D.Double();
+    double angleOff = Math.toRadians(10);
+    int barb = 10;
+    if (atEnd) {
+      double angle = Math.atan2(y2 - y1, x2 - x1);
+      double ax1 = x2 - barb * Math.cos(angle - angleOff);
+      double ay1 = y2 - barb * Math.sin(angle - angleOff);
+      double ax2 = x2 - barb * Math.cos(angle + angleOff);
+      double ay2 = y2 - barb * Math.sin(angle + angleOff);
+      path.moveTo(ax1, ay1);
+      path.lineTo(x2, y2);
+      path.lineTo(ax2, ay2);
+    } else {
+      double angle = Math.atan2(y1 - y2, x1 - x2);
+      double ax1 = x1 - barb * Math.cos(angle - angleOff);
+      double ay1 = y1 - barb * Math.sin(angle - angleOff);
+      double ax2 = x1 - barb * Math.cos(angle + angleOff);
+      double ay2 = y1 - barb * Math.sin(angle + angleOff);
+      path.moveTo(ax1, ay1);
+      path.lineTo(x1, y1);
+      path.lineTo(ax2, ay2);
+    }
+    path.closePath();
+    return path;
+  }
+
   /**
    *  CAP_BUTT -   Ends unclosed subpaths and dash segments with no added decoration.
    *  CAP_ROUND -  Ends unclosed subpaths and dash segments with a round decoration that has a radius equal
@@ -70,5 +100,214 @@ public class Utils2D {
     //  dash - the array representing the dashing pattern
     //  dash_phase - the offset to start the dashing pattern
     return new BasicStroke(strokeWidth, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 1.0f, dash1, 1.0f);
+  }
+
+  /**
+   * Checks, whether the given rectangle1 fully contains rectangle 2 (even if rectangle 2 has a height or
+   * width of zero!). Unlike the way Java2D handlies this!
+   *
+   * @param rect1 the first rectangle.
+   * @param rect2 the second rectangle.
+   * @return true if first contains second.
+   * @author David Gilbert
+   */
+
+  public static boolean contains (Rectangle2D rect1, Rectangle2D rect2) {
+    final double x0 = rect1.getX();
+    final double y0 = rect1.getY();
+    final double x = rect2.getX();
+    final double y = rect2.getY();
+    final double w = rect2.getWidth();
+    final double h = rect2.getHeight();
+    return ((x >= x0) && (y >= y0) && ((x + w) <= (x0 + rect1.getWidth())) && ((y + h) <= (y0 + rect1.getHeight())));
+  }
+
+  /**
+   * Convert inches to centimeters
+   * @param inches measurement in inches
+   * @return measurement in centimeters
+   */
+  static double inchesToCm (double inches) {
+    return inches * 2.54;
+  }
+
+  /**
+   * Convert millimeters to inches
+   * @param mm measurement in millimeters
+   * @return measurement in inches
+   */
+  static double mmToInches (double mm) {
+    return mm / 25.4;
+  }
+
+  /**
+   * Convert inches to millimeters
+   * @param inches measurement in inches
+   * @return measurement in millimeters
+   */
+  static double inchesToMM (double inches) {
+    return inches * 25.4;
+  }
+
+  /**
+   * Convert millimeters to inches
+   * @param cm measurement in centimeters
+   * @return measurement in inches
+   */
+  static double cmToInches (double cm) {
+    return cm / 2.54;
+  }
+
+  /**
+   * Convert millimeters to centimeters
+   * @param mm measurement in millimeters
+   * @return measurement in centimeters
+   */
+  static double mmToCm (double mm) {
+    return mm / 10;
+  }
+
+  /**
+   *
+   * @param file path/name of resource file
+   * @return String object of file contents
+   */
+  public static String getResourceFile (String file) {
+    try {
+      InputStream fis = LaserCut.class.getResourceAsStream(file);
+      if (fis != null) {
+        byte[] data = new byte[fis.available()];
+        fis.read(data);
+        fis.close();
+        return new String(data);
+      }
+    } catch (Exception ex) {
+      ex.printStackTrace();
+    }
+    return "";
+  }
+
+  /**
+   * Concert String object's contents into a Properties object
+   * @param content
+   * @return
+   */
+  public static Properties getProperties (String content) {
+    Properties props = new Properties();
+    try {
+      props.load(new StringReader(content));
+    } catch (Exception ex) {
+      ex.printStackTrace();
+    }
+    return props;
+  }
+
+  /**
+   * Uses FlatteningPathIterator to convert the Shape into List of arrays of lines.  The size input Shape
+   * is assumed to be defined in inches, but the AffineTransform parameter can be used to scale up to the
+   * final render resolution.  Note: cubic and quadratic bezier curves calculate an approximaiton of the
+   * arc length of the curve to determine the number of line segments used to approximate the curve.
+   *
+   * @param shape   Shape path to render
+   * @param scale   used to scale from inches to the render resolution, such as Screen or Laser DPI.
+   * @param flatten controls how closely the line segments follow the curve (smaller is closer)
+   * @return List of array of lines
+   */
+  static java.util.List<Line2D.Double[]> transformShapeToLines (Shape shape, double scale, double flatten) {
+    // Convert Shape into a series of lines defining a path
+    java.util.List<Line2D.Double[]> paths = new ArrayList<>();
+    AffineTransform at = scale != 1.0 ? AffineTransform.getScaleInstance(scale, scale) : null;
+    ArrayList<Line2D.Double> lines = new ArrayList<>();
+    // Use FlatteningPathIterator to convert to line segments
+    PathIterator pi = shape.getPathIterator(at);
+    FlatteningPathIterator fpi = new FlatteningPathIterator(pi, flatten, 8);
+    double[] coords = new double[4];
+    double lastX = 0, lastY = 0, firstX = 0, firstY = 0;
+    while (!fpi.isDone()) {
+      int type = fpi.currentSegment(coords);
+      switch (type) {
+        case FlatteningPathIterator.SEG_MOVETO:
+          if (lines.size() > 0) {
+            paths.add(lines.toArray(new Line2D.Double[0]));
+            lines = new ArrayList<>();
+          }
+          firstX = lastX = coords[0];
+          firstY = lastY = coords[1];
+          lines = new ArrayList<>();
+          break;
+        case FlatteningPathIterator.SEG_LINETO:
+          lines.add(new Line2D.Double(lastX, lastY, coords[0], coords[1]));
+          lastX = coords[0];
+          lastY = coords[1];
+          break;
+        case FlatteningPathIterator.SEG_CLOSE:
+          if (lastX != firstX || lastY != firstY) {
+            lines.add(new Line2D.Double(lastX, lastY, firstX, firstY));
+          }
+          break;
+      }
+      fpi.next();
+    }
+    if (lines.size() > 0) {
+      paths.add(lines.toArray(new Line2D.Double[0]));
+      lines = new ArrayList<>();
+    }
+    return paths;
+  }
+
+  /**
+   * Rotate 2D point around anchor point
+   *
+   * @param point Point to rotate
+   * @param angle Angle to rotate
+   * @return Rotated 2D point
+   */
+  public static Point2D.Double rotateAroundPoint (Point2D.Double anchor, Point2D.Double point, double angle) {
+    AffineTransform center = AffineTransform.getRotateInstance(Math.toRadians(angle), anchor.x, anchor.y);
+    Point2D.Double np = new Point2D.Double();
+    center.transform(point, np);
+    return np;
+  }
+
+  /**
+   * Convert a boolean array into an integer where the each value in the array is converted to a bit
+   * in the integer by successively converting each boolean value into a 1 or 0 and then left shifting
+   * into the value.  Note: the first value in the array becomes the left-most bit in the value.
+   * @param bools boolean array
+   * @return integer value
+   */
+  public static int booleansToInt (boolean[] bools) {
+    int value = 0;
+    for (boolean bool : bools) {
+      value *= 2;
+      value |= bool ? 1 : 0;
+    }
+    return value;
+  }
+
+  public static Path2D.Double convertPointsToPath (Point2D.Double[] points, boolean close) {
+    Path2D.Double path = new Path2D.Double();
+    path.moveTo(points[0].x, points[0].y);
+    for (Point2D.Double point : points) {
+      path.lineTo(point.x, point.y);
+    }
+    if (close) {
+      path.closePath();
+    }
+    return path;
+  }
+
+  /**
+   * Rotate 2D point around 0,0 point
+   *
+   * @param point Point to rotate
+   * @param angle Angle to rotate
+   * @return Rotated 2D point
+   */
+  public static Point2D.Double rotatePoint (Point2D.Double point, double angle) {
+    AffineTransform center = AffineTransform.getRotateInstance(Math.toRadians(angle), 0, 0);
+    Point2D.Double np = new Point2D.Double();
+    center.transform(point, np);
+    return np;
   }
 }

@@ -147,9 +147,9 @@ public class DrawSurface extends JPanel {
                   setInfoText(" dx: " + LaserCut.df.format(dx) + "in," +
                     " dy: " + LaserCut.df.format(dy) + "in, " +
                     " diagonal: " + LaserCut.df.format(diag) + "in  " +
-                    "(" + LaserCut.df.format(LaserCut.inchesToMM(dx)) + " mm," +
-                    " " + LaserCut.df.format(LaserCut.inchesToMM(dy)) + " mm," +
-                    " " + LaserCut.df.format(LaserCut.inchesToMM(diag)) + " mm)"
+                    "(" + LaserCut.df.format(Utils2D.inchesToMM(dx)) + " mm," +
+                    " " + LaserCut.df.format(Utils2D.inchesToMM(dy)) + " mm," +
+                    " " + LaserCut.df.format(Utils2D.inchesToMM(diag)) + " mm)"
                   );
                   measure1 = new Point2D.Double(selected.xLoc * zoomFactor * LaserCut.SCREEN_PPI,
                     selected.yLoc * zoomFactor * LaserCut.SCREEN_PPI);
@@ -219,9 +219,6 @@ public class DrawSurface extends JPanel {
               // Check for click on anchor point (used to drag cadShape to new location)
               if (selected.selectMovePoint(DrawSurface.this, newLoc, toGrid(newLoc))) {
                 dragged = selected;
-                //if (selected instanceof LaserCut.StateMessages) {
-                //  setInfoText(((LaserCut.StateMessages) selected).getStateMsg());
-                // }
                 repaint();
                 return;
               }
@@ -299,26 +296,6 @@ public class DrawSurface extends JPanel {
           }
         }
 
-        /**
-         * Checks, whether the given rectangle1 fully contains rectangle 2 (even if rectangle 2 has a height or
-         * width of zero!). Unlike the way Java2D handlies this!
-         *
-         * @param rect1 the first rectangle.
-         * @param rect2 the second rectangle.
-         * @return true if first contains second.
-         * @author David Gilbert
-         */
-
-        private boolean contains (Rectangle2D rect1, Rectangle2D rect2) {
-          final double x0 = rect1.getX();
-          final double y0 = rect1.getY();
-          final double x = rect2.getX();
-          final double y = rect2.getY();
-          final double w = rect2.getWidth();
-          final double h = rect2.getHeight();
-          return ((x >= x0) && (y >= y0) && ((x + w) <= (x0 + rect1.getWidth())) && ((y + h) <= (y0 + rect1.getHeight())));
-        }
-
         @Override
         public void mouseReleased (MouseEvent ev) {
           mouseDown = false;
@@ -335,7 +312,7 @@ public class DrawSurface extends JPanel {
             setSelected(null);
             // Add all Shapes inside dragBox to dragList
             for (CADShape shape : shapes) {
-              if (contains(dragBox, shape.getShapeBounds())) {
+              if (Utils2D.contains(dragBox, shape.getShapeBounds())) {
                 if (dragList.contains(shape)) {
                   dragList.remove(shape);
                 } else {
@@ -448,14 +425,9 @@ public class DrawSurface extends JPanel {
         }
       }
     });
-    // Start tip timer
-//    if (!threadRunning) {
-//      threadRunning = true;
-//      new Thread(this).start();
-//    }
+    // Start periodic event for tip timer
     PeriodicEvent pe = new PeriodicEvent();
     pe.runPeriodic();
-
   }
 
   void setInfoText (String text) {
@@ -586,7 +558,7 @@ public class DrawSurface extends JPanel {
           gridMinor = Double.parseDouble(tmp[0]);
           gridMajor = Integer.parseInt(tmp[1]);
         } else if ("mm".equals(units)) {
-          gridMinor = LaserCut.mmToInches(Double.parseDouble(tmp[0]));
+          gridMinor = Utils2D.mmToInches(Double.parseDouble(tmp[0]));
           gridMajor = Integer.parseInt(tmp[1]);
         } else {
           gridMinor = 0;
@@ -1205,7 +1177,7 @@ public class DrawSurface extends JPanel {
   }
 
   private void tipTracker (Point2D.Double loc) {
-    if (tipText != null) {
+    if (tipText != null && loc != null) {
       if (tipLoc.distance(loc) * LaserCut.SCREEN_PPI > 3) {
         cancelTip();
       }
@@ -1215,10 +1187,10 @@ public class DrawSurface extends JPanel {
     }
   }
 
+  /**
+   * Starts periodic process that's used to bring up pop up hint text for the selected object
+   */
   class PeriodicEvent {
-    private static final int  INITIAL_DELAY = 1;
-    private static final int  PERIODIC_RATE = 1;
-
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 
     public void runPeriodic () {
@@ -1314,10 +1286,10 @@ public class DrawSurface extends JPanel {
       double maxY = Math.max(measure1.y, measure2.y);
       g2.draw(new Line2D.Double(measure1.x, maxY, measure2.x, maxY));
       g2.draw(new Line2D.Double(maxX, measure1.y, maxX, measure2.y));
-      g2.fill(getArrow(measure1.x, maxY, measure2.x, maxY, false));
-      g2.fill(getArrow(measure1.x, maxY, measure2.x, maxY, true));
-      g2.fill(getArrow(maxX, measure1.y, maxX, measure2.y, false));
-      g2.fill(getArrow(maxX, measure1.y, maxX, measure2.y, true));
+      g2.fill(Utils2D.getArrow(measure1.x, maxY, measure2.x, maxY, false));
+      g2.fill(Utils2D.getArrow(measure1.x, maxY, measure2.x, maxY, true));
+      g2.fill(Utils2D.getArrow(maxX, measure1.y, maxX, measure2.y, false));
+      g2.fill(Utils2D.getArrow(maxX, measure1.y, maxX, measure2.y, true));
       // Draw diagonal
       g2.draw(new Line2D.Double(measure1.x, measure1.y, measure2.x, measure2.y));
     }
@@ -1353,33 +1325,6 @@ public class DrawSurface extends JPanel {
       double scale = getScreenScale();
       g2.draw(new Rectangle2D.Double(dragBox.x * scale, dragBox.y * scale, dragBox.width * scale, dragBox.height * scale));
     }
-  }
-
-  private Path2D.Double getArrow (double x1, double y1, double x2, double y2, boolean atEnd) {
-    Path2D.Double path = new Path2D.Double();
-    double angleOff = Math.toRadians(10);
-    int barb = 10;
-    if (atEnd) {
-      double angle = Math.atan2(y2 - y1, x2 - x1);
-      double ax1 = x2 - barb * Math.cos(angle - angleOff);
-      double ay1 = y2 - barb * Math.sin(angle - angleOff);
-      double ax2 = x2 - barb * Math.cos(angle + angleOff);
-      double ay2 = y2 - barb * Math.sin(angle + angleOff);
-      path.moveTo(ax1, ay1);
-      path.lineTo(x2, y2);
-      path.lineTo(ax2, ay2);
-    } else {
-      double angle = Math.atan2(y1 - y2, x1 - x2);
-      double ax1 = x1 - barb * Math.cos(angle - angleOff);
-      double ay1 = y1 - barb * Math.sin(angle - angleOff);
-      double ax2 = x1 - barb * Math.cos(angle + angleOff);
-      double ay2 = y1 - barb * Math.sin(angle + angleOff);
-      path.moveTo(ax1, ay1);
-      path.lineTo(x1, y1);
-      path.lineTo(ax2, ay2);
-    }
-    path.closePath();
-    return path;
   }
 
   public void showInfoDialog (String msg) {

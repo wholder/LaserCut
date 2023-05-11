@@ -36,7 +36,9 @@ class CADPolygon extends CADShape implements Serializable, LaserCut.Resizable, L
 
   @Override
   String[] getParameterNames () {
-    return new String[]{"sides", "diameter|in"};
+    return new String[]{
+      "sides{number of sides}",
+      "diameter|in"};
   }
 
   @Override
