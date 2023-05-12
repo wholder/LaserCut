@@ -104,12 +104,16 @@ class CADShape implements Serializable {
     if (placeParameterDialog(surface, laserCut.displayUnits)) {
       surface.placeShape(this);
     } else {
-      surface.setInfoText("Place " + getName() + " cancelled");
+      surface.setInfoText("Place " + getMenuName() + " cancelled");
     }
   }
 
-  // Override in subclasses
   String getName () {
+    return this.getClass().getName();
+  }
+
+  // Override in subclasses
+  String getMenuName () {
     return "Shape";
   }
 
@@ -592,7 +596,7 @@ class CADShape implements Serializable {
    * @return String showing cadShape's current parameters
    */
   String getInfo () {
-    StringBuilder buf = new StringBuilder(getName() + ": ");
+    StringBuilder buf = new StringBuilder(getMenuName() + ": ");
     List<String> parmNames = new ArrayList<>(Arrays.asList("xLoc|in", "yLoc|in", "width|in", "height|in", "rotation|deg", "centered"));
     parmNames.addAll(Arrays.asList(getParameterNames()));
     boolean first = true;

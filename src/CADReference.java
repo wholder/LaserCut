@@ -28,7 +28,7 @@ class CADReference extends CADShape implements Serializable, CADNoDraw {
   }
 
   @Override
-  String getName () {
+  String getMenuName () {
     return "Reference Point";
   }
 

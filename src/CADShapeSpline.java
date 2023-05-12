@@ -30,7 +30,7 @@ class CADShapeSpline extends CADShape implements Serializable, LaserCut.StateMes
   }
 
   @Override
-  String getName () {
+  String getMenuName () {
     return "Spline Curve";
   }
 

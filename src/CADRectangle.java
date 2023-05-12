@@ -25,7 +25,7 @@ class CADRectangle extends CADShape implements Serializable, LaserCut.Resizable,
   }
 
   @Override
-  String getName () {
+  String getMenuName () {
     return "Rectangle";
   }
 

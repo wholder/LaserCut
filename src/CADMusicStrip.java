@@ -36,7 +36,7 @@ class CADMusicStrip extends CADShape implements Serializable, LaserCut.Updatable
   }
 
   @Override
-  String getName () {
+  String getMenuName () {
     return "Music Strip";
   }
 

@@ -25,7 +25,7 @@ class CADPolygon extends CADShape implements Serializable, LaserCut.Resizable, L
   }
 
   @Override
-  String getName () {
+  String getMenuName () {
     return "Regular Polygon";
   }
 

@@ -24,7 +24,7 @@ class CADArbitraryPolygon extends CADShape implements Serializable, LaserCut.Sta
   }
 
   @Override
-  String getName () {
+  String getMenuName () {
     return "Arbitrary Polygon";
   }
 

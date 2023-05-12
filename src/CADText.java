@@ -56,7 +56,7 @@ class CADText extends CADShape implements Serializable, LaserCut.Rotatable, Lase
   }
 
   @Override
-  String getName () {
+  String getMenuName () {
     return "Text";
   }
 

@@ -30,7 +30,7 @@ class CADBobbin extends CADShape implements Serializable {
   }
 
   @Override
-  String getName () {
+  String getMenuName () {
     return "Bobbin";
   }
 

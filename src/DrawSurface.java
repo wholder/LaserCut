@@ -1200,7 +1200,7 @@ public class DrawSurface extends JPanel {
         } else if (tipTimer == 10) {
           if (!mouseDown) {
             if (placer != null) {
-              tipText = "Click to place " + placer.shapes.get(0).getName() + "\n - - \n" +
+              tipText = "Click to place " + placer.shapes.get(0).getMenuName() + "\n - - \n" +
                 "or ESC to cancel";
               repaint();
             } else {
@@ -1210,16 +1210,16 @@ public class DrawSurface extends JPanel {
               } else {
                 if (selected != null) {
                   if (selected.isPositionClicked(tipLoc, getZoomFactor())) {
-                    tipText = "Click and drag to\nreposition the " + selected.getName() + ".";
+                    tipText = "Click and drag to\nreposition the " + selected.getMenuName() + ".";
                   } else if (selected.isResizeOrRotateClicked(tipLoc)) {
                     if (selected instanceof LaserCut.Resizable && selected instanceof LaserCut.Rotatable) {
-                      tipText = "Click and drag to resize the " + selected.getName() + ".\n" +
+                      tipText = "Click and drag to resize the " + selected.getMenuName() + ".\n" +
                         "Hold shift and drag to rotate it.";
                     } else if (selected instanceof LaserCut.Rotatable) {
-                      tipText = "Click and drag to rotate the " + selected.getName() + ".";
+                      tipText = "Click and drag to rotate the " + selected.getMenuName() + ".";
                     }
                   } else if (selected.isShapeClicked(tipLoc, getZoomFactor())) {
-                    tipText = "Click outline of " + selected.getName() + " to select it, or click\n" +
+                    tipText = "Click outline of " + selected.getMenuName() + " to select it, or click\n" +
                       "anywhere else to deselect it.\n - - \n" +
                       "Click another shape's outline while Shift is\n" +
                       "down to group or ungroup with any already\n" +

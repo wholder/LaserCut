@@ -24,7 +24,7 @@ class CADOval extends CADShape implements Serializable, LaserCut.Resizable, Lase
   }
 
   @Override
-  String getName () {
+  String getMenuName () {
     return "Oval";
   }
 

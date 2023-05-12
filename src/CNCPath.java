@@ -20,7 +20,7 @@ class CNCPath extends CADShape implements Serializable, LaserCut.ChangeListener 
   }
 
   @Override
-  String getName () {
+  String getMenuName () {
     return "CNC Path";
   }
 

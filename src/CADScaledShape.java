@@ -18,7 +18,7 @@ class CADScaledShape extends CADShape implements Serializable {
   }
 
   @Override
-  String getName () {
+  String getMenuName () {
     return "Scaled Shape";
   }
 

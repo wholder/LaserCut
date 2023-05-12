@@ -37,40 +37,43 @@ import static javax.swing.JOptionPane.*;
   */
 
 public class LaserCut extends JFrame {
-  static final String               VERSION = "1.2 beta";
-  static final double               SCREEN_PPI = java.awt.Toolkit.getDefaultToolkit().getScreenResolution();
-  static final DecimalFormat        df = new DecimalFormat("#0.0###");
-  private static final int          cmdMask = Toolkit.getDefaultToolkit().getMenuShortcutKeyMask();
+  static final String                 VERSION = "1.2 beta";
+  static final double                 SCREEN_PPI = java.awt.Toolkit.getDefaultToolkit().getScreenResolution();
+  static final DecimalFormat          df = new DecimalFormat("#0.0###");
+  private static final int            cmdMask = Toolkit.getDefaultToolkit().getMenuShortcutKeyMask();
   public final transient Preferences prefs = Preferences.userRoot().node(this.getClass().getName());
-  DrawSurface                       surface;
-  private final JScrollPane         scrollPane;
-  private final JMenuBar            menuBar = new JMenuBar();
-  private final JMenuItem           gerberZip;
-  private int                       pxDpi = prefs.getInt("svg.pxDpi", 96);
-  private long                      savedCrc;
-  String                            displayUnits = prefs.get("displayUnits", "in");
-  private boolean                   useMouseWheel = prefs.getBoolean("useMouseWheel", false);
-  private boolean                   snapToGrid = prefs.getBoolean("snapToGrid", true);
-  private boolean                   displayGrid = prefs.getBoolean("displayGrid", true);
-  private String                    onStartup = prefs.get("onStartup", "demo");
-  private OutputDevice              outputDevice;
-  private final int                 deviceMenuSlot;
-  private final Map<String,String>  menuToShape = new HashMap<>();
-  private final Map<String,String>  shapeNames = new LinkedHashMap<>();
+  DrawSurface                         surface;
+  private final JScrollPane           scrollPane;
+  private final JMenuBar              menuBar = new JMenuBar();
+  private final JMenuItem             gerberZip;
+  private int                         pxDpi = prefs.getInt("svg.pxDpi", 96);
+  private long                        savedCrc;
+  String                              displayUnits = prefs.get("displayUnits", "in");
+  private boolean                     useMouseWheel = prefs.getBoolean("useMouseWheel", false);
+  private boolean                     snapToGrid = prefs.getBoolean("snapToGrid", true);
+  private boolean                     displayGrid = prefs.getBoolean("displayGrid", true);
+  private String                      onStartup = prefs.get("onStartup", "demo");
+  private OutputDevice                outputDevice;
+  private final int                   deviceMenuSlot;
+  private final List<CADShape>        shapeClasses = new ArrayList<>();
 
   {
-    shapeNames.put("CADReference",        "Reference Point");
-    shapeNames.put("CADRectangle",        "Rectangle");
-    shapeNames.put("CADOval",             "Oval");
-    shapeNames.put("CADPolygon",          "Regular Polygon");
-    shapeNames.put("CADArbitraryPolygon", "Arbitrary Polygon");
-    shapeNames.put("CADShapeSpline",      "Spline Curve");
-    shapeNames.put("CADText",             "Text");
-    shapeNames.put("CADRasterImage",      "Raster Image");
-    shapeNames.put("CADGear",             "Gear");
-    shapeNames.put("CADNemaMotor",        "NEMA Stepper");
-    shapeNames.put("CADBobbin",           "Bobbin");
-    shapeNames.put("CADMusicStrip",       "Music Box Strip");
+    try {
+      shapeClasses.add(new CADReference());
+      shapeClasses.add(new CADRectangle());
+      shapeClasses.add(new CADOval());
+      shapeClasses.add(new CADPolygon());
+      shapeClasses.add(new CADArbitraryPolygon());
+      shapeClasses.add(new CADShapeSpline());
+      shapeClasses.add(new CADText());
+      shapeClasses.add(new CADRasterImage());
+      shapeClasses.add(new CADGear());
+      shapeClasses.add(new CADNemaMotor());
+      shapeClasses.add(new CADBobbin());
+      shapeClasses.add(new CADMusicStrip());
+    } catch (Exception ex) {
+      ex.printStackTrace();
+    }
   }
 
   static class SurfaceSettings implements Serializable {
@@ -545,28 +548,11 @@ public class LaserCut extends JFrame {
      *  Add "Shapes" Menu
      */
     JMenu shapesMenu = new JMenu("Shapes");
-    // Build menuToShape HashMap
-    Map<String,String> menuToShape = new HashMap<>();
-    for (String className : shapeNames.keySet()) {
-      String menuName = shapeNames.get(className);
-      try {
-        Class<?> ref = Class.forName(className);
-        CADShape shp = (CADShape) ref.getDeclaredConstructor().newInstance();
-        String sName = shp.getName();
-        menuToShape.put(menuName, className);
-
-      } catch (Exception ex) {
-        ex.printStackTrace();
-      }
-    }
-    // Build "Shapes" menu
-    for (String className : shapeNames.keySet()) {
-      JMenuItem mItem = new JMenuItem(shapeNames.get(className));
+    for (CADShape shapeClass : shapeClasses) {
+      JMenuItem mItem = new JMenuItem(shapeClass.getMenuName());
       mItem.addActionListener(ev -> {
         try {
-          String menuName = mItem.getText();
-          Class<?> ref = Class.forName(menuToShape.get(menuName));
-          CADShape shp = (CADShape) ref.getDeclaredConstructor().newInstance();
+          CADShape shp = shapeClass.getClass().newInstance();
           shp.createAndPlace(surface, this);
         } catch (Exception ex) {
           ex.printStackTrace();

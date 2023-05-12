@@ -31,7 +31,7 @@ class CADNemaMotor extends CADShape implements Serializable, LaserCut.Rotatable 
   }
 
   @Override
-  String getName () {
+  String getMenuName () {
     return "NEMA Motor";
   }
 

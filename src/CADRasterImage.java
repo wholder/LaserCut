@@ -121,7 +121,7 @@ class CADRasterImage extends CADShape implements Serializable, LaserCut.Resizabl
   }
 
   @Override
-  String getName () {
+  String getMenuName () {
     return "Raster Image";
   }
 
