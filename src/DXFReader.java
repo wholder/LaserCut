@@ -1,6 +1,8 @@
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.font.GlyphVector;
 import java.awt.font.TextAttribute;
 import java.awt.geom.*;
@@ -10,6 +12,7 @@ import java.nio.file.Files;
 import java.text.DecimalFormat;
 import java.util.*;
 import java.util.List;
+import java.util.prefs.Preferences;
 
 /*
  *  This code implements a simple DXF file parser that can read many 2D DXF files containing POLYLINE and SPLINE
@@ -49,25 +52,26 @@ import java.util.List;
  */
 
 public class DXFReader {
-  private static final boolean  DEBUG = false;
-  private static final boolean  INFO = false;
-  private static final boolean  ANIMATE = false;
-  private boolean               drawText;
-  private boolean               drawMText;
-  private boolean               drawDimen;
-  private final ArrayList<DrawItem>   entities = new ArrayList<>();
-  private ArrayList<Entity>     stack = new ArrayList<>();
-  private final Map<String,Block>     blockDict = new TreeMap<>();
-  private Entity                cEntity = null;
-  private Rectangle2D           bounds;
-  private double                uScale = 0.039370078740157; // default to millimeters as units
-  private String                units = "millimeters";
-  private boolean               scaled;
+  private static final boolean DEBUG = false;
+  private static final boolean INFO = false;
+  private static final boolean ANIMATE = false;
+  private boolean drawText;
+  private boolean drawMText;
+  private boolean drawDimen;
+  private final ArrayList<DrawItem> entities = new ArrayList<>();
+  private ArrayList<Entity> stack = new ArrayList<>();
+  private final Map<String, Block> blockDict = new TreeMap<>();
+  private Entity cEntity = null;
+  private Rectangle2D bounds;
+  private double uScale = 0.039370078740157; // default to millimeters as units
+  private String units = "millimeters";
+  private boolean scaled;
 
-  interface AutoPop {}
+  interface AutoPop {
+  }
 
 
-  DXFReader() {
+  DXFReader () {
     this("mm");
   }
 
@@ -82,18 +86,21 @@ public class DXFReader {
   }
 
   static class Entity {
-    private final String        type;
+    private final String type;
 
     Entity (String type) {
       this.type = type;
     }
 
     // Override these methods is subclasses, as needed
-    void addParm (int gCode, String value) { }
+    void addParm (int gCode, String value) {
+    }
 
-    void addChild (Entity child) { }
+    void addChild (Entity child) {
+    }
 
-    void close () { }
+    void close () {
+    }
   }
 
   static class DrawItem extends Entity {
@@ -108,9 +115,9 @@ public class DXFReader {
   }
 
   static class Section extends Entity {
-    private final Map<String,Map<Integer,String>>   attributes = new TreeMap<>();
-    private Map<Integer,String>               attValues;
-    private String                            sType;
+    private final Map<String, Map<Integer, String>> attributes = new TreeMap<>();
+    private Map<Integer, String> attValues;
+    private String sType;
 
     Section (String type) {
       super(type);
@@ -132,87 +139,87 @@ public class DXFReader {
   private void setUnits (String val) {
     if (val != null) {
       switch (Integer.parseInt(val)) {
-      case 1:                       // inches
-        uScale = 1.0;
-        units = "inches";
-        break;
-      case 2:                       // feet
-        uScale = 1.0/12;
-        units = "feet";
-        break;
-      case 3:                       // miles
-        uScale = 63360.0;
-        units = "miles";
-        break;
-      case 0:                       // unitless (assume millimeters)
-      case 4:                       // millimeters
-        uScale = 0.039370078740157;
-        units = "millimeters";
-        break;
-      case 5:                       // centimeters
-        uScale = 0.39370078740157;
-        units = "centimeters";
-        break;
-      case 6:                       // meters
-        uScale = 39.370078740157;
-        units = "meters";
-        break;
-      case 7:                       // kilometers
-        uScale = 39370.078740157;
-        units = "kilometers";
-        break;
-      case 8:                       // microinches
-        uScale = 0.000001;
-        units = "microinches";
-        break;
-      case 9:                       // mils
-        uScale = 0.001;
-        units = "mils";
-        break;
-      case 10:                      // yards
-        uScale = 36.0;
-        units = "yards";
-        break;
-      case 11:                      // angstroms
-        uScale = 3.9370078740157e-9;
-        units = "angstroms";
-        break;
-      case 12:                      // nanometers
-        uScale = 3.9370078740157e-8;
-        units = "nanometers";
-        break;
-      case 13:                      // microns
-        uScale = 3.9370078740157e-5;
-        units = "microns";
-        break;
-      case 14:                      // decimeters
-        uScale = 3.9370078740157;
-        units = "decimeters";
-        break;
-      case 15:                      // decameters
-        uScale = 393.70078740157;
-        units = "decameters";
-        break;
-      case 16:                      // hectometers
-        uScale = 3937.007878740157;
-        units = "hectometers";
-        break;
-      case 17:                      // gigameters
-        uScale = 39370078740.157;
-        units = "gigameters";
-        break;
-      case 18:                      // astronomical units
-        uScale = 5.89e+12;
-        units = "astronomical units";
-        break;
-      case 19:                      // light years
-        uScale = 3.725e+17;
-        units = "light years";
-        break;
-      case 20:                      // parsecs
-        uScale = 1.215e+18;
-        units = "parsecs";
-        break;
+        case 1:                       // inches
+          uScale = 1.0;
+          units = "inches";
+          break;
+        case 2:                       // feet
+          uScale = 1.0 / 12;
+          units = "feet";
+          break;
+        case 3:                       // miles
+          uScale = 63360.0;
+          units = "miles";
+          break;
+        case 0:                       // unitless (assume millimeters)
+        case 4:                       // millimeters
+          uScale = 0.039370078740157;
+          units = "millimeters";
+          break;
+        case 5:                       // centimeters
+          uScale = 0.39370078740157;
+          units = "centimeters";
+          break;
+        case 6:                       // meters
+          uScale = 39.370078740157;
+          units = "meters";
+          break;
+        case 7:                       // kilometers
+          uScale = 39370.078740157;
+          units = "kilometers";
+          break;
+        case 8:                       // microinches
+          uScale = 0.000001;
+          units = "microinches";
+          break;
+        case 9:                       // mils
+          uScale = 0.001;
+          units = "mils";
+          break;
+        case 10:                      // yards
+          uScale = 36.0;
+          units = "yards";
+          break;
+        case 11:                      // angstroms
+          uScale = 3.9370078740157e-9;
+          units = "angstroms";
+          break;
+        case 12:                      // nanometers
+          uScale = 3.9370078740157e-8;
+          units = "nanometers";
+          break;
+        case 13:                      // microns
+          uScale = 3.9370078740157e-5;
+          units = "microns";
+          break;
+        case 14:                      // decimeters
+          uScale = 3.9370078740157;
+          units = "decimeters";
+          break;
+        case 15:                      // decameters
+          uScale = 393.70078740157;
+          units = "decameters";
+          break;
+        case 16:                      // hectometers
+          uScale = 3937.007878740157;
+          units = "hectometers";
+          break;
+        case 17:                      // gigameters
+          uScale = 39370078740.157;
+          units = "gigameters";
+          break;
+        case 18:                      // astronomical units
+          uScale = 5.89e+12;
+          units = "astronomical units";
+          break;
+        case 19:                      // light years
+          uScale = 3.725e+17;
+          units = "light years";
+          break;
+        case 20:                      // parsecs
+          uScale = 1.215e+18;
+          units = "parsecs";
+          break;
       }
     }
   }
@@ -227,13 +234,14 @@ public class DXFReader {
 
   // Provides a way to disable drawing of certain types
   private boolean doDraw (DrawItem entity) {
-    return (!(entity instanceof Text)  || drawText) &&
-           (!(entity instanceof MText) || drawMText) &&
-           (!(entity instanceof Dimen) || drawDimen);
+    return (!(entity instanceof Text) || drawText) &&
+      (!(entity instanceof MText) || drawMText) &&
+      (!(entity instanceof Dimen) || drawDimen);
   }
 
   /**
    * Enables drawing og TEXT objects (disabled by default)
+   *
    * @param enable true to enable
    */
   public void enableText (boolean enable) {
@@ -242,6 +250,7 @@ public class DXFReader {
 
   /**
    * Enables drawing og MTEXT objects (disabled by default)
+   *
    * @param enable true to enable
    */
   public void enableMText (boolean enable) {
@@ -250,6 +259,7 @@ public class DXFReader {
 
   /**
    * Enables drawing og DIMENSION objects (disabled by default)
+   *
    * @param enable true to enable
    */
   public void enableDimen (boolean enable) {
@@ -257,91 +267,15 @@ public class DXFReader {
   }
 
   /**
-   * Custom file choose for DXF files that allows selective import of TEXT, MTEXT and DIMENSION elements
+   * Custom file chooser for DXF files that allows selective import of TEXT, MTEXT and DIMENSION elements
    */
-
-  static class DxfFileChooser extends JFileChooser {
-    private final List<JCheckBox> checkboxes = new ArrayList<>();
-    private String          selected;
-
-    public DxfFileChooser (String dUnits, boolean save) {
-      setDialogTitle(save ? "Export DXF File" : "Import DXF File");
-      setDialogType(save ? JFileChooser.SAVE_DIALOG : JFileChooser.OPEN_DIALOG);
-      FileNameExtensionFilter nameFilter = new FileNameExtensionFilter("AutoCad DXF files (*.dxf)", "dxf");
-      addChoosableFileFilter(nameFilter);
-      // Widen JChooser by 25%
-      Dimension dim = getPreferredSize();
-      setPreferredSize(new Dimension((int) (dim.width * 1.25), dim.height));
-      setFileFilter(nameFilter);
-      setAcceptAllFileFilterUsed(true);
-      String[] units = {"Inches:in", "Centimeters:cm", "Millimeters:mm"};
-      JPanel unitsPanel = new JPanel(new GridLayout(0, 1));
-      ButtonGroup group = new ButtonGroup();
-      for (String unit : units) {
-        String[] parts = unit.split(":");
-        JRadioButton button = new JRadioButton(parts[0]);
-        if (parts[1].equals(dUnits)){
-          button.setSelected(true);
-          selected = parts[1];
-        }
-        group.add(button);
-        unitsPanel.add(button);
-        button.addActionListener(ev -> selected = parts[1]);
-      }
-      JPanel panel = new JPanel(new GridLayout(0, 1));
-      panel.add(getPanel(save ? "File Units:" : "Default Units:", unitsPanel));
-      if (save) {
-        panel.add(new JPanel());
-      } else {
-        String[] options = {"TEXT", "MTEXT", "DIMENSION"};
-        JPanel importPanel = new JPanel(new GridLayout(0, 1));
-        for (String option : options) {
-          JCheckBox checkbox = new JCheckBox(option);
-          importPanel.add(checkbox);
-          checkboxes.add(checkbox);
-        }
-        panel.add(getPanel("Include:", importPanel));
-      }
-      setAccessory(panel);
-    }
-
-    private JPanel getPanel (String heading, JComponent guts) {
-      JPanel panel = new JPanel(new BorderLayout());
-      panel.setBackground(Color.WHITE);
-      JLabel label = new JLabel(heading, JLabel.CENTER);
-      label.setBorder(BorderFactory.createLineBorder(Color.BLACK));
-      panel.add(label, BorderLayout.NORTH);
-      panel.add(guts, BorderLayout.CENTER);
-      return panel;
-    }
-
-    String getSelectedUnits () {
-      return selected;
-    }
-
-    boolean isOptionSelected (String name) {
-      for (JCheckBox checkbox : checkboxes) {
-        if (checkbox.getText().equals(name)) {
-          return checkbox.isSelected();
-        }
-      }
-      return false;
-    }
-  }
 
   static class DxfFileChooserMenu extends LaserCut.FileChooserMenu {
     private List<JCheckBox> checkboxes;
-    private String          selected;
-    private final String    dUnits;
+    private String selected;
 
-    DxfFileChooserMenu (LaserCut lCut, String type, String ext, boolean save, String dUnits) {
+    DxfFileChooserMenu (LaserCut lCut, String type, String ext, boolean save, Preferences prefs) {
       super(lCut, type, ext, save);
-      this.dUnits = dUnits;
-    }
-
-    @Override
-    void buildInterface (String type, String ext, boolean save){
-      super.buildInterface(type, ext, save);
       checkboxes = new ArrayList<>();
       // Widen JChooser by 25%
       Dimension dim = getPreferredSize();
@@ -352,7 +286,7 @@ public class DXFReader {
       for (String unit : units) {
         String[] parts = unit.split(":");
         JRadioButton button = new JRadioButton(parts[0]);
-        if (parts[1].equals(dUnits)){
+        if (parts[1].equals(prefs.get("displayUnits", "in"))) {
           button.setSelected(true);
           selected = parts[1];
         }
@@ -400,6 +334,27 @@ public class DXFReader {
       return false;
     }
   }
+
+  List<CADShape> readDxfFile (File sFile) throws IOException {
+    Shape[] shapes = Utils2D.removeOffset(parseFile(sFile, 12, 0));
+    CADShapeGroup group = new CADShapeGroup();
+    List<CADShape> gShapes = new ArrayList<>();
+    for (
+      Shape shape : shapes) {
+      Rectangle2D sBnds = shape.getBounds2D();
+      double xLoc = sBnds.getX();
+      double yLoc = sBnds.getY();
+      double wid = sBnds.getWidth();
+      double hyt = sBnds.getHeight();
+      AffineTransform at = AffineTransform.getTranslateInstance(-xLoc - (wid / 2), -yLoc - (hyt / 2));
+      shape = at.createTransformedShape(shape);
+      CADShape cShape = new CADScaledShape(shape, xLoc, yLoc, 0, false);
+      group.addToGroup(cShape);
+      gShapes.add(cShape);
+    }
+    return gShapes;
+  }
+
 
   /**
    * Crude implementation of TEXT using GlyphVector to create vector outlines of text
@@ -1372,7 +1327,6 @@ public class DXFReader {
       return path;
     }
   }
-
 
   /**
    *  See: http://darrenirvine.blogspot.com/2015/08/polylines-radius-bulge-turnaround.html

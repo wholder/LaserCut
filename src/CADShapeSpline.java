@@ -7,6 +7,7 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.prefs.Preferences;
 
   /*
     Bézier Curves:
@@ -25,7 +26,7 @@ class CADShapeSpline extends CADShape implements Serializable, LaserCut.StateMes
   }
 
   @Override
-  void createAndPlace (DrawSurface surface, LaserCut laserCut) {
+  void createAndPlace (DrawSurface surface, LaserCut laserCut, Preferences prefs) {
     surface.placeShape(this);
   }
 

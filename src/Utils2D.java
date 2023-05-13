@@ -310,4 +310,51 @@ public class Utils2D {
     center.transform(point, np);
     return np;
   }
+
+  /**
+   * Scan all Shapes objects to determine x/y offset, if any, then remove offset.
+   * @param shapes Array of Shape objects
+   * @return Array of transformed Shape objects
+   */
+  static Shape[] removeOffset (Shape[] shapes) {
+    if (shapes.length > 0) {
+      Rectangle2D bounds = null;
+      for (Shape shape : shapes) {
+        if (bounds == null) {
+          bounds = BetterBoundingBox.getBounds(shape);
+        } else {
+          try {
+            bounds = bounds.createUnion(BetterBoundingBox.getBounds(shape));
+          } catch (NullPointerException ex) {
+            ex.printStackTrace();
+          }
+        }
+      }
+      if (bounds != null) {
+        double minX = bounds.getX();
+        double minY = bounds.getY();
+        if (minX != 0 || minY != 0) {
+          AffineTransform atScale = AffineTransform.getTranslateInstance(-minX, -minY);
+          for (int ii = 0; ii < shapes.length; ii++) {
+            shapes[ii] = atScale.createTransformedShape(shapes[ii]);
+          }
+        }
+      }
+    }
+    return shapes;
+  }
+
+  /**
+   * Create a new Shape (Path2D.Double) object that combines all the elements of the Array of Shapes
+   * @param shapes Array of Shape objects
+   * @return New Shape object that contains all the features of the Array of Shapes
+   */
+  static Shape combinePaths (Shape[] shapes) {
+    Path2D.Double newShape = new Path2D.Double();
+    AffineTransform atScale = AffineTransform.getTranslateInstance(0, 0);
+    for (Shape shape : shapes) {
+      newShape.append(shape.getPathIterator(atScale), false);
+    }
+    return newShape;
+  }
 }

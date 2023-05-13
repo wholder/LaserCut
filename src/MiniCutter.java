@@ -7,6 +7,7 @@ import java.awt.geom.Rectangle2D;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.prefs.Preferences;
 
 import static javax.swing.JOptionPane.*;
 
@@ -68,11 +69,11 @@ class MiniCutter implements LaserCut.OutputDevice {
   private static final boolean  INVERT_Y_AXIS = false;
   private final JSSCPort        jPort;
   private final LaserCut        laserCut;
-  private final String          dUnits;
+  private final Preferences     prefs;
 
-  MiniCutter (LaserCut laserCut) {
+  MiniCutter (LaserCut laserCut, Preferences prefs) {
     this.laserCut = laserCut;
-    this.dUnits = laserCut.displayUnits;
+    this.prefs = prefs;
     jPort = new JSSCPort(getPrefix(), laserCut.prefs);
   }
 
@@ -179,7 +180,7 @@ class MiniCutter implements LaserCut.OutputDevice {
           new ParameterDialog.ParmItem("Cut Speed{inches/minute}", laserCut.prefs.getInt(getPrefix() + "speed",
                                        MINI_PAPER_CUTTER_DEFAULT_SPEED)),
       };
-      if (ParameterDialog.showSaveCancelParameterDialog(parmSet, dUnits, laserCut)) {
+      if (ParameterDialog.showSaveCancelParameterDialog(parmSet, prefs.get("displayUnits", "in"), laserCut)) {
         laserCut.prefs.putBoolean(getPrefix() + "pathplan", (Boolean) parmSet[0].value);
         laserCut.prefs.putInt(getPrefix() + "speed", (Integer) parmSet[1].value);
       }

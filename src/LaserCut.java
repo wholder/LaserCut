@@ -41,14 +41,13 @@ public class LaserCut extends JFrame {
   static final double                 SCREEN_PPI = java.awt.Toolkit.getDefaultToolkit().getScreenResolution();
   static final DecimalFormat          df = new DecimalFormat("#0.0###");
   private static final int            cmdMask = Toolkit.getDefaultToolkit().getMenuShortcutKeyMask();
-  public final transient Preferences prefs = Preferences.userRoot().node(this.getClass().getName());
+  public final transient Preferences  prefs = Preferences.userRoot().node(this.getClass().getName());
   DrawSurface                         surface;
   private final JScrollPane           scrollPane;
   private final JMenuBar              menuBar = new JMenuBar();
   private final JMenuItem             gerberZip;
   private int                         pxDpi = prefs.getInt("svg.pxDpi", 96);
   private long                        savedCrc;
-  String                              displayUnits = prefs.get("displayUnits", "in");
   private boolean                     useMouseWheel = prefs.getBoolean("useMouseWheel", false);
   private boolean                     snapToGrid = prefs.getBoolean("snapToGrid", true);
   private boolean                     displayGrid = prefs.getBoolean("displayGrid", true);
@@ -151,7 +150,7 @@ public class LaserCut extends JFrame {
     items.put("enableGerber", new ParameterDialog.ParmItem("Enable Gerber ZIP Import", prefs.getBoolean("gerber.import", false)));
     items.put("pxDpi", new ParameterDialog.ParmItem("px per Inch (SVG Import/Export)", prefs.getInt("svg.pxDpi", 96)));
     ParameterDialog.ParmItem[] parmSet = items.values().toArray(new ParameterDialog.ParmItem[0]);
-    ParameterDialog dialog = (new ParameterDialog("LaserCut Preferences", parmSet, new String[] {"Save", "Cancel"}, displayUnits));
+    ParameterDialog dialog = (new ParameterDialog("LaserCut Preferences", parmSet, new String[] {"Save", "Cancel"}, prefs.get("displayUnits", "in")));
     dialog.setLocationRelativeTo(this);
     dialog.setVisible(true);              // Note: this call invokes dialog
     if (dialog.wasPressed() ) {
@@ -220,10 +219,6 @@ public class LaserCut extends JFrame {
       super(save ? "Export to " + type + " File" :  "Import " + type + " File");
       this.lCut = lCut;
       fileChooser = new JFileChooser();
-      buildInterface(type, ext, save);
-    }
-
-    void buildInterface (String type, String ext, boolean save) {
       addActionListener(ev -> {
         fileChooser.setDialogTitle(save ? "Export " + type + " File" :  "Import " + type + " File");
         fileChooser.setDialogType(save ? JFileChooser.SAVE_DIALOG : JFileChooser.OPEN_DIALOG);
@@ -553,7 +548,7 @@ public class LaserCut extends JFrame {
       mItem.addActionListener(ev -> {
         try {
           CADShape shp = shapeClass.getClass().newInstance();
-          shp.createAndPlace(surface, this);
+          shp.createAndPlace(surface, this, prefs);
         } catch (Exception ex) {
           ex.printStackTrace();
         }
@@ -628,7 +623,7 @@ public class LaserCut extends JFrame {
     editSelected.addActionListener((ev) -> {
       CADShape sel = surface.getSelected();
       boolean centered = sel.centered;
-      if (sel.editParameterDialog(surface, displayUnits)) {
+      if (sel.editParameterDialog(surface, prefs.get("displayUnits", "in"))) {
         // User clicked dialog's OK button
         if (centered != sel.centered) {
           Rectangle2D bounds = sel.getShape().getBounds2D();
@@ -716,7 +711,7 @@ public class LaserCut extends JFrame {
     JMenuItem roundCorners = new MyMenuItem("Round Corners of Selected Shape", KeyEvent.VK_B, cmdMask, false);
     roundCorners.addActionListener((ev) -> {
       ParameterDialog.ParmItem[] rParms = {new ParameterDialog.ParmItem("radius|in", 0d)};
-      ParameterDialog rDialog = (new ParameterDialog("Edit Parameters", rParms, new String[] {"Round", "Cancel"}, displayUnits));
+      ParameterDialog rDialog = (new ParameterDialog("Edit Parameters", rParms, new String[] {"Round", "Cancel"}, prefs.get("displayUnits", "in")));
       rDialog.setLocationRelativeTo(surface.getParent());
       rDialog.setVisible(true);              // Note: this call invokes dialog
       if (rDialog.wasPressed()) {
@@ -736,7 +731,7 @@ public class LaserCut extends JFrame {
       ParameterDialog.ParmItem[] rParms = {new ParameterDialog.ParmItem("radius|in{radius of tool}", 0d),
           new ParameterDialog.ParmItem("inset{If checked, toolpath routes interior" +
               " of cadShape, else outside}", true)};
-      ParameterDialog rDialog = (new ParameterDialog("Edit Parameters", rParms, new String[] {"OK", "Cancel"}, displayUnits));
+      ParameterDialog rDialog = (new ParameterDialog("Edit Parameters", rParms, new String[] {"OK", "Cancel"}, prefs.get("displayUnits", "in")));
       rDialog.setLocationRelativeTo(surface.getParent());
       rDialog.setVisible(true);              // Note: this call invokes dialog
       if (rDialog.wasPressed()) {
@@ -819,24 +814,31 @@ public class LaserCut extends JFrame {
         SVGParser parser = new SVGParser();
         parser.setPxDpi(pxDpi);
         //parser.enableDebug(true);
-        Shape shape = SVGParser.combinePaths(SVGParser.removeOffset(parser.parseSVG(sFile)));
+/*
+        Shape shape = Utils2D.combinePaths(Utils2D.removeOffset(parser.parseSVG(sFile)));
         Rectangle2D bounds = BetterBoundingBox.getBounds(shape);
         double offX = bounds.getWidth() / 2;
         double offY = bounds.getHeight() / 2;
         AffineTransform at = AffineTransform.getTranslateInstance(-offX, -offY);
         shape = at.createTransformedShape(shape);
-        CADShape shp = new CADScaledShape(shape, offX, offY, 0, false, 100.0);
-        if (shp.placeParameterDialog(surface, displayUnits)) {
-          surface.placeShape(shp);
-        } else {
-          surface.setInfoText("Import cancelled");
+        CADShape shp = new CADScaledShape(shape, offX, offY, 0, false);
+*/
+        try {
+          CADShape shp = parser.parseSvgFile(sFile);
+          if (shp.placeParameterDialog(surface, prefs.get("displayUnits", "in"))) {
+            surface.placeShape(shp);
+          } else {
+            surface.setInfoText("Import cancelled");
+          }
+        } catch (IOException ex) {
+          showErrorDialog("Unable to open SVG file");
         }
       }
     });
     //
     // Add "Import DXF File" menu item
     //
-    importMenu.add(new DXFReader.DxfFileChooserMenu(this, "DXF", "dxf", false, displayUnits) {
+    importMenu.add(new DXFReader.DxfFileChooserMenu(this, "DXF", "dxf", false, prefs) {
       void processFile (File sFile) throws Exception {
         String importUnits = getSelectedUnits();
         DXFReader dxf = new DXFReader(importUnits);
@@ -849,22 +851,11 @@ public class LaserCut extends JFrame {
         if (isOptionSelected("DIMENSION")) {
           dxf.enableDimen(true);
         }
-        Shape[] shapes = SVGParser.removeOffset(dxf.parseFile(sFile, 12, 0));
-        CADShapeGroup group = new CADShapeGroup();
-        List<CADShape> gShapes = new ArrayList<>();
-        for (Shape shape : shapes) {
-          Rectangle2D sBnds = shape.getBounds2D();
-          double xLoc = sBnds.getX();
-          double yLoc = sBnds.getY();
-          double wid = sBnds.getWidth();
-          double hyt = sBnds.getHeight();
-          AffineTransform at = AffineTransform.getTranslateInstance(-xLoc - (wid / 2), -yLoc - (hyt / 2));
-          shape = at.createTransformedShape(shape);
-          CADShape cShape = new CADShape(shape, xLoc, yLoc, 0, false);
-          group.addToGroup(cShape);
-          gShapes.add(cShape);
+        try {
+          surface.placeShapes(dxf.readDxfFile(sFile));
+        } catch (IOException ex) {
+          showErrorDialog("Unable to open DXF file");
         }
-        surface.placeShapes(gShapes);
       }
     });
     //
@@ -929,7 +920,7 @@ public class LaserCut extends JFrame {
         String[][] song = cols.toArray(new String[cols.size()][0]);
         CADMusicStrip mStrip = new CADMusicStrip();
         mStrip.setNotes(song);
-        if (mStrip.placeParameterDialog(surface, displayUnits)) {
+        if (mStrip.placeParameterDialog(surface, prefs.get("displayUnits", "in"))) {
           surface.placeShape(mStrip);
         } else {
           surface.setInfoText("Import cancelled");
@@ -973,7 +964,7 @@ public class LaserCut extends JFrame {
     // Based on: https://jsevy.com/wordpress/index.php/java-and-android/jdxf-java-dxf-library/
     //  by Jonathan Sevy (released under the MIT License; https://choosealicense.com/licenses/mit/)
     //
-    exportMenu.add(new DXFReader.DxfFileChooserMenu(this, "DXF", "dxf", true, displayUnits) {
+    exportMenu.add(new DXFReader.DxfFileChooserMenu(this, "DXF", "dxf", true, prefs) {
       void processFile (File sFile) throws Exception {
         String units = getSelectedUnits();
         AffineTransform atExport = null;
@@ -1044,17 +1035,16 @@ public class LaserCut extends JFrame {
     unitsMenu.setToolTipText("Select units to be used in controls");
     ButtonGroup unitGroup = new ButtonGroup();
     String[] unitSet = {"Inches:in", "Centimeters:cm", "Millimeters:mm"};
-    displayUnits = prefs.get("displayUnits", "in");
-    surface.setUnits(displayUnits);
+    surface.setUnits(prefs.get("displayUnits", "in"));
     for (String unit : unitSet) {
       String[] parts = unit.split(":");
-      boolean select = parts[1].equals(displayUnits);
+      boolean select = parts[1].equals(prefs.get("displayUnits", "in"));
       JMenuItem uItem = new JRadioButtonMenuItem(parts[0], select);
       unitGroup.add(uItem);
       unitsMenu.add(uItem);
       uItem.addActionListener(ev -> {
-        prefs.put("displayUnits", displayUnits = parts[1]);
-        surface.setUnits(displayUnits);
+        prefs.put("displayUnits", parts[1]);
+        surface.setUnits(parts[1]);
       });
     }
     menuBar.add(unitsMenu);
@@ -1146,22 +1136,22 @@ public class LaserCut extends JFrame {
     try {
       switch (prefs.getInt("outputDevice", 0)) {
         case 1:
-          outputDevice = new ZingLaser(this);
+          outputDevice = new ZingLaser(this, prefs);
           break;
         case 2:
-          outputDevice = new MiniLaser(this);
+          outputDevice = new MiniLaser(this, prefs);
           break;
         case 3:
-          outputDevice = new MicroLaser(this);
+          outputDevice = new MicroLaser(this, prefs);
           break;
         case 4:
-          outputDevice = new MiniCNC(this);
+          outputDevice = new MiniCNC(this, prefs);
           break;
         case 5:
-          outputDevice = new Silhouette(this);
+          outputDevice = new Silhouette(this, prefs);
           break;
         case 6:
-          outputDevice = new MiniCutter(this);
+          outputDevice = new MiniCutter(this, prefs);
           break;
         default:
           outputDevice = null;

@@ -13,6 +13,7 @@ import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 import java.util.*;
 import java.util.List;
+import java.util.prefs.Preferences;
 
 class ZingLaser implements LaserCut.OutputDevice {
   private static final double               ZING_PPI = 500;
@@ -23,12 +24,12 @@ class ZingLaser implements LaserCut.OutputDevice {
   private static final int                  ZING_RASTER_POWER_DEFAUlT = 50;
   private static final Rectangle2D.Double   zingFullSize = new Rectangle2D.Double(0, 0, 16, 12);
   private static final Rectangle2D.Double   zing12x12Size = new Rectangle2D.Double(0, 0, 12, 12);
-  private final LaserCut                          laserCut;
-  private final String                            dUnits;
+  private final LaserCut                    laserCut;
+  private final Preferences                 prefs;
 
-  ZingLaser (LaserCut laserCut) {
+  ZingLaser (LaserCut laserCut, Preferences prefs) {
     this.laserCut = laserCut;
-    this.dUnits = laserCut.displayUnits;
+    this.prefs = prefs;
   }
 
   // Implemented for LaserCut.OutputDevice
@@ -197,7 +198,7 @@ class ZingLaser implements LaserCut.OutputDevice {
           }
         }
       });
-      if (ParameterDialog.showSaveCancelParameterDialog(parmSet, dUnits, laserCut)) {
+      if (ParameterDialog.showSaveCancelParameterDialog(parmSet, prefs.get("displayUnits", "in"), laserCut)) {
         laserCut.prefs.put("zing.ip", (String) parmSet[0].value);
         laserCut.prefs.putInt("zing.power", (Integer) parmSet[4].value);
         laserCut.prefs.putInt("zing.speed", (Integer) parmSet[5].value);

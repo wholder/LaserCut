@@ -4,6 +4,7 @@ import java.io.*;
 import java.lang.reflect.Field;
 import java.util.*;
 import java.util.List;
+import java.util.prefs.Preferences;
 
 /**
  * This is the base class for all the CAD objects.  JavaCut uses serialization to save and restore
@@ -50,7 +51,7 @@ import java.util.List;
  * You cannot change the name of the class or the package it belongs to, as that information is written
  * to the stream during serialization.
  *
- * void 			createAndPlace (DrawSurface surface, LaserCut laserCut)
+ * void 			createAndPlace (DrawSurface surface, LaserCut laserCut, LaserCut laserCut)
  * String 		getName ()
  * String 		getShapePositionInfo ()
  * Shape 		buildShape ()
@@ -100,16 +101,12 @@ class CADShape implements Serializable {
   }
 
   // Override in subclasses such as CADRasterImage and CADShapeSpline
-  void createAndPlace (DrawSurface surface, LaserCut laserCut) {
-    if (placeParameterDialog(surface, laserCut.displayUnits)) {
+  void createAndPlace (DrawSurface surface, LaserCut laserCut, Preferences prefs) {
+    if (placeParameterDialog(surface, prefs.get("displayUnits", "in"))) {
       surface.placeShape(this);
     } else {
       surface.setInfoText("Place " + getMenuName() + " cancelled");
     }
-  }
-
-  String getName () {
-    return this.getClass().getName();
   }
 
   // Override in subclasses
@@ -654,9 +651,10 @@ class CADShape implements Serializable {
 
   /**
    * Get location of unrotated point for resize/rotate control
+   * Note: override, as needed
    * @return unrotated location of grab point
    */
-  private Point2D.Double getGrabPoint () {
+   protected Point2D.Double getGrabPoint () {
     Rectangle2D bnds = getShapeBounds();
     return new Point2D.Double(bnds.getX() + bnds.getWidth(), bnds.getY() + bnds.getHeight());
   }

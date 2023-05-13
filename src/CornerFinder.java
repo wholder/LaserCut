@@ -17,7 +17,7 @@ public class CornerFinder {
     shape = sq;
     AffineTransform rot = AffineTransform.getRotateInstance(Math.toRadians(45));
     shape = rot.createTransformedShape(shape);
-    shape = SVGParser.removeOffset(new Shape[] {shape})[0];
+    shape = Utils2D.removeOffset(new Shape[] {shape})[0];
     ArrayList<Shape> shapes = new ArrayList<>();
     shapes.add(roundCorners(shape, .125));
     new ShapeWindow(shapes.toArray(new Shape[0]), .25);

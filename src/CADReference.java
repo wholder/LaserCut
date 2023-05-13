@@ -5,6 +5,7 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.prefs.Preferences;
 
 class CADReference extends CADShape implements Serializable, CADNoDraw {
   private static final long serialVersionUID = 8204176292743368277L;
@@ -23,7 +24,7 @@ class CADReference extends CADShape implements Serializable, CADNoDraw {
   }
 
   @Override
-  void createAndPlace (DrawSurface surface, LaserCut laserCut) {
+  void createAndPlace (DrawSurface surface, LaserCut laserCut, Preferences prefs) {
     surface.placeShape(this);
   }
 

@@ -8,6 +8,7 @@ import java.awt.geom.*;
 import java.text.DecimalFormat;
 import java.util.*;
 import java.util.List;
+import java.util.prefs.Preferences;
 
 import static javax.swing.JOptionPane.*;
 
@@ -99,9 +100,9 @@ class Silhouette implements LaserCut.OutputDevice {
     return buf.toString();
   }
 
-  Silhouette (LaserCut laserCut) {
+  Silhouette (LaserCut laserCut, Preferences prefs) {
     this.laserCut = laserCut;
-    this.dUnits = laserCut.displayUnits;
+    this.dUnits = prefs.get("displayUnits", "in");
     // Setup currently selected, or default Silhouette Device and its parameters
     deviceName = getString("deviceName", cutters.get(0).name);
     if (!devices.containsKey(deviceName)) {

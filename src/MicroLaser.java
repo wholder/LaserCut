@@ -1,9 +1,10 @@
 import java.awt.geom.Rectangle2D;
+import java.util.prefs.Preferences;
 
 public class MicroLaser extends MiniLaser{
 
-  MicroLaser (LaserCut laserCut) {
-    super(laserCut);
+  MicroLaser (LaserCut laserCut, Preferences prefs) {
+    super(laserCut, prefs);
   }
 
   // Implement for GRBLBase to define Preferences prefix, such as "mini.laser."

@@ -16,6 +16,7 @@ import java.awt.*;
 import java.awt.geom.*;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.IOException;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.regex.Matcher;
@@ -332,12 +333,22 @@ public class SVGParser {
     return shapes.toArray(new Shape[0]);
   }
 
+  CADShape parseSvgFile (File sFile) throws Exception {
+    Shape shape = Utils2D.combinePaths(Utils2D.removeOffset(parseSVG(sFile)));
+    Rectangle2D bounds = BetterBoundingBox.getBounds(shape);
+    double offX = bounds.getWidth() / 2;
+    double offY = bounds.getHeight() / 2;
+    AffineTransform at = AffineTransform.getTranslateInstance(-offX, -offY);
+    shape = at.createTransformedShape(shape);
+    return new CADScaledShape(shape, offX, offY, 0, false);
+  }
+
   /**
    * Converts the various units used by SVG files to inches
    * Note: The px unit can vary depending on the software that generated the SVG file.  By default this code assumes
-   * 96px equals 1 inch (see: section 4.3.2 of https://www.w3.org/TR/2011/REC-CSS2-20110607/syndata.html#length-units)
+   * 96px equals 1 inch (see: section 4.3.2 of <a href="https://www.w3.org/TR/2011/REC-CSS2-20110607/syndata.html#length-units">...</a>)
    * However, I may change the parser so it can alter this value if it detects an older file format, such as versions
-   * of inkscape prior to version 0.92 (see: https://github.com/t-oster/VisiCut/issues/347)
+   * of inkscape prior to version 0.92 (see: <a href="https://github.com/t-oster/VisiCut/issues/347">...</a>)
    * @param data String version of value to parse
    * @return value in inches
    */
@@ -411,53 +422,6 @@ public class SVGParser {
       }
     }
     return at;
-  }
-
-  /**
-   * Scan all Shapes objects to determine x/y offset, if any, then remove offset.
-   * @param shapes Array of Shape objects
-   * @return Array of transformed Shape objects
-   */
-  static Shape[] removeOffset (Shape[] shapes) {
-    if (shapes.length > 0) {
-      Rectangle2D bounds = null;
-      for (Shape shape : shapes) {
-        if (bounds == null) {
-          bounds = BetterBoundingBox.getBounds(shape);
-        } else {
-          try {
-            bounds = bounds.createUnion(BetterBoundingBox.getBounds(shape));
-          } catch (NullPointerException ex) {
-            ex.printStackTrace();
-          }
-        }
-      }
-      if (bounds != null) {
-        double minX = bounds.getX();
-        double minY = bounds.getY();
-        if (minX != 0 || minY != 0) {
-          AffineTransform atScale = AffineTransform.getTranslateInstance(-minX, -minY);
-          for (int ii = 0; ii < shapes.length; ii++) {
-            shapes[ii] = atScale.createTransformedShape(shapes[ii]);
-          }
-        }
-      }
-    }
-    return shapes;
-  }
-
-  /**
-   * Create a new Shape (Path2D.Double) object that combines all the elements of the Array of Shapes
-   * @param shapes Array of Shape objects
-   * @return New Shape object that contains all the features of the Array of Shapes
-   */
-  static Shape combinePaths (Shape[] shapes) {
-    Path2D.Double newShape = new Path2D.Double();
-    AffineTransform atScale = AffineTransform.getTranslateInstance(0, 0);
-    for (Shape shape : shapes) {
-      newShape.append(shape.getPathIterator(atScale), false);
-    }
-    return newShape;
   }
 
   /**
@@ -642,8 +606,8 @@ public class SVGParser {
         for (File file : files) {
           SVGParser parser = new SVGParser();
           Shape[] shapes = parser.parseSVG(file);
-          shapes = removeOffset(shapes);
-          Shape shape = combinePaths(shapes);
+          shapes = Utils2D.removeOffset(shapes);
+          Shape shape = Utils2D.combinePaths(shapes);
           Rectangle2D bounds = shape.getBounds2D();
           String fName = file.getName().substring(0, file.getName().length() - 4);
           String bx = pad(df.format(bounds.getX()), 7);
@@ -655,8 +619,8 @@ public class SVGParser {
       } else {
         SVGParser parser = new SVGParser();
         parser.enableDebug(true);
-        Shape[] shapes = removeOffset(parser.parseSVG(new File("Test/SVG Files/rotate.svg")));
-        Shape shape = combinePaths(shapes);
+        Shape[] shapes = Utils2D.removeOffset(parser.parseSVG(new File("Test/SVG Files/rotate.svg")));
+        Shape shape = Utils2D.combinePaths(shapes);
         new ShapeWindow(new Shape[]{shape}, .25);
       }
     }

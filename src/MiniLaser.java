@@ -11,8 +11,10 @@ import java.awt.image.WritableRaster;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
+import java.util.prefs.Preferences;
 
-  // https://www.cnccookbook.com/g-code-basics-program-format-structure-blocks/
+// https://www.cnccookbook.com/g-code-basics-program-format-structure-blocks/
 
 import static javax.swing.JOptionPane.*;
 
@@ -34,8 +36,8 @@ class MiniLaser extends GRBLBase implements LaserCut.OutputDevice {
   private static final int      MINI_MAX_POWER = 255;         // Laser control value for 100% power
   private static final int      MINI_MAX_SPEED = 200;         // Max feed rate (inches/min)
 
-  MiniLaser (LaserCut laserCut) {
-    super(laserCut);
+  MiniLaser (LaserCut laserCut, Preferences prefs) {
+    super(laserCut, prefs);
   }
 
   // Implement for GRBLBase to define Preferences prefix, such as "mini.laser."
@@ -193,7 +195,7 @@ class MiniLaser extends GRBLBase implements LaserCut.OutputDevice {
           new ParameterDialog.ParmItem("Workspace Width{inches}", workspace.width),
           new ParameterDialog.ParmItem("Workspace Height{inches}", workspace.height),
       };
-      if (ParameterDialog.showSaveCancelParameterDialog(parmSet, dUnits, laserCut)) {
+      if (ParameterDialog.showSaveCancelParameterDialog(parmSet, prefs.get("displayUnits", "in"), laserCut)) {
         putBoolean("pathplan", (Boolean) parmSet[0].value);
         putInt("guide", (Integer) parmSet[1].value);
         // Separator

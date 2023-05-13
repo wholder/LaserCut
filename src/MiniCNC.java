@@ -47,6 +47,7 @@
   import java.text.DecimalFormat;
   import java.util.ArrayList;
   import java.util.List;
+  import java.util.prefs.Preferences;
 
   import static javax.swing.JOptionPane.*;
 
@@ -55,8 +56,8 @@
     private static final int      MINI_CNC_RPM_DEFAULT = 100;
     private JSSCPort              jPort;
 
-    MiniCNC (LaserCut laserCut) {
-      super(laserCut);
+    MiniCNC (LaserCut laserCut, Preferences prefs) {
+      super(laserCut, prefs);
     }
 
     // Implement for GRBLBase to define Preferences prefix, such as "mini.laser."
@@ -148,7 +149,7 @@
           new ParameterDialog.ParmItem("Workspace Width{inches}", workspace.width),
           new ParameterDialog.ParmItem("Workspace Height{inches}", workspace.height),
         };
-        if (ParameterDialog.showSaveCancelParameterDialog(parmSet, dUnits, laserCut)) {
+        if (ParameterDialog.showSaveCancelParameterDialog(parmSet, prefs.get("displayUnits", "in"), laserCut)) {
           putInt("rpm", (Integer) parmSet[0].value);
           putInt("feed", (Integer) parmSet[1].value);
           // Separator

@@ -17,6 +17,7 @@ import java.awt.image.BufferedImage;
 import java.io.*;
 import java.util.*;
 import java.util.List;
+import java.util.prefs.Preferences;
 
 import static javax.swing.JOptionPane.*;
 
@@ -33,7 +34,7 @@ class CADRasterImage extends CADShape implements Serializable, LaserCut.Resizabl
   }
 
   @Override
-  void createAndPlace (DrawSurface surface, LaserCut laserCut) {
+  void createAndPlace (DrawSurface surface, LaserCut laserCut, Preferences prefs) {
     // Prompt for Image file
     JFileChooser fileChooser = new JFileChooser();
     fileChooser.setDialogTitle("Select an Image File");
@@ -42,7 +43,7 @@ class CADRasterImage extends CADShape implements Serializable, LaserCut.Resizabl
       "jpg", "jpeg", "png", "gif", "bmp");
     fileChooser.addChoosableFileFilter(nameFilter);
     fileChooser.setFileFilter(nameFilter);
-    fileChooser.setSelectedFile(new File(laserCut.prefs.get("image.dir", "/")));
+    fileChooser.setSelectedFile(new File(prefs.get("image.dir", "/")));
     if (fileChooser.showOpenDialog(laserCut) == JFileChooser.APPROVE_OPTION) {
       try {
         File imgFile = fileChooser.getSelectedFile();
@@ -54,7 +55,7 @@ class CADRasterImage extends CADShape implements Serializable, LaserCut.Resizabl
         height = (double) img.getHeight() / ppi.height;
         boolean placed = false;
         do {
-          if (placeParameterDialog(surface, laserCut.displayUnits)) {
+          if (placeParameterDialog(surface, prefs.get("displayUnits", "in"))) {
             // Make sure image will fit in work area
             Dimension dim = surface.getWorkSize();
             if (width > dim.width / LaserCut.SCREEN_PPI || height > dim.height / LaserCut.SCREEN_PPI) {

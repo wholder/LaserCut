@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.text.DecimalFormat;
 import java.util.*;
 import java.util.List;
+import java.util.prefs.Preferences;
 
 import static javax.swing.JOptionPane.*;
 
@@ -113,39 +114,39 @@ import static javax.swing.JOptionPane.*;
 
 abstract class GRBLBase {
   JSSCPort      jPort;
+  Preferences   prefs;
   LaserCut      laserCut;
-  String        dUnits;
 
   abstract String getPrefix ();
 
   boolean getBoolean(String name, boolean def) {
-    return laserCut.prefs.getBoolean(getPrefix() + name, def);
+    return prefs.getBoolean(getPrefix() + name, def);
   }
 
   void putBoolean (String name, boolean value) {
-    laserCut.prefs.putBoolean(getPrefix() + name, value);
+    prefs.putBoolean(getPrefix() + name, value);
   }
 
   int getInt (String name, int def) {
-    return laserCut.prefs.getInt(getPrefix() + name, def);
+    return prefs.getInt(getPrefix() + name, def);
   }
 
   void putInt (String name, int value) {
-    laserCut.prefs.putInt(getPrefix() + name, value);
+    prefs.putInt(getPrefix() + name, value);
   }
 
   double getDouble (String name, double def) {
-    return laserCut.prefs.getDouble(getPrefix() + name, def);
+    return prefs.getDouble(getPrefix() + name, def);
   }
 
   void putDouble (String name, double value) {
-    laserCut.prefs.putDouble(getPrefix() + name, value);
+    prefs.putDouble(getPrefix() + name, value);
   }
 
-  GRBLBase (LaserCut laserCut) {
+  GRBLBase (LaserCut laserCut, Preferences prefs) {
     this.laserCut = laserCut;
-    this.dUnits = laserCut.displayUnits;
-    jPort = new JSSCPort(getPrefix(), laserCut.prefs);
+    this.prefs = prefs;
+    jPort = new JSSCPort(getPrefix(), prefs);
   }
 
   JMenuItem getGRBLSettingsMenu () {
@@ -294,11 +295,11 @@ abstract class GRBLBase {
     return txtBuilder.toString();
   }
 
-  static class DroPanel extends JPanel {
+  class DroPanel extends JPanel {
     private final LaserCut      laserCut;
-    static final DecimalFormat  fmtMm = new DecimalFormat("#0.0");
-    static final DecimalFormat  fmtCm = new DecimalFormat("#0.00");
-    static final DecimalFormat  fmtIn = new DecimalFormat("#0.000");
+    final DecimalFormat  fmtMm = new DecimalFormat("#0.0");
+    final DecimalFormat  fmtCm = new DecimalFormat("#0.00");
+    final DecimalFormat  fmtIn = new DecimalFormat("#0.000");
     private final String[]      vals;
     private final JTextField[]  lbl = new JTextField[3];
 
@@ -347,7 +348,7 @@ abstract class GRBLBase {
           if (tmp.length == 3) {
             for (int ii = 0; ii < 3; ii++) {
               double mm = Double.parseDouble(tmp[ii]);
-              switch (laserCut.displayUnits) {
+              switch (prefs.get("displayUnits", "in")) {
                 case "in":
                   lbl[ii].setText(fmtIn.format(Utils2D.mmToInches(mm)));
                   break;

@@ -6,6 +6,7 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.prefs.Preferences;
 
 class CADArbitraryPolygon extends CADShape implements Serializable, LaserCut.StateMessages, LaserCut.Rotatable {
   private static final long           serialVersionUID = 1175193935200692376L;
@@ -19,7 +20,7 @@ class CADArbitraryPolygon extends CADShape implements Serializable, LaserCut.Sta
   }
 
   @Override
-  void createAndPlace (DrawSurface surface, LaserCut laserCut) {
+  void createAndPlace (DrawSurface surface, LaserCut laserCut, Preferences prefs) {
     surface.placeShape(this);
   }
 
