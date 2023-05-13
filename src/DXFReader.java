@@ -1,3 +1,6 @@
+import com.jsevy.jdxf.DXFDocument;
+import com.jsevy.jdxf.DXFGraphics;
+
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
@@ -7,6 +10,7 @@ import java.awt.font.GlyphVector;
 import java.awt.font.TextAttribute;
 import java.awt.geom.*;
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.text.DecimalFormat;
@@ -355,6 +359,38 @@ public class DXFReader {
     return gShapes;
   }
 
+  static void writeDxfFile (File sFile, List<CADShape> shapes, String units) throws IOException{
+    AffineTransform atExport = null;
+    int dxfUnitCode = 1;
+    if ("cm".equals(units)) {
+      atExport = AffineTransform.getScaleInstance(2.54, 2.54);
+      dxfUnitCode = 5;
+    } else if ("mm".equals(units)) {
+      atExport = AffineTransform.getScaleInstance(25.4, 25.4);
+      dxfUnitCode = 4;
+    }
+    List<Shape> sList = new ArrayList<>();
+    for (CADShape item : shapes) {
+      if (item instanceof CADReference)
+        continue;
+      Shape shape = item.getWorkspaceTranslatedShape();
+      if (atExport != null) {
+        shape = atExport.createTransformedShape(shape);
+      }
+      sList.add(shape);
+    }
+    DXFDocument dxfDocument = new DXFDocument("Exported from LaserCut " + LaserCut.VERSION);
+    dxfDocument.setUnits(dxfUnitCode);
+    DXFGraphics dxfGraphics = dxfDocument.getGraphics();
+    for (Shape shape : sList) {
+      dxfGraphics.draw(shape);
+    }
+    String dxfText = dxfDocument.toDXFString();
+    FileWriter fileWriter = new FileWriter(sFile);
+    fileWriter.write(dxfText);
+    fileWriter.flush();
+    fileWriter.close();
+  }
 
   /**
    * Crude implementation of TEXT using GlyphVector to create vector outlines of text

@@ -1,3 +1,4 @@
+import java.awt.geom.Path2D;
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import java.io.File;
@@ -42,6 +43,38 @@ public class GerberZip {
       yLoc = y;
       diameter = dia;
     }
+  }
+
+  List<CADShape> getShapes () {
+    List<GerberZip.ExcellonHole> holes = parseExcellon();
+    List<List<Point2D.Double>> outlines = parseOutlines();
+    Rectangle2D.Double bounds = GerberZip.getBounds(outlines);
+    // System.out.println("PCB Size: " + bounds.getWidth() + " inches, " + bounds.getHeight() + " inches");
+    double yBase = bounds.getHeight();
+    List<CADShape> gShapes = new ArrayList<>();
+    for (GerberZip.ExcellonHole hole : holes) {
+      gShapes.add(new CADOval(hole.xLoc, yBase - hole.yLoc, hole.diameter, hole.diameter, 0, true));
+    }
+    // Build shapes for all outlines
+    for (List<Point2D.Double> points : outlines) {
+      Path2D.Double path = new Path2D.Double();
+      boolean first = true;
+      for (Point2D.Double point : points) {
+        if (first) {
+          path.moveTo(point.getX() - bounds.width / 2, yBase - point.getY() - bounds.height / 2);
+          first = false;
+        } else {
+          path.lineTo(point.getX() - bounds.width / 2, yBase - point.getY() - bounds.height / 2);
+        }
+      }
+      CADShape outline = new CADShape(path, 0, 0, 0, false);
+      gShapes.add(outline);
+    }
+    CADShapeGroup group = new CADShapeGroup();
+    for (CADShape cShape : gShapes) {
+      group.addToGroup(cShape);
+    }
+    return gShapes;
   }
 
   public static void main (String[] args) throws Exception {

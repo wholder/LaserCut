@@ -69,7 +69,10 @@ public class LaserCut extends JFrame {
       shapeClasses.add(new CADGear());
       shapeClasses.add(new CADNemaMotor());
       shapeClasses.add(new CADBobbin());
-      shapeClasses.add(new CADMusicStrip());
+      String user = System.getProperty("user.name");
+      if ("wholder".equals(user)) {
+        shapeClasses.add(new CADMusicStrip());
+      }
     } catch (Exception ex) {
       ex.printStackTrace();
     }
@@ -813,16 +816,6 @@ public class LaserCut extends JFrame {
       void processFile (File sFile) throws Exception {
         SVGParser parser = new SVGParser();
         parser.setPxDpi(pxDpi);
-        //parser.enableDebug(true);
-/*
-        Shape shape = Utils2D.combinePaths(Utils2D.removeOffset(parser.parseSVG(sFile)));
-        Rectangle2D bounds = BetterBoundingBox.getBounds(shape);
-        double offX = bounds.getWidth() / 2;
-        double offY = bounds.getHeight() / 2;
-        AffineTransform at = AffineTransform.getTranslateInstance(-offX, -offY);
-        shape = at.createTransformedShape(shape);
-        CADShape shp = new CADScaledShape(shape, offX, offY, 0, false);
-*/
         try {
           CADShape shp = parser.parseSvgFile(sFile);
           if (shp.placeParameterDialog(surface, prefs.get("displayUnits", "in"))) {
@@ -864,66 +857,24 @@ public class LaserCut extends JFrame {
     importMenu.add(gerberZip = new FileChooserMenu(this, "Gerber Zip", "zip", false) {
       void processFile (File sFile) throws Exception {
         GerberZip gerber = new GerberZip(sFile);
-        List<GerberZip.ExcellonHole> holes = gerber.parseExcellon();
-        List<List<Point2D.Double>> outlines = gerber.parseOutlines();
-        Rectangle2D.Double bounds = GerberZip.getBounds(outlines);
-        // System.out.println("PCB Size: " + bounds.getWidth() + " inches, " + bounds.getHeight() + " inches");
-        double yBase = bounds.getHeight();
-        List<CADShape> gShapes = new ArrayList<>();
-        for (GerberZip.ExcellonHole hole : holes) {
-          gShapes.add(new CADOval(hole.xLoc, yBase - hole.yLoc, hole.diameter, hole.diameter, 0, true));
-        }
-        // Build shapes for all outlines
-        for (List<Point2D.Double> points : outlines) {
-          Path2D.Double path = new Path2D.Double();
-          boolean first = true;
-          for (Point2D.Double point : points) {
-            if (first) {
-              path.moveTo(point.getX() - bounds.width / 2, yBase - point.getY() - bounds.height / 2);
-              first = false;
-            } else {
-              path.lineTo(point.getX() - bounds.width / 2, yBase - point.getY() - bounds.height / 2);
-            }
-          }
-          CADShape outline = new CADShape(path, 0, 0, 0, false);
-          gShapes.add(outline);
-        }
-        CADShapeGroup group = new CADShapeGroup();
-        for (CADShape cShape : gShapes) {
-          group.addToGroup(cShape);
-        }
-        surface.placeShapes(gShapes);
+        surface.placeShapes(gerber.getShapes());
       }
     });
     /*
      *  Add "Import Notes to MusicBox Strip" Menu
      */
-    importMenu.add(new FileChooserMenu(this, "Notes to MusicBox Strip Text", "txt", false) {
+    importMenu.add(new FileChooserMenu(this, "MusicBox", "txt", false) {
       void processFile (File sFile) throws Exception {
-        Scanner lines = new Scanner(Files.newInputStream(sFile.toPath()));
-        List<String[]> cols = new ArrayList<>();
-        int col = 0;
-        while (lines.hasNextLine()) {
-          Scanner line = new Scanner(lines.nextLine().trim());
-          int time = line.nextInt();
-          List<String> notes = new ArrayList<>();
-          while (line.hasNext()) {
-            String item = line.next();
-            item = item.endsWith(",") ? item.substring(0, item.length() - 1) : item;
-            notes.add(item);
+        try {
+          CADMusicStrip mStrip = new CADMusicStrip();
+          mStrip.readMusicBoxFile(sFile);
+          if (mStrip.placeParameterDialog(surface, prefs.get("displayUnits", "in"))) {
+            surface.placeShape(mStrip);
+          } else {
+            surface.setInfoText("Import cancelled");
           }
-          while (time-- > 0) {
-            cols.add(notes.toArray(new String[0]));
-            notes = new ArrayList<>();
-          }
-        }
-        String[][] song = cols.toArray(new String[cols.size()][0]);
-        CADMusicStrip mStrip = new CADMusicStrip();
-        mStrip.setNotes(song);
-        if (mStrip.placeParameterDialog(surface, prefs.get("displayUnits", "in"))) {
-          surface.placeShape(mStrip);
-        } else {
-          surface.setInfoText("Import cancelled");
+        } catch (Exception ex) {
+          showErrorDialog("Unable to read music box file");
         }
       }
     });
@@ -945,20 +896,14 @@ public class LaserCut extends JFrame {
     //
     exportMenu.add(new FileChooserMenu(this, "SVG", "svg", true) {
       void processFile (File sFile) throws Exception {
-        List<Shape> sList = new ArrayList<>();
-        for (CADShape item : surface.getDesign()) {
-          if (item instanceof CADReference)
-            continue;
-          Shape shape = item.getWorkspaceTranslatedShape();
-          sList.add(shape);
+        try {
+          SVGParser.saveSvgFile(sFile, surface.getDesign(), surface.getWorkSize(), pxDpi);
+        } catch (Exception ex) {
+          showErrorDialog("Unable to save SVG file");
         }
-        Shape[] shapes = sList.toArray(new Shape[0]);
-        String xml = SVGParser.shapesToSVG(shapes, surface.getWorkSize(), pxDpi);
-        FileOutputStream out = new FileOutputStream(sFile);
-        out.write(xml.getBytes(StandardCharsets.UTF_8));
-        out.close();
       }
     });
+
     //
     // Add "Export to DXF File"" Menu Item
     // Based on: https://jsevy.com/wordpress/index.php/java-and-android/jdxf-java-dxf-library/
@@ -967,55 +912,24 @@ public class LaserCut extends JFrame {
     exportMenu.add(new DXFReader.DxfFileChooserMenu(this, "DXF", "dxf", true, prefs) {
       void processFile (File sFile) throws Exception {
         String units = getSelectedUnits();
-        AffineTransform atExport = null;
-        int dxfUnitCode = 1;
-        if ("cm".equals(units)) {
-          atExport = AffineTransform.getScaleInstance(2.54, 2.54);
-          dxfUnitCode = 5;
-        } else if ("mm".equals(units)) {
-          atExport = AffineTransform.getScaleInstance(25.4, 25.4);
-          dxfUnitCode = 4;
+        try {
+          DXFReader.writeDxfFile(sFile, surface.getDesign(), units);
+        } catch (IOException ex) {
+          showErrorDialog("Unable to save DXF file");
         }
-        List<Shape> sList = new ArrayList<>();
-        for (CADShape item : surface.getDesign()) {
-          if (item instanceof CADReference)
-            continue;
-          Shape shape = item.getWorkspaceTranslatedShape();
-          if (atExport != null) {
-            shape = atExport.createTransformedShape(shape);
-          }
-          sList.add(shape);
-        }
-        DXFDocument dxfDocument = new DXFDocument("Exported from LaserCut " + VERSION);
-        dxfDocument.setUnits(dxfUnitCode);
-        DXFGraphics dxfGraphics = dxfDocument.getGraphics();
-        for (Shape shape : sList) {
-          dxfGraphics.draw(shape);
-        }
-        String dxfText = dxfDocument.toDXFString();
-        FileWriter fileWriter = new FileWriter(sFile);
-        fileWriter.write(dxfText);
-        fileWriter.flush();
-        fileWriter.close();
       }
     });
+
     //
     // Add "Export to EPS File"" Menu Item
     //
     exportMenu.add(new FileChooserMenu(this, "EPS", "eps", true) {
       void processFile (File sFile) throws Exception {
-        List<Shape> sList = new ArrayList<>();
-        AffineTransform scale = AffineTransform.getScaleInstance(72.0, 72.0);
-        Dimension workArea = surface.getWorkSize();
-        EPSWriter eps = new EPSWriter("LaserCut: " + sFile.getName());
-        for (CADShape item : surface.getDesign()) {
-          if (item instanceof CADReference)
-            continue;
-          Shape shape = item.getWorkspaceTranslatedShape();
-          shape = scale.createTransformedShape(shape);
-          eps.draw(shape);
+        try {
+          EPSWriter.writeEpsFile(sFile, surface.getDesign());
+        } catch (IOException ex) {
+          showErrorDialog("Unable to save DXF file");
         }
-        eps.writeEPS(sFile);
       }
     });
     menuBar.add(exportMenu);

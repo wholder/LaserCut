@@ -16,9 +16,12 @@ import java.awt.*;
 import java.awt.geom.*;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -341,6 +344,29 @@ public class SVGParser {
     AffineTransform at = AffineTransform.getTranslateInstance(-offX, -offY);
     shape = at.createTransformedShape(shape);
     return new CADScaledShape(shape, offX, offY, 0, false);
+  }
+
+  /**
+   * Save design to SVG file
+   * @param sFile File to save to
+   * @param list List of CADShape objects
+   * @param workSize DrawSurface work size
+   * @param pxDpi SVG file setting
+   * @throws Exception
+   */
+  static void saveSvgFile (File sFile, List<CADShape> list, Dimension workSize, int pxDpi) throws Exception {
+    List<Shape> sList = new ArrayList<>();
+    for (CADShape item : list) {
+      if (item instanceof CADReference)
+        continue;
+      Shape shape = item.getWorkspaceTranslatedShape();
+      sList.add(shape);
+    }
+    Shape[] shapes = sList.toArray(new Shape[0]);
+    String xml = shapesToSVG(shapes, workSize, pxDpi);
+    FileOutputStream out = new FileOutputStream(sFile);
+    out.write(xml.getBytes(StandardCharsets.UTF_8));
+    out.close();
   }
 
   /**

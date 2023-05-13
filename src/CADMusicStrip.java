@@ -3,28 +3,28 @@ import java.awt.geom.Ellipse2D;
 import java.awt.geom.Line2D;
 import java.awt.geom.Path2D;
 import java.awt.geom.Point2D;
+import java.io.File;
 import java.io.Serializable;
-import java.util.Arrays;
-import java.util.HashMap;
+import java.nio.file.Files;
+import java.util.*;
 import java.util.List;
-import java.util.Map;
 
 class CADMusicStrip extends CADShape implements Serializable, LaserCut.Updatable {
   private static final long serialVersionUID = 7398125917619364676L;
   private static final String[] symb = {"6E", "6D", "6C", "5B", "5A#", "5A", "5G#", "5G", "5F#", "5F", "5E", "5D#", "5D", "5C#", "5C",
                                         "4B", "4A#", "4A", "4G#", "4G", "4F#", "4F", "4E", "4D", "4C", "3B", "3A", "3G", "3D", "3C"};
   private static final Map<String, Integer> noteIndex = new HashMap<>();
-  private static final double               xStep = 4.0;
-  private static final double               yStep = 2.017;
-  private static final double               xOff = Utils2D.mmToInches(12);
-  private static final double               yOff = Utils2D.mmToInches(6);
-  private static final double               holeDiam = Utils2D.mmToInches(2.4);
-  private boolean                     checkClicked;
-  public int                          columns = 60;
-  public double                       width, height;
-  public boolean[][]                  notes;
-  private transient Shape             rect;
-  private transient int               lastCol = 0;
+  private static final double   xStep = 4.0;
+  private static final double   yStep = 2.017;
+  private static final double   xOff = Utils2D.mmToInches(12);
+  private static final double   yOff = Utils2D.mmToInches(6);
+  private static final double   holeDiam = Utils2D.mmToInches(2.4);
+  private boolean               checkClicked;
+  public int                    columns = 60;
+  public double                 width, height;
+  public boolean[][]            notes;
+  private transient Shape       rect;
+  private transient int         lastCol = 0;
 
   static {
     for (int ii = 0; ii < symb.length; ii++) {
@@ -35,12 +35,28 @@ class CADMusicStrip extends CADShape implements Serializable, LaserCut.Updatable
   CADMusicStrip () {
   }
 
-  @Override
-  String getMenuName () {
-    return "Music Strip";
-  }
-
-  void setNotes (String[][] song) {
+  String[][] readMusicBoxFile (File sFile) throws Exception {
+    Scanner lines = new Scanner(Files.newInputStream(sFile.toPath()));
+    List<String[]> cols = new ArrayList<>();
+    while (lines.hasNextLine()) {
+      Scanner line = new Scanner(lines.nextLine().trim());
+      if (line.hasNextInt()) {
+        int time = line.nextInt();
+        System.out.println(time);
+        List<String> notes = new ArrayList<>();
+        while (line.hasNext()) {
+          String item = line.next();
+          System.out.println(item);
+          item = item.endsWith(",") ? item.substring(0, item.length() - 1) : item;
+          notes.add(item);
+        }
+        while (time-- > 0) {
+          cols.add(notes.toArray(new String[0]));
+          notes = new ArrayList<>();
+        }
+      }
+    }
+    String[][] song = cols.toArray(new String[cols.size()][0]);
     notes = new boolean[song.length][30];
     for (int ii = 0; ii < song.length; ii++) {
       for (String note : song[ii]) {
@@ -51,6 +67,12 @@ class CADMusicStrip extends CADShape implements Serializable, LaserCut.Updatable
     }
     width = Utils2D.mmToInches(song.length * 4 + 16);
     height = Utils2D.mmToInches(70);
+    return song;
+  }
+
+  @Override
+  String getMenuName () {
+    return "Music Strip";
   }
 
   @Override

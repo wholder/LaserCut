@@ -1,9 +1,12 @@
 import java.awt.*;
+import java.awt.geom.AffineTransform;
 import java.awt.geom.Path2D;
 import java.awt.geom.PathIterator;
 import java.awt.geom.Rectangle2D;
 import java.io.*;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
 /**
  * This code implements hust enough of the EPS format to write java.awt.Shape pbjects using PathIterator
@@ -63,6 +66,19 @@ public class EPSWriter {
       closed = true;
     }
     return buf.toString();
+  }
+
+  static void writeEpsFile (File sFile, List<CADShape> list) throws Exception {
+    AffineTransform scale = AffineTransform.getScaleInstance(72.0, 72.0);
+    EPSWriter eps = new EPSWriter("LaserCut: " + sFile.getName());
+    for (CADShape item : list) {
+      if (item instanceof CADReference)
+        continue;
+      Shape shape = item.getWorkspaceTranslatedShape();
+      shape = scale.createTransformedShape(shape);
+      eps.draw(shape);
+    }
+    eps.writeEPS(sFile);
   }
 
   void writeEPS (File file) throws FileNotFoundException {
