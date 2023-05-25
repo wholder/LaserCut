@@ -54,7 +54,7 @@ class CNCPath extends CADShape implements Serializable, LaserCut.ChangeListener 
     AffineTransform at = new AffineTransform();
     // Position Shape centered on xLoc/yLoc in inches (x from left, y from top)
     at.rotate(Math.toRadians(rotation));
-    if (!centered) {
+    if (!centered) {    // REWORK
       // Translate relative to the baseShape's coordinates so the generated cnc path aligns with it
       Rectangle2D bounds = baseShape.getShape().getBounds2D();
       at.translate(bounds.getWidth() / 2, bounds.getHeight() / 2);

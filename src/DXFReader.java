@@ -2,10 +2,7 @@ import com.jsevy.jdxf.DXFDocument;
 import com.jsevy.jdxf.DXFGraphics;
 
 import javax.swing.*;
-import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 import java.awt.font.GlyphVector;
 import java.awt.font.TextAttribute;
 import java.awt.geom.*;
@@ -274,12 +271,12 @@ public class DXFReader {
    * Custom file chooser for DXF files that allows selective import of TEXT, MTEXT and DIMENSION elements
    */
 
-  static class DxfFileChooserMenu extends LaserCut.FileChooserMenu {
-    private List<JCheckBox> checkboxes;
-    private String selected;
+  static class DxfFileChooserMenu extends FileChooserMenu {
+    private final List<JCheckBox> checkboxes;
+    private String                selected;
 
-    DxfFileChooserMenu (LaserCut lCut, String type, String ext, boolean save, Preferences prefs) {
-      super(lCut, type, ext, save);
+    DxfFileChooserMenu (Component comp, Preferences prefs, String type, String ext, boolean save) {
+      super(comp, prefs, type, ext, save);
       checkboxes = new ArrayList<>();
       // Widen JChooser by 25%
       Dimension dim = getPreferredSize();
@@ -352,7 +349,7 @@ public class DXFReader {
       double hyt = sBnds.getHeight();
       AffineTransform at = AffineTransform.getTranslateInstance(-xLoc - (wid / 2), -yLoc - (hyt / 2));
       shape = at.createTransformedShape(shape);
-      CADShape cShape = new CADScaledShape(shape, xLoc, yLoc, 0, false);
+      CADShape cShape = new CADScaledShape(shape, xLoc, yLoc, 0);
       group.addToGroup(cShape);
       gShapes.add(cShape);
     }
@@ -902,7 +899,7 @@ public class DXFReader {
       case 21:                                    // Mid Point Y
         my = Double.parseDouble(value) * uScale;
         break;
-      case 70:                                    // Dimension type (0-6 plus bits at 32,64,128)
+      case 70:                                    // Dimension type (0-6 plus bits at 32, 64, 128)
         type = Integer.parseInt(value);
         break;
       case 71:                                    // Attachment orientation (1-9) for 1=UL, 2=UC, 3=UR, etc

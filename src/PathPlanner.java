@@ -138,21 +138,21 @@ public class PathPlanner {
     // A nests in E, B nests in F and D, D, E & F nest in G
     List<CADShape> shapes = new ArrayList<>();
     if (false) {
-      shapes.add(add("A", new CADRectangle(9, 5, 1, 1, 0, 0, false)));
-      shapes.add(add("B", new CADRectangle(7, 3, 1, 1, 0, 0, false)));
-      shapes.add(add("C", new CADRectangle(5, 2, 1, 1, 0, 0, false)));
-      shapes.add(add("D", new CADRectangle(3, 2, 1, 1, 0, 0, false)));
-      shapes.add(add("E", new CADRectangle(1, 1, 1, 1, 0, 0, false)));
-      shapes.add(add("F", new CADRectangle(2, 4, 1, 1, 0, 0, false)));
-      shapes.add(add("G", new CADRectangle(4, 5, 1, 1, 0, 0, false)));
+      shapes.add(add("A", new CADRectangle(9, 5, 1, 1, 0, 0)));
+      shapes.add(add("B", new CADRectangle(7, 3, 1, 1, 0, 0)));
+      shapes.add(add("C", new CADRectangle(5, 2, 1, 1, 0, 0)));
+      shapes.add(add("D", new CADRectangle(3, 2, 1, 1, 0, 0)));
+      shapes.add(add("E", new CADRectangle(1, 1, 1, 1, 0, 0)));
+      shapes.add(add("F", new CADRectangle(2, 4, 1, 1, 0, 0)));
+      shapes.add(add("G", new CADRectangle(4, 5, 1, 1, 0, 0)));
     } else {
-      shapes.add(add("A", new CADRectangle(15, 15, 5, 5, 0, 0, false)));
-      shapes.add(add("B", new CADRectangle(35, 15, 5, 5, 0, 0, false)));
-      shapes.add(add("C", new CADRectangle(50, 10, 5, 5, 0, 0, false)));
-      shapes.add(add("D", new CADRectangle(50, 20, 5, 5, 0, 0, false)));
-      shapes.add(add("E", new CADRectangle(10, 10, 15, 15, 0, 0, false)));
-      shapes.add(add("F", new CADRectangle(30, 10, 15, 15, 0, 0, false)));
-      shapes.add(add("G", new CADRectangle(5, 5, 55, 25, 0, 0, false)));
+      shapes.add(add("A", new CADRectangle(15, 15, 5, 5, 0, 0)));
+      shapes.add(add("B", new CADRectangle(35, 15, 5, 5, 0, 0)));
+      shapes.add(add("C", new CADRectangle(50, 10, 5, 5, 0, 0)));
+      shapes.add(add("D", new CADRectangle(50, 20, 5, 5, 0, 0)));
+      shapes.add(add("E", new CADRectangle(10, 10, 15, 15, 0, 0)));
+      shapes.add(add("F", new CADRectangle(30, 10, 15, 15, 0, 0)));
+      shapes.add(add("G", new CADRectangle(5, 5, 55, 25, 0, 0)));
     }
     List<CADShape>  oShapes = optimize(shapes);
     for (CADShape shape : oShapes) {

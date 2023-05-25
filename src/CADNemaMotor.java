@@ -22,12 +22,11 @@ class CADNemaMotor extends CADShape implements Serializable, LaserCut.Rotatable 
   CADNemaMotor () {
     // Set typical initial values, which user can edit before saving
     type = "1";
-    centered = true;
   }
 
-  CADNemaMotor (double xLoc, double yLoc, String type, double rotation, boolean centered) {
+  CADNemaMotor (double xLoc, double yLoc, String type, double rotation) {
     this.type = type;
-    setLocationAndOrientation(xLoc, yLoc, rotation, centered);
+    setLocationAndOrientation(xLoc, yLoc, rotation);
   }
 
   @Override
@@ -37,7 +36,9 @@ class CADNemaMotor extends CADShape implements Serializable, LaserCut.Rotatable 
 
   @Override
   String[] getParameterNames () {
-    return new String[] {"type:Nema 8|0:Nema 11|1:Nema 14|2:Nema 17|3:Nema 23|4{NEMA motor size}"};
+    return new String[] {
+      "type:Nema 8|0:Nema 11|1:Nema 14|2:Nema 17|3:Nema 23|4{NEMA motor size}"
+    };
   }
 
   @Override

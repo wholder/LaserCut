@@ -27,6 +27,7 @@ class Silhouette implements LaserCut.OutputDevice {
   private static String                   deviceName = "Curio";
   private static int                      action, pen, pens, speed, pressure, media, landscape;
   private final LaserCut                  laserCut;
+  private final Preferences               prefs;
   private final String                    dUnits;
   private Rectangle2D.Double              workspaceSize;
   private USBIO                           usb;
@@ -102,22 +103,23 @@ class Silhouette implements LaserCut.OutputDevice {
 
   Silhouette (LaserCut laserCut, Preferences prefs) {
     this.laserCut = laserCut;
+    this.prefs = prefs;
     this.dUnits = prefs.get("displayUnits", "in");
     // Setup currently selected, or default Silhouette Device and its parameters
-    deviceName = getString("deviceName", cutters.get(0).name);
+    deviceName = this.prefs.get(getPrefix() + "deviceName", cutters.get(0).name);
     if (!devices.containsKey(deviceName)) {
       deviceName = cutters.get(0).name;
     }
     Cutter cutter = devices.get(deviceName);
-    landscape = getInt("landscape", 1);                 // Set Orientation (0 = Portrait, 1 = Landscape)
+    landscape = this.prefs.getInt(getPrefix() + "landscape", 1);          // Set Orientation (0 = Portrait, 1 = Landscape)
     workspaceSize = cutter.getWorkspaceSize(0, landscape == 1);
     laserCut.updateWorkspace();
-    pens = cutter.pens;                                 // Number of pens supported by selected device
-    action = getInt("action", 0);                       // Set Offset for Tool 1 (18 = cutter, 0 = pen)
-    media = getInt("media", 300);                       // 300 = Custom Media
-    pen = getInt("pen", Math.min(1, pens));             // 1 selects left pen, 2 selects right pen
-    speed = getInt("speed", 5);                         // Drawing speed (value times 10 is centimeters/second)
-    pressure = getInt("pressure", 10);                  // Tool pressure (value times 7 is grams of force, or 7-230 grams)
+    pens = cutter.pens;                                                   // Number of pens supported by selected device
+    action = this.prefs.getInt(getPrefix() + "action", 0);                // Set Offset for Tool 1 (18 = cutter, 0 = pen)
+    media = this.prefs.getInt(getPrefix() + "media", 300);                // 300 = Custom Media
+    pen = this.prefs.getInt(getPrefix() + "pen", Math.min(1, pens));      // 1 selects left pen, 2 selects right pen
+    speed = this.prefs.getInt(getPrefix() + "speed", 5);                  // Drawing speed (value times 10 is centimeters/second)
+    pressure = this.prefs.getInt(getPrefix() + "pressure", 10);           // Tool pressure (value times 7 is grams of force, or 7-230 grams)
   }
 
   // Implement for GRBLBase to define Preferences prefix, such as "mini.laser."
@@ -138,22 +140,6 @@ class Silhouette implements LaserCut.OutputDevice {
   // Implement for LaserCut.OutputDevice
   public double getZoomFactor () {
     return 1.0;
-  }
-
-  private int getInt(String name, int def) {
-    return laserCut.prefs.getInt(getPrefix() + name, def);
-  }
-
-  private void putInt (String name, int value) {
-    laserCut.prefs.putInt(getPrefix() + name, value);
-  }
-
-  private String getString(String name, String def) {
-    return laserCut.prefs.get(getPrefix() + name, def);
-  }
-
-  private void putString (String name, String value) {
-    laserCut.prefs.put(getPrefix() + name, value);
   }
 
   public JMenu getDeviceMenu () {
@@ -219,16 +205,26 @@ class Silhouette implements LaserCut.OutputDevice {
       if (ParameterDialog.showSaveCancelParameterDialog(parmSet, dUnits, laserCut)) {
         int idx = 0;
         deviceName = (String) parmSet[idx++].value;                                                   // Device
-        putString("deviceName", deviceName);
-        putInt("landscape", landscape = Integer.parseInt((String) parmSet[idx++].value));             // Orientation
+        prefs.put(getPrefix() + "deviceName", deviceName);
+        // Orientation
+        int value4 = landscape = Integer.parseInt((String) parmSet[idx++].value);
+        prefs.putInt(getPrefix() + "landscape", value4);
         Cutter cutter = devices.get(deviceName);
         workspaceSize = cutter.getWorkspaceSize(0, landscape == 1);
         laserCut.updateWorkspace();
         pens = cutter.pens;
-        putInt("action", action = Integer.parseInt((String) parmSet[idx++].value));                   // Action
-        putInt("pen", pen = Integer.parseInt((String) parmSet[idx++].value));                         // Pen
-        putInt("speed", speed = (Integer) parmSet[idx++].value);                                      // Speed
-        putInt("pressure", pressure = (Integer) parmSet[idx++].value);                                // Pressure
+        // Action
+        int value3 = action = Integer.parseInt((String) parmSet[idx++].value);
+        prefs.putInt(getPrefix() + "action", value3);
+        // Pen
+        int value2 = pen = Integer.parseInt((String) parmSet[idx++].value);
+        prefs.putInt(getPrefix() + "pen", value2);
+        // Speed
+        int value1 = speed = (Integer) parmSet[idx++].value;
+        prefs.putInt(getPrefix() + "speed", value1);
+        // Pressure
+        int value = pressure = (Integer) parmSet[idx++].value;
+        prefs.putInt(getPrefix() + "pressure", value);
       }
     });
     silhouetteMenu.add(silhouetteSettings);

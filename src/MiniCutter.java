@@ -74,7 +74,7 @@ class MiniCutter implements LaserCut.OutputDevice {
   MiniCutter (LaserCut laserCut, Preferences prefs) {
     this.laserCut = laserCut;
     this.prefs = prefs;
-    jPort = new JSSCPort(getPrefix(), laserCut.prefs);
+    jPort = new JSSCPort(getPrefix(), prefs);
   }
 
   // Implement abstract method in GRBLBase
@@ -108,10 +108,10 @@ class MiniCutter implements LaserCut.OutputDevice {
     sendToMiniLazer.addActionListener((ActionEvent ev) -> {
       if (jPort.hasSerial()) {
         if (showConfirmDialog(laserCut, panel, "Send Job to " + getName(), YES_NO_OPTION, PLAIN_MESSAGE, null) == OK_OPTION) {
-          boolean planPath = laserCut.prefs.getBoolean(getPrefix() + "pathplan", true);
+          boolean planPath = prefs.getBoolean(getPrefix() + "pathplan", true);
           int iterations = Integer.parseInt(tf.getText());
           // Cut Settings
-          int cutSpeed = laserCut.prefs.getInt(getPrefix() + "speed", MINI_PAPER_CUTTER_DEFAULT_SPEED);
+          int cutSpeed = prefs.getInt(getPrefix() + "speed", MINI_PAPER_CUTTER_DEFAULT_SPEED);
           cutSpeed = Math.min(MINI_PAPER_CUTTER_MAX_SPEED, cutSpeed);                         // Setting cutting speed
           // Generate G_Code for TeensyCNC
           List<String> cmds = new ArrayList<>();
@@ -176,13 +176,13 @@ class MiniCutter implements LaserCut.OutputDevice {
     JMenuItem miniLazerSettings = new JMenuItem(getName() + " Settings");
     miniLazerSettings.addActionListener(ev -> {
       ParameterDialog.ParmItem[] parmSet = {
-          new ParameterDialog.ParmItem("Use Path Planner", laserCut.prefs.getBoolean(getPrefix() + "pathplan", true)),
-          new ParameterDialog.ParmItem("Cut Speed{inches/minute}", laserCut.prefs.getInt(getPrefix() + "speed",
+          new ParameterDialog.ParmItem("Use Path Planner", prefs.getBoolean(getPrefix() + "pathplan", true)),
+          new ParameterDialog.ParmItem("Cut Speed{inches/minute}", prefs.getInt(getPrefix() + "speed",
                                        MINI_PAPER_CUTTER_DEFAULT_SPEED)),
       };
       if (ParameterDialog.showSaveCancelParameterDialog(parmSet, prefs.get("displayUnits", "in"), laserCut)) {
-        laserCut.prefs.putBoolean(getPrefix() + "pathplan", (Boolean) parmSet[0].value);
-        laserCut.prefs.putInt(getPrefix() + "speed", (Integer) parmSet[1].value);
+        prefs.putBoolean(getPrefix() + "pathplan", (Boolean) parmSet[0].value);
+        prefs.putInt(getPrefix() + "speed", (Integer) parmSet[1].value);
       }
     });
     miniCutterMenu.add(miniLazerSettings);

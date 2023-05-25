@@ -15,12 +15,11 @@ class CADReference extends CADShape implements Serializable, CADNoDraw {
    */
   @SuppressWarnings("unused")
   CADReference () {
-    centered = true;
     rotation = 45;
   }
 
   CADReference (double xLoc, double yLoc) {
-    setLocationAndOrientation(xLoc, yLoc, 0, true);
+    setLocationAndOrientation(xLoc, yLoc, 0);
   }
 
   @Override

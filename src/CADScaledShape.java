@@ -8,15 +8,15 @@ import java.util.List;
 
 /*
  * CADScaledShape is a container for a resizable Shape.  Currently used to encapsulate designed loaded
- * by the "Import from SVG, or DXF" features.
+ * by the "Import from SVG" feature.
  * Note: scale is in percent (%)
  */
 class CADScaledShape extends CADShape implements Serializable, LaserCut.Resizable, LaserCut.Rotatable {
   private static final long serialVersionUID = -8732521357598212914L;
   public double             scale = 100.0;
 
-  CADScaledShape (Shape shape, double xLoc, double yLoc, double rotation, boolean centered) {
-    super(shape, xLoc, yLoc, rotation, centered);
+  CADScaledShape (Shape shape, double xLoc, double yLoc, double rotation) {
+    super(shape, xLoc, yLoc, rotation);
   }
 
   @Override
@@ -24,8 +24,8 @@ class CADScaledShape extends CADShape implements Serializable, LaserCut.Resizabl
     return "Scaled Shape";
   }
 
-  @Override
   // Translate Shape to screen position
+  @Override
   protected Shape getWorkspaceTranslatedShape () {
     AffineTransform at = new AffineTransform();
     at.translate(xLoc, yLoc);
@@ -45,12 +45,6 @@ class CADScaledShape extends CADShape implements Serializable, LaserCut.Resizabl
     ArrayList<String> list = new ArrayList<>(super.getEditFields());
     list.add("scale|%");
     return list;
-  }
-
-  @Override
-  protected Point2D.Double getGrabPoint () {
-    Rectangle2D bnds = getShapeBounds();
-    return new Point2D.Double(bnds.getX() + bnds.getWidth() * scale / 100, bnds.getY() + bnds.getHeight() * scale / 100);
   }
 
   // Implement Resizable interface

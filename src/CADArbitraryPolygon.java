@@ -16,7 +16,6 @@ class CADArbitraryPolygon extends CADShape implements Serializable, LaserCut.Sta
   private Path2D.Double               path = new Path2D.Double();
 
   CADArbitraryPolygon () {
-    centered = true;
   }
 
   @Override
@@ -160,8 +159,8 @@ class CADArbitraryPolygon extends CADShape implements Serializable, LaserCut.Sta
   }
 
   @Override
-  void draw (Graphics g, double zoom, boolean keyShift) {
-    super.draw(g, zoom, keyShift);
+  void draw (Graphics g, double zoom, boolean keyRotate, boolean keyResize, boolean keyCtrl) {
+    super.draw(g, zoom, keyRotate, keyResize, keyCtrl);
     Graphics2D g2 = (Graphics2D) g;
     // Draw all the Control Points
     g2.setColor(isSelected ? Color.red : closePath ? Color.lightGray : Color.darkGray);

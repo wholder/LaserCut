@@ -1,8 +1,5 @@
 import java.awt.*;
-import java.awt.geom.AffineTransform;
-import java.awt.geom.Line2D;
-import java.awt.geom.Path2D;
-import java.awt.geom.Point2D;
+import java.awt.geom.*;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -14,15 +11,19 @@ import java.util.prefs.Preferences;
       https://pomax.github.io/bezierinfo/
    */
 
-class CADShapeSpline extends CADShape implements Serializable, LaserCut.StateMessages, LaserCut.Rotatable {
+class CADShapeSpline extends CADShape implements Serializable, LaserCut.StateMessages, LaserCut.Resizable, LaserCut.Rotatable {
   private static final long           serialVersionUID = 1175193935200692376L;
-  private final List<Point2D.Double>        points = new ArrayList<>();
+  private List<Point2D.Double>        points = new ArrayList<>();
   private Point2D.Double              movePoint;
-  private boolean pathClosed;
+  private boolean                     pathClosed;
   private Path2D.Double               path = new Path2D.Double();
+  public double                       scale = 100.0;
+  transient public double             lastScale = 100.0;
+
+
 
   CADShapeSpline () {
-    centered = true;
+    lastScale = scale;
   }
 
   @Override
@@ -52,8 +53,18 @@ class CADShapeSpline extends CADShape implements Serializable, LaserCut.StateMes
     return Arrays.asList(
       "xLoc|in",
       "yLoc|in",
-      "rotation|deg{degrees to rotate}");
+      "rotation|deg{degrees to rotate}",
+      "scale|%"
+      );
   }
+
+  List<Point2D.Double>  getScaledPoints () {
+    List<Point2D.Double> scaledPts = new ArrayList<>();
+    for (Point2D.Double cp : points) {
+      scaledPts.add(new Point2D.Double(cp.x * scale / 100, cp.y * scale / 100));
+    }
+    return scaledPts;
+  };
 
   @Override
   boolean isShapeClicked (Point2D.Double point, double zoomFactor) {
@@ -69,21 +80,23 @@ class CADShapeSpline extends CADShape implements Serializable, LaserCut.StateMes
    *
    * @param surface Reference to DrawSurface
    * @param point   Point clicked in Workspace coordinates (inches)
-   * @param gPoint  Closest grid point clicked in Workspace coordinates
+   * @param gPoint  Closest grid point clicked in Workspace coordinates (inches)
    * @return true if clicked
    */
   @Override
   boolean selectMovePoint (DrawSurface surface, Point2D.Double point, Point2D.Double gPoint) {
+    // Note: mse is in unrotated coords relative to the points, such as mse: x = 0.327, y = -0.208
     Point2D.Double mse = rotatePoint(new Point2D.Double(point.x - xLoc, point.y - yLoc), -rotation);
     for (int ii = 0; ii < points.size(); ii++) {
       Point2D.Double cp = points.get(ii);
-      double dist = mse.distance(cp.x, cp.y) * LaserCut.SCREEN_PPI;
+      double dist = mse.distance(cp) * LaserCut.SCREEN_PPI;
       if (dist < 5) {
         if (ii == 0 && !pathClosed) {
           surface.pushToUndoStack();
           pathClosed = true;
           updatePath();
         }
+        // Note: movePoint is relative to coords of points
         movePoint = cp;
         return true;
       }
@@ -219,18 +232,40 @@ class CADShapeSpline extends CADShape implements Serializable, LaserCut.StateMes
     return path;
   }
 
+  // Translate Shape to screen position
   @Override
-  void draw (Graphics g, double zoom, boolean keyShift) {
-    super.draw(g, zoom, keyShift);
+  protected Shape getWorkspaceTranslatedShape () {
+    AffineTransform at = new AffineTransform();
+    at.translate(xLoc, yLoc);
+    return at.createTransformedShape(getLocallyTransformedShape());
+  }
+
+  // Implement Resizable interface
+  public void resize (double dx, double dy) {
+    Rectangle2D.Double bnds = Utils2D.boundsOf(points);
+    scale = (Math.min(dx / bnds.getWidth(), dy / bnds.getHeight())) * 100;
+    if (scale != lastScale) {
+      // transform all the points to new scale;
+      points = getScaledPoints();
+      lastScale = scale;
+      updatePath();
+    }
+  }
+
+    @Override
+  void draw (Graphics g, double zoom, boolean keyRotate, boolean keyResize, boolean keyOption) {
+    super.draw(g, zoom, keyRotate, keyResize, keyOption);
     Graphics2D g2 = (Graphics2D) g;
     // Draw all Catmull-Rom Control Points
     g2.setColor(isSelected ? Color.red : pathClosed ? Color.lightGray : Color.darkGray);
-    for (Point2D.Double cp : points) {
-      Point2D.Double np = rotatePoint(cp, rotation);
-      double mx = (xLoc + np.x) * zoom * LaserCut.SCREEN_PPI;
-      double my = (yLoc + np.y) * zoom * LaserCut.SCREEN_PPI;
-      double mWid = 2 * zoom;
-      g2.fill(new Rectangle.Double(mx - mWid, my - mWid, mWid * 2, mWid * 2));
+    if (isSelected){
+      for (Point2D.Double cp : points) {
+        Point2D.Double np = rotatePoint(cp, rotation);
+        double mx = (xLoc + np.x) * zoom * LaserCut.SCREEN_PPI;
+        double my = (yLoc + np.y) * zoom * LaserCut.SCREEN_PPI;
+        double mWid = 3;
+        g2.fill(new Rectangle.Double(mx - mWid, my - mWid, mWid * 2, mWid * 2));
+      }
     }
   }
 }

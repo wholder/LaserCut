@@ -15,13 +15,12 @@ class CADPolygon extends CADShape implements Serializable, LaserCut.Resizable, L
     // Set typical initial values, which user can edit before saving
     diameter = 1.0;
     sides = 6;
-    centered = true;
   }
 
-  CADPolygon (double xLoc, double yLoc, double diameter, int sides, double rotation, boolean centered) {
+  CADPolygon (double xLoc, double yLoc, double diameter, int sides, double rotation) {
     this.diameter = diameter;
     this.sides = sides;
-    setLocationAndOrientation(xLoc, yLoc, rotation, centered);
+    setLocationAndOrientation(xLoc, yLoc, rotation);
   }
 
   @Override

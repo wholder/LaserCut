@@ -277,13 +277,9 @@ class MiniLaser extends GRBLBase implements LaserCut.OutputDevice {
     if (cadRaster.rotation != 0) {
       // Compute AffineTransform for rotation
       AffineTransform at = new AffineTransform();
-      if (cadRaster.centered) {
-        at.translate(cadRaster.xLoc - xSize / 2, cadRaster.yLoc - ySize / 2);
-        at.rotate(Math.toRadians(cadRaster.rotation), xSize / 2, ySize / 2);
-      } else {
-        at.translate(cadRaster.xLoc, cadRaster.yLoc);
-        at.rotate(Math.toRadians(cadRaster.rotation));
-      }
+      at.translate(cadRaster.xLoc - xSize / 2, cadRaster.yLoc - ySize / 2);
+      at.rotate(Math.toRadians(cadRaster.rotation), xSize / 2, ySize / 2);
+
       int prevValue = 0;
       Point2D.Double loc = new Point2D.Double(0, 0);
       // Output GRBL Commands to Draw Raster Image
@@ -334,9 +330,9 @@ class MiniLaser extends GRBLBase implements LaserCut.OutputDevice {
         }
       }
     } else {
-      // Get workspace location of unrotated upper left corner
-      double xOff = cadRaster.centered ? cadRaster.xLoc - xSize / 2 : cadRaster.xLoc;
-      double yOff = cadRaster.centered ? cadRaster.yLoc - ySize / 2 : cadRaster.yLoc;
+      // Get workspace location of upper left corner
+      double xOff = cadRaster.xLoc - xSize / 2;
+      double yOff = cadRaster.yLoc - ySize / 2;
       int prevValue = 0;
       // Move quickly to start of next scan line
       buf.add("G00X" + fmt.format(xOff) + "Y" + fmt.format(yOff));                          // G00Xn.nYn.n

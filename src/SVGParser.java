@@ -343,7 +343,7 @@ public class SVGParser {
     double offY = bounds.getHeight() / 2;
     AffineTransform at = AffineTransform.getTranslateInstance(-offX, -offY);
     shape = at.createTransformedShape(shape);
-    return new CADScaledShape(shape, offX, offY, 0, false);
+    return new CADScaledShape(shape, offX, offY, 0);
   }
 
   /**

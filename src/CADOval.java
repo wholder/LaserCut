@@ -14,13 +14,12 @@ class CADOval extends CADShape implements Serializable, LaserCut.Resizable, Lase
     // Set typical initial values, which user can edit before saving
     width = .5;
     height = .5;
-    centered = true;
   }
 
-  CADOval (double xLoc, double yLoc, double width, double height, double rotation, boolean centered) {
+  CADOval (double xLoc, double yLoc, double width, double height, double rotation) {
     this.width = width;
     this.height = height;
-    setLocationAndOrientation(xLoc, yLoc, rotation, centered);
+    setLocationAndOrientation(xLoc, yLoc, rotation);
   }
 
   @Override
@@ -30,8 +29,8 @@ class CADOval extends CADShape implements Serializable, LaserCut.Resizable, Lase
 
   // Implement Resizable interface
   public void resize (double dx, double dy) {
-    width = Math.max(centered ? dx * 2 : dx, .1);
-    height = Math.max(centered ? dy * 2 : dy, .1);
+    width = Math.max(dx * 2, .1);
+    height = Math.max(dy * 2, .1);
   }
 
   @Override

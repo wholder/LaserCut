@@ -53,7 +53,7 @@ public class GerberZip {
     double yBase = bounds.getHeight();
     List<CADShape> gShapes = new ArrayList<>();
     for (GerberZip.ExcellonHole hole : holes) {
-      gShapes.add(new CADOval(hole.xLoc, yBase - hole.yLoc, hole.diameter, hole.diameter, 0, true));
+      gShapes.add(new CADOval(hole.xLoc, yBase - hole.yLoc, hole.diameter, hole.diameter, 0));
     }
     // Build shapes for all outlines
     for (List<Point2D.Double> points : outlines) {
@@ -67,7 +67,7 @@ public class GerberZip {
           path.lineTo(point.getX() - bounds.width / 2, yBase - point.getY() - bounds.height / 2);
         }
       }
-      CADShape outline = new CADShape(path, 0, 0, 0, false);
+      CADShape outline = new CADShape(path, 0, 0, 0);
       gShapes.add(outline);
     }
     CADShapeGroup group = new CADShapeGroup();

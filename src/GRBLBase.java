@@ -338,7 +338,7 @@ abstract class GRBLBase {
     //  <Run|MPos:0.140,0.000,0.000|FS:20,0|Pn:Z>
     //  <Idle|MPos:0.000,0.000,0.000|FS:0,0|Pn:Z>
     //  <Jog|MPos:0.000,0.000,0.000|FS:0,0|Pn:Z>
-    void setPosition (String rsp) {
+    void setDroPosition (String rsp) {
       int idx1 = rsp.indexOf("|MPos:");
       if (idx1 >= 0) {
         idx1 += 6;
@@ -466,7 +466,7 @@ abstract class GRBLBase {
           JPanel topPanel = new JPanel();
           topPanel.setLayout(new BorderLayout(0, 2));
           DroPanel dro = new DroPanel(laserCut);
-          dro.setPosition(runner.sendCmd("?"));                                         // Show initial position
+          dro.setDroPosition(runner.sendCmd("?"));                                         // Show initial position
           topPanel.add(dro, BorderLayout.NORTH);
           JSlider speed = new JSlider(10, 100, 100);
           topPanel.add(speed, BorderLayout.SOUTH);
@@ -698,7 +698,7 @@ abstract class GRBLBase {
         while (pressed) {
           jPort.sendString(jogCmd);
           stepWait();
-          dro.setPosition(lastResponse);
+          dro.setDroPosition(lastResponse);
           // Minimum move time 20ms
           if (firstPress) {
             firstPress = false;
@@ -706,13 +706,13 @@ abstract class GRBLBase {
           }
           jPort.sendString("?");
           stepWait();
-          dro.setPosition(lastResponse);
+          dro.setDroPosition(lastResponse);
         }
         jPort.sendByte((byte) 0x85);
         do {
           jPort.sendString("?");
           stepWait();
-          dro.setPosition(lastResponse);
+          dro.setDroPosition(lastResponse);
         } while (lastResponse.contains("<Jog"));
         Thread.sleep(500);
         running = false;

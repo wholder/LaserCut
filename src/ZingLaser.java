@@ -57,7 +57,7 @@ class ZingLaser implements LaserCut.OutputDevice {
     // Add "Send to Zing" Submenu Item
     JMenuItem sendToZing = new JMenuItem("Send Job to " + getName());
     sendToZing.addActionListener(ev -> {
-      String zingIpAddress = laserCut.prefs.get("zing.ip", "10.0.1.201");
+      String zingIpAddress = prefs.get("zing.ip", "10.0.1.201");
       if (zingIpAddress == null ||  zingIpAddress.length() == 0) {
         laserCut.showErrorDialog("Please set the " + getName() + "'s IP Address in " + getName() + "->Zing Settings");
         return;
@@ -66,21 +66,21 @@ class ZingLaser implements LaserCut.OutputDevice {
         EpilogZing lasercutter = new EpilogZing(zingIpAddress);
         // Set Properties for Materials, such as for 3 mm birch plywood, Set: 60% speed, 80% power, 0 focus, 500 Hz.
         PowerSpeedFocusFrequencyProperty cutProperties = new PowerSpeedFocusFrequencyProperty();
-        cutProperties.setProperty("speed", laserCut.prefs.getInt("zing.speed", ZING_SPEED_DEFAUlT));
-        cutProperties.setProperty("power", laserCut.prefs.getInt("zing.power", ZING_CUT_POWER_DEFAUlT));
-        cutProperties.setProperty("frequency", laserCut.prefs.getInt("zing.freq", ZING_FREQ_DEFAUlT));
+        cutProperties.setProperty("speed", prefs.getInt("zing.speed", ZING_SPEED_DEFAUlT));
+        cutProperties.setProperty("power", prefs.getInt("zing.power", ZING_CUT_POWER_DEFAUlT));
+        cutProperties.setProperty("frequency", prefs.getInt("zing.freq", ZING_FREQ_DEFAUlT));
         cutProperties.setProperty("focus", 0.0f);
         PowerSpeedFocusFrequencyProperty engraveProperties = new PowerSpeedFocusFrequencyProperty();
-        engraveProperties.setProperty("speed", laserCut.prefs.getInt("zing.espeed", ZING_SPEED_DEFAUlT));
-        engraveProperties.setProperty("power", laserCut.prefs.getInt("zing.epower", ZING_ENGRAVE_POWER_DEFAUlT));
-        engraveProperties.setProperty("frequency", laserCut.prefs.getInt("zing.efreq", ZING_FREQ_DEFAUlT));
+        engraveProperties.setProperty("speed", prefs.getInt("zing.espeed", ZING_SPEED_DEFAUlT));
+        engraveProperties.setProperty("power", prefs.getInt("zing.epower", ZING_ENGRAVE_POWER_DEFAUlT));
+        engraveProperties.setProperty("frequency", prefs.getInt("zing.efreq", ZING_FREQ_DEFAUlT));
         engraveProperties.setProperty("focus", 0.0f);
         PowerSpeedFocusFrequencyProperty rasterProperties = new PowerSpeedFocusFrequencyProperty();
-        rasterProperties.setProperty("speed", laserCut.prefs.getInt("zing.rspeed", ZING_SPEED_DEFAUlT));
-        rasterProperties.setProperty("power", laserCut.prefs.getInt("zing.rpower", ZING_RASTER_POWER_DEFAUlT));
+        rasterProperties.setProperty("speed", prefs.getInt("zing.rspeed", ZING_SPEED_DEFAUlT));
+        rasterProperties.setProperty("power", prefs.getInt("zing.rpower", ZING_RASTER_POWER_DEFAUlT));
         rasterProperties.setProperty("frequency", ZING_FREQ_DEFAUlT);
         rasterProperties.setProperty("focus", 0.0f);
-        boolean planPath = laserCut.prefs.getBoolean("zing.pathplan", true);
+        boolean planPath = prefs.getBoolean("zing.pathplan", true);
         LaserJob job = new LaserJob("laserCut", "laserCut", "laserCut");   // title, name, user
         // Process raster engrave passes, if any
         for (CADShape shape : laserCut.surface.getDesign()) {
@@ -160,22 +160,22 @@ class ZingLaser implements LaserCut.OutputDevice {
     JMenuItem zingSettings = new JMenuItem(getName() + " Settings");
     zingSettings.addActionListener(ev -> {
       ParameterDialog.ParmItem[] parmSet = {
-          new ParameterDialog.ParmItem(getName() + " IP Add", laserCut.prefs.get("zing.ip", "10.0.1.201")),
+          new ParameterDialog.ParmItem(getName() + " IP Add", prefs.get("zing.ip", "10.0.1.201")),
           new ParameterDialog.ParmItem(new JSeparator()),
           new ParameterDialog.ParmItem(matMenu),
           new ParameterDialog.ParmItem(new JSeparator()),
-          new ParameterDialog.ParmItem("Cut Power|%(0-100)", laserCut.prefs.getInt("zing.power", ZING_CUT_POWER_DEFAUlT)),
-          new ParameterDialog.ParmItem("Cut Speed", laserCut.prefs.getInt("zing.speed", ZING_SPEED_DEFAUlT)),
-          new ParameterDialog.ParmItem("Cut Freq|Hz", laserCut.prefs.getInt("zing.freq", ZING_FREQ_DEFAUlT)),
+          new ParameterDialog.ParmItem("Cut Power|%(0-100)", prefs.getInt("zing.power", ZING_CUT_POWER_DEFAUlT)),
+          new ParameterDialog.ParmItem("Cut Speed", prefs.getInt("zing.speed", ZING_SPEED_DEFAUlT)),
+          new ParameterDialog.ParmItem("Cut Freq|Hz", prefs.getInt("zing.freq", ZING_FREQ_DEFAUlT)),
           new ParameterDialog.ParmItem(new JSeparator()),
-          new ParameterDialog.ParmItem("Engrave Power|%(0-100)", laserCut.prefs.getInt("zing.epower", ZING_ENGRAVE_POWER_DEFAUlT)),
-          new ParameterDialog.ParmItem("Engrave Speed", laserCut.prefs.getInt("zing.espeed", ZING_SPEED_DEFAUlT)),
-          new ParameterDialog.ParmItem("Engrave Freq|Hz", laserCut.prefs.getInt("zing.efreq", ZING_FREQ_DEFAUlT)),
+          new ParameterDialog.ParmItem("Engrave Power|%(0-100)", prefs.getInt("zing.epower", ZING_ENGRAVE_POWER_DEFAUlT)),
+          new ParameterDialog.ParmItem("Engrave Speed", prefs.getInt("zing.espeed", ZING_SPEED_DEFAUlT)),
+          new ParameterDialog.ParmItem("Engrave Freq|Hz", prefs.getInt("zing.efreq", ZING_FREQ_DEFAUlT)),
           new ParameterDialog.ParmItem(new JSeparator()),
-          new ParameterDialog.ParmItem("Raster Power|%(0-100)", laserCut.prefs.getInt("zing.rpower", ZING_RASTER_POWER_DEFAUlT)),
-          new ParameterDialog.ParmItem("Raster Speed", laserCut.prefs.getInt("zing.rspeed", ZING_SPEED_DEFAUlT)),
+          new ParameterDialog.ParmItem("Raster Power|%(0-100)", prefs.getInt("zing.rpower", ZING_RASTER_POWER_DEFAUlT)),
+          new ParameterDialog.ParmItem("Raster Speed", prefs.getInt("zing.rspeed", ZING_SPEED_DEFAUlT)),
           new ParameterDialog.ParmItem(new JSeparator()),
-          new ParameterDialog.ParmItem("Use Path Planner", laserCut.prefs.getBoolean("zing.pathplan", true)),
+          new ParameterDialog.ParmItem("Use Path Planner", prefs.getBoolean("zing.pathplan", true)),
 
       };
       matMenu.addItemListener(ev2 -> {
@@ -199,16 +199,16 @@ class ZingLaser implements LaserCut.OutputDevice {
         }
       });
       if (ParameterDialog.showSaveCancelParameterDialog(parmSet, prefs.get("displayUnits", "in"), laserCut)) {
-        laserCut.prefs.put("zing.ip", (String) parmSet[0].value);
-        laserCut.prefs.putInt("zing.power", (Integer) parmSet[4].value);
-        laserCut.prefs.putInt("zing.speed", (Integer) parmSet[5].value);
-        laserCut.prefs.putInt("zing.freq",  (Integer) parmSet[6].value);
-        laserCut.prefs.putInt("zing.epower", (Integer) parmSet[8].value);
-        laserCut.prefs.putInt("zing.espeed", (Integer) parmSet[9].value);
-        laserCut.prefs.putInt("zing.efreq",  (Integer) parmSet[10].value);
-        laserCut.prefs.putInt("zing.rpower", (Integer) parmSet[12].value);
-        laserCut.prefs.putInt("zing.rspeed", (Integer) parmSet[13].value);
-        laserCut.prefs.putBoolean("zing.pathplan", (Boolean) parmSet[15].value);
+        prefs.put("zing.ip", (String) parmSet[0].value);
+        prefs.putInt("zing.power", (Integer) parmSet[4].value);
+        prefs.putInt("zing.speed", (Integer) parmSet[5].value);
+        prefs.putInt("zing.freq",  (Integer) parmSet[6].value);
+        prefs.putInt("zing.epower", (Integer) parmSet[8].value);
+        prefs.putInt("zing.espeed", (Integer) parmSet[9].value);
+        prefs.putInt("zing.efreq",  (Integer) parmSet[10].value);
+        prefs.putInt("zing.rpower", (Integer) parmSet[12].value);
+        prefs.putInt("zing.rspeed", (Integer) parmSet[13].value);
+        prefs.putBoolean("zing.pathplan", (Boolean) parmSet[15].value);
       }
     });
     zingMenu.add(zingSettings);

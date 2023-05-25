@@ -3,6 +3,7 @@ import java.awt.geom.*;
 import java.io.InputStream;
 import java.io.StringReader;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Properties;
 
 public class Utils2D {
@@ -356,5 +357,63 @@ public class Utils2D {
       newShape.append(shape.getPathIterator(atScale), false);
     }
     return newShape;
+  }
+
+  /**
+   * Report the bounding box for all points
+   *
+   * @param points the provided points
+   * @return the smallest rectangle that really contains all the points.
+   */
+  public static Rectangle2D.Double boundsOf (Collection<? extends Point2D.Double> points) {
+    if ((points == null) || points.isEmpty()) {
+      return null;
+    }
+    Rectangle2D.Double bounds = new Rectangle2D.Double();
+    for (Point2D.Double point : points) {
+      bounds.add(point);
+    }
+    return bounds;
+  }
+
+  /**
+   * Scale a Point2D.Double object
+   * @param pnt Point2D.Double to scale
+   * @param scale scale factor (0 - 100)
+   * @return scaled Point2D.Double object
+   */
+  public static Point2D.Double scalePoint (Point2D.Double pnt, double scale) {
+    return new Point2D.Double(pnt.x * scale / 100, pnt.y * scale / 100);
+  }
+
+  /**
+   * Scale a Rectangle2D.Double object
+   * @param rect Rectangle2D.Double object to scale
+   * @param scale scale factor (0 - 100)
+   * @return scaled Rectangle2D.Double object
+   */
+  public static Rectangle2D.Double scaleRect (Rectangle2D.Double rect, double scale) {
+    double sc = scale / 100;
+    return new Rectangle2D.Double(rect.x * sc, rect.y * sc, rect.width * sc, rect.height * sc);
+  }
+
+  /*
+   *  Debuging tools
+   */
+
+  public static void printPoint (Point2D.Double point) {
+    System.out.printf("x = %3.3f, y = %3.3f\n", point.x, point.y);
+  }
+
+  public static void printPoint (String prefix, Point2D.Double point) {
+    System.out.printf("%s: x = %3.3f, y = %3.3f\n", prefix, point.x, point.y);
+  }
+
+  public static void printRect (Rectangle2D.Double rect) {
+    System.out.printf("x = %3.3f, y = %3.3f, wid = %3.3f, hyt = %3.3f\n", rect.x, rect.y, rect.width, rect.height);
+  }
+
+  public static void printRect (String prefix, Rectangle2D.Double rect) {
+    System.out.printf("%s: x = %3.3f, y = %3.3f, wid = %3.3f, hyt = %3.3f\n",prefix,  rect.x, rect.y, rect.width, rect.height);
   }
 }

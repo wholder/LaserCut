@@ -45,7 +45,18 @@ public class DrawSurface extends JPanel {
   private boolean                             mouseDown = false;
   private Point2D.Double                      tipLoc;
   private String                              tipText;
-  private boolean                             keyShift;
+  private boolean                             keyShift;     // Shift key down
+  private boolean                             keyCtrl;      // Control key down
+  private boolean                             keyOption;    // Mac Option key, else ALT key down
+  private boolean                             keyMeta;      // Mac CMD key down
+
+  /**
+   *  State keys mapping
+   *    Shift:    Diaplay Resize drag point
+   *    Control:  Display Rotate drag point
+   *    Option:   See code
+   *    Meta:     See code
+   */
 
   static class Placer {
     private final List<CADShape>    shapes;
@@ -55,7 +66,7 @@ public class DrawSurface extends JPanel {
       this.shapes = shapes;
     }
 
-    void setPosition (Point2D.Double newLoc) {
+    void setPlacePosition (Point2D.Double newLoc) {
       Point2D.Double delta = new Point2D.Double(newLoc.getX() - curLoc.getX(), newLoc.getY() - curLoc.getY());
       for (CADShape shape : shapes) {
         shape.movePosition(delta);
@@ -65,7 +76,7 @@ public class DrawSurface extends JPanel {
 
     void draw (Graphics2D g2, double scale) {
       for (CADShape shape : shapes) {
-        shape.draw(g2, scale, false);
+        shape.draw(g2, scale, false, false, false);
       }
     }
 
@@ -102,17 +113,45 @@ public class DrawSurface extends JPanel {
     addKeyListener(new KeyAdapter() {
       @Override
          public void keyPressed (KeyEvent ev) {
-           if (ev.getKeyCode() == KeyEvent.VK_SHIFT) {
-             keyShift = true;
-             repaint();
-           }
+        switch (ev.getKeyCode()) {
+          case KeyEvent.VK_SHIFT:
+            keyShift = true;
+            repaint();
+            break;
+          case KeyEvent.VK_CONTROL:
+            keyCtrl = true;
+            repaint();
+            break;
+          case KeyEvent.VK_ALT:
+            keyOption = true;
+            repaint();
+            break;
+          case KeyEvent.VK_META:
+            keyMeta = true;
+            repaint();
+            break;
+        }
          }
 
          @Override
          public void keyReleased (KeyEvent ev) {
-           if (ev.getKeyCode() == KeyEvent.VK_SHIFT) {
-             keyShift = false;
-             repaint();
+           switch (ev.getKeyCode()) {
+             case KeyEvent.VK_SHIFT:
+               keyShift = false;
+               repaint();
+               break;
+             case KeyEvent.VK_CONTROL:
+               keyCtrl = false;
+               repaint();
+               break;
+             case KeyEvent.VK_ALT:
+               keyOption = false;
+               repaint();
+               break;
+             case KeyEvent.VK_META:
+               keyMeta = false;
+               repaint();
+               break;
            }
          }
        });
@@ -122,6 +161,7 @@ public class DrawSurface extends JPanel {
           mouseDown = true;
           cancelTip();
           requestFocus();
+          // Note: newLoc is in workspace coords (inches)
           Point2D.Double newLoc = new Point2D.Double(ev.getX() / getScreenScale(), ev.getY() / getScreenScale());
           if (placer != null) {
             if (doSnap && gridSpacing > 0) {
@@ -130,12 +170,12 @@ public class DrawSurface extends JPanel {
             if (placer != null) {
               // Place into DrawSurface
               pushToUndoStack();
-              placer.setPosition(newLoc);
+              placer.setPlacePosition(newLoc);
               placer.addToSurface(thisSurface);
               placer = null;
               setPlacerActive(false);
             }
-          } else if (ev.isControlDown()) {    // Process CTRL key (VK_CONTROL)
+          } else if (keyOption) {    // Process Option, or ALT key
             // Select cadShape and then do CTRL-Click on second cadShape to measure distance from origin to origin
             if (selected != null) {
               for (CADShape shape : shapes) {
@@ -160,7 +200,7 @@ public class DrawSurface extends JPanel {
                 }
               }
             }
-          } else if (ev.isShiftDown()) {        // Process SHIFT key (VK_SHIFT)
+          } else if (keyShift) {        // Process SHIFT key (VK_SHIFT)
             if (selected instanceof LaserCut.Resizable || selected instanceof LaserCut.Rotatable) {
               // Check for click on resizeOrRotate point (used to drag cadShape to new size, or orientation)
               if (selected.isResizeOrRotateClicked(newLoc)) {
@@ -242,7 +282,7 @@ public class DrawSurface extends JPanel {
                 return;
               }
             }
-            if (ev.isMetaDown()) {      // Process CMD key (VK_META)
+            if (keyMeta) {      // Process CMD key (VK_META)
               // Clicked on nothing with Meta Down, so setup to drag workspace
               pushToUndoStack();
               setSelected(null);
@@ -270,7 +310,7 @@ public class DrawSurface extends JPanel {
             double newZoom;
             int newX, newY;
             Point pos = scrollPane.getViewport().getViewPosition();
-            if (ev.isShiftDown()) {
+            if (keyShift) {
               newZoom = Math.max(zoomFactor / 2, 1);
               newX = pos.x - ev.getX() / 2;
               newY = pos.y - ev.getY() / 2;
@@ -360,13 +400,13 @@ public class DrawSurface extends JPanel {
             pushedToStack = true;
             pushToUndoStack();
           }
-          if (ev.isShiftDown()) {       // Process SHIFT key (VK_SHIFT)
-            resizeOrRotate.resizeOrRotateShape(newLoc, workSize, true);
+          if (keyCtrl) {       // Process SHIFT key (VK_SHIFT)
+            resizeOrRotate.resizeOrRotateShape(newLoc, workSize, true);   // Do rotate
           } else {
             if (doSnap && gridSpacing > 0) {
               newLoc = toGrid(newLoc);
             }
-            resizeOrRotate.resizeOrRotateShape(newLoc, workSize, false);
+            resizeOrRotate.resizeOrRotateShape(newLoc, workSize, false);  // Do resize
           }
           setInfoText(resizeOrRotate.getInfo());
           repaint();
@@ -395,7 +435,7 @@ public class DrawSurface extends JPanel {
         Point2D.Double newLoc = new Point2D.Double(ev.getX() / getScreenScale(), ev.getY() / getScreenScale());
         tipTracker(newLoc);
         if (placer != null) {
-          placer.setPosition(newLoc);
+          placer.setPlacePosition(newLoc);
           repaint();
         }
       }
@@ -735,7 +775,7 @@ public class DrawSurface extends JPanel {
     return crc.getValue();
   }
 
-  void setDesign (List<CADShape> shapes, LaserCut.SurfaceSettings settings) {
+  void setDesign (List<CADShape> shapes, SurfaceSettings settings) {
     this.shapes = shapes;
     if (settings != null) {
       setZoomFactor(settings.zoomFactor);
@@ -770,7 +810,7 @@ public class DrawSurface extends JPanel {
     Point2D.Double newLoc = new Point2D.Double(shape.xLoc, shape.yLoc);
     shape.setPosition(0, 0);
     placer = new Placer(items);
-    placer.setPosition(newLoc);
+    placer.setPlacePosition(newLoc);
     setPlacerActive(true);
     requestFocus();
     repaint();
@@ -821,8 +861,7 @@ public class DrawSurface extends JPanel {
   void roundSelected (double radius) {
     pushToUndoStack();
     Shape oldShape = selected.buildShape();
-    CADShape tmp = new CADShape(CornerFinder.roundCorners(oldShape, radius), selected.xLoc,
-                                                  selected.yLoc, 0, selected.centered);
+    CADShape tmp = new CADShape(CornerFinder.roundCorners(oldShape, radius), selected.xLoc, selected.yLoc, 0);
     shapes.remove(selected);
     shapes.add(tmp);
     setSelected(tmp);
@@ -848,18 +887,9 @@ public class DrawSurface extends JPanel {
           shapes.remove(gItem);
         }
       }
-      if (selected.centered) {
-        CADShape tmp = new CADShape(newShape, selected.xLoc, selected.yLoc, 0, true);
-        shapes.add(tmp);
-        setSelected(tmp);
-      } else {
-        Rectangle2D bounds = newShape.getBounds2D();
-        AffineTransform at = AffineTransform.getTranslateInstance(-bounds.getWidth() / 2, -bounds.getHeight() / 2);
-        newShape.transform(at);
-        CADShape tmp = new CADShape(newShape, selected.xLoc, selected.yLoc, 0, selected.centered);
-        shapes.add(tmp);
-        setSelected(tmp);
-      }
+      CADShape tmp = new CADShape(newShape, selected.xLoc, selected.yLoc, 0);
+      shapes.add(tmp);
+      setSelected(tmp);
       repaint();
     }
   }
@@ -1022,7 +1052,7 @@ public class DrawSurface extends JPanel {
         double yLoc = bnds.getY();
         AffineTransform at2 = AffineTransform.getTranslateInstance(-xLoc - bnds.getWidth() / 2, -yLoc - bnds.getHeight() / 2);
         shape = at2.createTransformedShape(shape);
-        CADShape cadShape = new CADShape(shape, xLoc, yLoc, 0, false);
+        CADShape cadShape = new CADShape(shape, xLoc, yLoc, 0);
         shapes.add(cadShape);
       }
       clearDragList();
@@ -1096,6 +1126,7 @@ public class DrawSurface extends JPanel {
 
   private void setSelected (CADShape newSelected) {
     selected = newSelected;
+    //System.out.printf("selected: x = %3.2f, x = %3.2f\n", selected.xLoc, selected.yLoc);
     for (LaserCut.ShapeSelectListener listener : selectListerners) {
       listener.shapeSelected(selected, selected != null);
     }
@@ -1140,21 +1171,6 @@ public class DrawSurface extends JPanel {
       }
     }
     return planPath ? PathPlanner.optimize(cullShapes) : cullShapes;
-  }
-
-  /**
-   * Called by MiniCNC code to cull out items that cannot be cut via CNC
-   * @return List of CADShape objects minus culled items
-   */
-  List<CADShape> selectCncItems () {
-    // Cull out items that will not CNC
-    ArrayList<CADShape> cullShapes = new ArrayList<>();
-    for (CADShape shape : getDesign()) {
-      if (shape instanceof CNCPath) {
-        cullShapes.add(shape);
-      }
-    }
-    return cullShapes;
   }
 
   List<CADShape> selectCutterItems (boolean planPath) {
@@ -1270,7 +1286,7 @@ public class DrawSurface extends JPanel {
       shape.isSelected = shape == selected;
       shape.inGroup = selected != null && selected.getGroup() != null && selected.getGroup().containsShape(shape);
       shape.dragged = dragList != null && dragList.contains(shape);
-      shape.draw(g2, zoomFactor, keyShift);
+      shape.draw(g2, zoomFactor, keyCtrl, keyShift, keyOption);
     }
     if (showMeasure) {
       g2.setColor(Color.gray);

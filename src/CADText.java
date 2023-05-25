@@ -6,10 +6,8 @@ import java.awt.geom.Path2D;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.*;
 import java.util.List;
-import java.util.Map;
 
 class CADText extends CADShape implements Serializable, LaserCut.Rotatable, LaserCut.Resizable {
   private static final long serialVersionUID = 4314642313295298841L;
@@ -80,18 +78,17 @@ class CADText extends CADShape implements Serializable, LaserCut.Rotatable, Lase
     engrave = true;
   }
 
-  CADText (double xLoc, double yLoc, String text, String fontName, String fontStyle, int fontSize, double tracking,
-           double rotation, boolean centered) {
+  CADText (double xLoc, double yLoc, String text, String fontName, String fontStyle, int fontSize, double tracking, double rotation) {
     this.text = text;
     this.fontName = fontName;
     this.fontStyle = fontStyle;
     this.fontSize = fontSize;
     this.tracking = tracking;
-    setLocationAndOrientation(xLoc, yLoc, rotation, centered);
+    setLocationAndOrientation(xLoc, yLoc, rotation);
   }
 
   public void resize (double dx, double dy) {
-    double width = centered ? dx * 2 : dx;
+    double width = dx * 2;
     int newPnts = fontSize;
     boolean changed = false;
     double wid;
@@ -139,7 +136,7 @@ class CADText extends CADShape implements Serializable, LaserCut.Rotatable, Lase
   Shape buildShape () {
     if (fontName.startsWith("Vector")) {
       Path2D.Double path = new Path2D.Double();
-      LaserCut.VectorFont font = LaserCut.VectorFont.getFont(fontName);
+      VectorFont font = VectorFont.getFont(fontName);
       int[][][] stroke = font.font;
       int lastX = 1000, lastY = 1000;
       int xOff = 0;
@@ -203,6 +200,60 @@ class CADText extends CADShape implements Serializable, LaserCut.Rotatable, Lase
       } finally {
         g2.dispose();
       }
+    }
+  }
+
+  static class VectorFont {
+    private static final Map<String,VectorFont> vFonts = new HashMap<>();
+    int[][][]       font;
+    final int       height;
+
+    VectorFont (String name) {
+      height = 32;
+      switch (name) {
+      case "Vector 1":
+        font = getFontData("hershey1.txt");
+        break;
+      case "Vector 2":
+        font = getFontData("hershey2.txt");
+        break;
+      case "Vector 3":
+        font = getFontData("hershey3.txt");
+        break;
+      }
+    }
+
+    static VectorFont getFont (String name) {
+      VectorFont font = vFonts.get(name);
+      if (font == null) {
+        vFonts.put(name, font = new VectorFont(name));
+      }
+      return font;
+    }
+
+    private int[][][] getFontData (String name) {
+      String data = Utils2D.getResourceFile("fonts/" + name);
+      StringTokenizer tok = new StringTokenizer(data, "\n");
+      int[][][] font = new int[128][][];
+      while (tok.hasMoreElements()) {
+        String line = tok.nextToken();
+        if (line.charAt(3) == ':') {
+          char cc = line.charAt(1);
+          line = line.substring(4);
+          String[] vecs = line.split("\\|");
+          int[][] vec = new int[vecs.length][];
+          font[cc - 32] = vec;
+          for (int ii = 0; ii < vecs.length; ii++) {
+            String[] coords = vecs[ii].split(",");
+            int[] tmp = new int[coords.length];
+            for (int jj = 0; jj < tmp.length; jj++) {
+              tmp[jj] = Integer.parseInt(coords[jj]);
+              vec[ii] = tmp;
+            }
+          }
+        }
+      }
+      return font;
     }
   }
 }

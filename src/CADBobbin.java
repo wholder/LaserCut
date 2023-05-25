@@ -21,12 +21,12 @@ class CADBobbin extends CADShape implements Serializable {
     radius = 0.125;
   }
 
-  CADBobbin (double xLoc, double yLoc, double width, double height, double slotDepth, double radius, double rotation, boolean centered) {
+  CADBobbin (double xLoc, double yLoc, double width, double height, double slotDepth, double radius, double rotation) {
     this.width = width;
     this.height = height;
     this.slotDepth = slotDepth;
     this.radius = radius;
-    setLocationAndOrientation(xLoc, yLoc, rotation, centered);
+    setLocationAndOrientation(xLoc, yLoc, rotation);
   }
 
   @Override
@@ -36,7 +36,11 @@ class CADBobbin extends CADShape implements Serializable {
 
   @Override
   String[] getParameterNames () {
-    return new String[]{"width|in", "height|in", "slotDepth|in", "radius|in"};
+    return new String[]{
+      "width|in",
+      "height|in",
+      "slotDepth|in",
+      "radius|in"};
   }
 
   @Override

@@ -17,11 +17,11 @@ class CADRectangle extends CADShape implements Serializable, LaserCut.Resizable,
     height = 1;
   }
 
-  CADRectangle (double xLoc, double yLoc, double width, double height, double radius, double rotation, boolean centered) {
+  CADRectangle (double xLoc, double yLoc, double width, double height, double radius, double rotation) {
     this.width = width;
     this.height = height;
     this.radius = radius;
-    setLocationAndOrientation(xLoc, yLoc, rotation, centered);
+    setLocationAndOrientation(xLoc, yLoc, rotation);
   }
 
   @Override
@@ -31,8 +31,8 @@ class CADRectangle extends CADShape implements Serializable, LaserCut.Resizable,
 
   // Implement Resizable interface
   public void resize (double dx, double dy) {
-    width = Math.max(centered ? dx * 2 : dx, .1);
-    height = Math.max(centered ? dy * 2 : dy, .1);
+    width = Math.max(dx * 2, .1);
+    height = Math.max(dy * 2, .1);
   }
 
   @Override

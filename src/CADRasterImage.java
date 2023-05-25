@@ -14,23 +14,35 @@ import java.awt.geom.Path2D;
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.io.*;
+import java.nio.file.Files;
 import java.util.*;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.prefs.Preferences;
 
 import static javax.swing.JOptionPane.*;
 
 class CADRasterImage extends CADShape implements Serializable, LaserCut.Resizable, LaserCut.Rotatable {
   private static final long serialVersionUID = 2309856254388651139L;
+  private static final int  IMG_WID = 200;
+  private static final int  IMG_HYT = 200;
+  private static final int  IMG_BORDER = 30;
   public double             width, height, scale = 100.0;
-  public boolean            engrave3D;
+  public boolean            engrave3D, transparent;
   public String             imagePpi;
   Dimension                 ppi;
   transient BufferedImage   img;
 
   CADRasterImage () {
     engrave = true;
+  }
+
+  @Override
+  boolean clickInsideToSelect () {
+    return true;
   }
 
   @Override
@@ -44,10 +56,58 @@ class CADRasterImage extends CADShape implements Serializable, LaserCut.Resizabl
     fileChooser.addChoosableFileFilter(nameFilter);
     fileChooser.setFileFilter(nameFilter);
     fileChooser.setSelectedFile(new File(prefs.get("image.dir", "/")));
+    /*
+     * Display preview image
+     */
+    JPanel panel = new JPanel(new BorderLayout());
+    panel.setPreferredSize(new Dimension(IMG_WID + IMG_BORDER, IMG_HYT + IMG_BORDER));
+    panel.setBorder(BorderFactory.createLineBorder(Color.black));
+    JLabel imgLabel = new JLabel();
+    imgLabel.setHorizontalAlignment(JLabel.CENTER);
+    imgLabel.setVerticalAlignment(JLabel.CENTER);
+    panel.add(imgLabel, BorderLayout.CENTER);
+    fileChooser.setAccessory(panel);
+    Dimension dim1 = fileChooser.getPreferredSize();
+    fileChooser.setPreferredSize(new Dimension((int) (dim1.width * 1.25), dim1.height));
+    fileChooser.addPropertyChangeListener(new PropertyChangeListener() {
+
+      public void propertyChange (PropertyChangeEvent pe) {
+        if (pe.getPropertyName().equals("SelectedFileChangedProperty")) {
+          SwingWorker<Image, Void> worker = new SwingWorker<Image, Void>() {
+
+            protected Image doInBackground () {
+              if (pe.getPropertyName().equals(JFileChooser.SELECTED_FILE_CHANGED_PROPERTY)) {
+                File file = fileChooser.getSelectedFile();
+                try {
+                  BufferedImage buf = ImageIO.read(Files.newInputStream(file.toPath()));
+                  return buf.getScaledInstance(IMG_WID, IMG_WID, BufferedImage.SCALE_FAST);
+                } catch (Exception e) {
+                  imgLabel.setText(" Invalid image/Unable to read");
+                }
+              }
+              return null;
+            }
+
+            protected void done () {
+              try {
+                Image img = get(1L, TimeUnit.NANOSECONDS);
+                if (img != null) {
+                  imgLabel.setIcon(new ImageIcon(img));
+                }
+              } catch (Exception e) {
+                imgLabel.setText(" Error");
+              }
+            }
+          };
+          worker.execute();
+        }
+      }
+    });
+    // Prompt for file
     if (fileChooser.showOpenDialog(laserCut) == JFileChooser.APPROVE_OPTION) {
       try {
         File imgFile = fileChooser.getSelectedFile();
-        laserCut.prefs.put("image.dir", imgFile.getAbsolutePath());
+        prefs.put("image.dir", imgFile.getAbsolutePath());
         ppi = getImageDPI(imgFile);
         imagePpi = ppi.width + "x" + ppi.height;
         img = ImageIO.read(imgFile);
@@ -57,8 +117,8 @@ class CADRasterImage extends CADShape implements Serializable, LaserCut.Resizabl
         do {
           if (placeParameterDialog(surface, prefs.get("displayUnits", "in"))) {
             // Make sure image will fit in work area
-            Dimension dim = surface.getWorkSize();
-            if (width > dim.width / LaserCut.SCREEN_PPI || height > dim.height / LaserCut.SCREEN_PPI) {
+            Dimension dim2 = surface.getWorkSize();
+            if (width > dim2.width / LaserCut.SCREEN_PPI || height > dim2.height / LaserCut.SCREEN_PPI) {
               if (showConfirmDialog(laserCut, "Image is too large for work area\nPlace anyway?", "Caution",
                                     YES_NO_OPTION, PLAIN_MESSAGE) == OK_OPTION) {
                 surface.placeShape(this);
@@ -92,14 +152,21 @@ class CADRasterImage extends CADShape implements Serializable, LaserCut.Resizabl
       "*imagePpi{points per inch}",
       "rotation|deg{degress to rotate}",
       "scale|%",
-      "centered",     // boolean
-      "engrave",      // boolean
-      "engrave3D");   // boolean
+      "engrave",        // boolean
+      "engrave3D",      // boolean
+      "transparent");   // boolean
   }
 
   @Override
   protected List<String> getPlaceFields () {
-    return Arrays.asList("*width|in", "*height|in", "*imagePpi", "rotation|deg", "scale|%", "centered", "engrave", "engrave3D");
+    return Arrays.asList(
+      "*width|in",
+      "*height|in",
+      "*imagePpi",
+      "rotation|deg",
+      "scale|%",
+      "engrave",
+      "engrave3D");
   }
 
   @Override
@@ -128,8 +195,8 @@ class CADRasterImage extends CADShape implements Serializable, LaserCut.Resizabl
 
   // Implement Resizable interface
   public void resize (double dx, double dy) {
-    double newWid = centered ? dx * 2 : dx;
-    double newHyt = centered ? dy * 2 : dy;
+    double newWid = dx * 2;
+    double newHyt = dy * 2;
     double rawWid = (double) img.getWidth() / ppi.width;
     double rawHyt = (double) img.getHeight() / ppi.height;
     double ratioX = newWid / rawWid;
@@ -152,13 +219,17 @@ class CADRasterImage extends CADShape implements Serializable, LaserCut.Resizabl
   }
 
   @Override
-  void draw (Graphics g, double zoom, boolean keyShift) {
+  void draw (Graphics g, double zoom, boolean keyRotate, boolean keyResize, boolean keyOption) {
     Graphics2D g2 = (Graphics2D) g.create();
     BufferedImage bufimg;
     if (engrave) {
       // Convert Image to greyscale
       bufimg = new BufferedImage(img.getWidth(), img.getHeight(), BufferedImage.TYPE_BYTE_GRAY);
       Graphics2D g2d = bufimg.createGraphics();
+      if (!transparent) {
+        g2d.setColor(Color.white);
+        g2d.fillRect(0, 0, img.getWidth(), img.getHeight());
+      }
       g2d.drawImage(img, 0, 0, null);
       g2d.dispose();
     } else {
@@ -166,21 +237,15 @@ class CADRasterImage extends CADShape implements Serializable, LaserCut.Resizabl
     }
     // Transform image for centering, rotation and scale
     AffineTransform at = new AffineTransform();
-    if (centered) {
-      at.translate(xLoc * zoom * LaserCut.SCREEN_PPI, yLoc * zoom * LaserCut.SCREEN_PPI);
-      at.scale(zoom * scale / 100 * LaserCut.SCREEN_PPI / ppi.width, zoom * scale / 100 * LaserCut.SCREEN_PPI / ppi.height);
-      at.rotate(Math.toRadians(rotation));
-      at.translate(-bufimg.getWidth() / 2.0, -bufimg.getHeight() / 2.0);
-    } else {
-      at.translate(xLoc * zoom * LaserCut.SCREEN_PPI, yLoc * zoom * LaserCut.SCREEN_PPI);
-      at.scale(zoom * scale / 100 * LaserCut.SCREEN_PPI / ppi.width, zoom * scale / 100 * LaserCut.SCREEN_PPI / ppi.height);
-      at.rotate(Math.toRadians(rotation));
-    }
+    at.translate(xLoc * zoom * LaserCut.SCREEN_PPI, yLoc * zoom * LaserCut.SCREEN_PPI);
+    at.scale(zoom * scale / 100 * LaserCut.SCREEN_PPI / ppi.width, zoom * scale / 100 * LaserCut.SCREEN_PPI / ppi.height);
+    at.rotate(Math.toRadians(rotation));
+    at.translate(-bufimg.getWidth() / 2.0, -bufimg.getHeight() / 2.0);
     // Draw with 40% Alpha to make image semi transparent
     g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.4f));
     g2.drawImage(bufimg, at, null);
     g2.dispose();
-    super.draw(g, zoom, keyShift);
+    super.draw(g, zoom, keyRotate, keyResize, keyOption);
   }
 
   /**
@@ -234,13 +299,9 @@ class CADRasterImage extends CADShape implements Serializable, LaserCut.Resizabl
    * @return Origin point on the edge of the image (offset by the negative of these amounts when drawing)
    */
   Point2D.Double getScaledRotatedOrigin (AffineTransform at, Rectangle2D bb) {
-    if (centered) {
-      return new Point2D.Double(bb.getWidth() / 2, bb.getHeight() / 2);
-    } else {
-      Point2D.Double origin = new Point2D.Double(0, 0);
-      at.transform(origin, origin);
-      return origin;
-    }
+    Point2D.Double origin = new Point2D.Double(0, 0);
+    at.transform(origin, origin);
+    return origin;
   }
 
   /**

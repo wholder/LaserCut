@@ -26,12 +26,11 @@ class CADGear extends CADShape implements Serializable, LaserCut.Rotatable {
     profileShift = .25;
     holeSize = .125;
     diameter = numTeeth * module;
-    centered = true;
   }
 
   CADGear (double xLoc, double yLoc, double module, int numTeeth, int numPoints, double pressAngle, double profileShift,
            double rotation, double holeSize) {
-    setLocationAndOrientation(xLoc, yLoc, rotation, true);
+    setLocationAndOrientation(xLoc, yLoc, rotation);
     this.module = module;
     this.numTeeth = numTeeth;
     this.numPoints = numPoints;
@@ -64,21 +63,14 @@ class CADGear extends CADShape implements Serializable, LaserCut.Rotatable {
   }
 
   @Override
-  void draw (Graphics g, double zoom, boolean ksyShift) {
-    super.draw(g, zoom, ksyShift);
+  void draw (Graphics g, double zoom, boolean keyRotate, boolean keyResize, boolean keyOption) {
+    super.draw(g, zoom, keyRotate, keyResize, keyOption);
     Graphics2D g2 = (Graphics2D) g;
     // Draw dashed line in magenta to show effective gear diameter
     g2.setColor(Color.MAGENTA);
     g2.setStroke(Utils2D.getDashedStroke(getStrokeWidth(), 108.0f, 10.0f));
     double diam = module * numTeeth;
-    double scale = zoom * LaserCut.SCREEN_PPI;
-    if (centered) {
-      g2.draw(new Ellipse2D.Double((xLoc - diam / 2) * scale, (yLoc - diam / 2) * scale, diam * scale, diam * scale));
-    } else {
-      Rectangle2D bnds = getShapeBounds();
-      double cX = xLoc + bnds.getWidth() / 2;
-      double cY = yLoc + bnds.getHeight() / 2;
-      g2.draw(new Ellipse2D.Double((cX - diam / 2) * scale, (cY - diam / 2) * scale, diam * scale, diam * scale));
-    }
+    double screen = zoom * LaserCut.SCREEN_PPI;
+    g2.draw(new Ellipse2D.Double((xLoc - diam / 2) * screen, (yLoc - diam / 2) * screen, diam * screen, diam * screen));
   }
 }
