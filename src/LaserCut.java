@@ -662,7 +662,8 @@ public class LaserCut extends JFrame {
         parser.setPxDpi(pxDpi);
         try {
           CADShape shp = parser.parseSvgFile(file);
-          return Utils2D.getPreviewImage(shp);
+          Shape shape = shp.getWorkspaceTranslatedShape();
+          return Utils2D.getPreviewImage(shape);
         } catch (Exception ex) {
           return null;
         }
@@ -688,6 +689,18 @@ public class LaserCut extends JFrame {
           surface.placeShapes(dxf.readDxfFile(sFile));
         } catch (IOException ex) {
           showErrorDialog("Unable to open DXF file");
+        }
+      }
+      @Override
+      BufferedImage getPreview (File file) throws IOException {
+        DXFReader dxf = new DXFReader("in");
+
+        try {
+          List<CADShape> shapes = dxf.readDxfFile (file);
+          Shape shape = Utils2D.convertListOfCADShapesInArea(shapes);
+          return Utils2D.getPreviewImage(shape);
+        } catch (Exception ex) {
+          return null;
         }
       }
     });

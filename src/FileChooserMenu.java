@@ -30,6 +30,8 @@ public class FileChooserMenu extends JMenuItem {
       fileChooser.setFileFilter(nameFilter);
       fileChooser.setCurrentDirectory(new File(currentPath = prefs.get("default." + ext + ".dir", "/")));
       currentPath = fileChooser.getCurrentDirectory().getPath();
+      JPanel accessories = new JPanel(new BorderLayout());
+      boolean hasAccesory = false;
       if (preview) {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setPreferredSize(new Dimension(IMG_WID + IMG_BORDER, IMG_HYT + IMG_BORDER));
@@ -37,9 +39,18 @@ public class FileChooserMenu extends JMenuItem {
         imgLabel.setHorizontalAlignment(JLabel.CENTER);
         imgLabel.setVerticalAlignment(JLabel.CENTER);
         panel.add(imgLabel, BorderLayout.CENTER);
-        fileChooser.setAccessory(panel);
         Dimension dim1 = fileChooser.getPreferredSize();
         fileChooser.setPreferredSize(new Dimension((int) (dim1.width * 1.25), dim1.height));
+        accessories.add(panel, BorderLayout.WEST);
+        hasAccesory = true;
+      }
+      JComponent temp = getAccessory(prefs, save);
+      if (temp != null) {
+        accessories.add(temp, BorderLayout.EAST);
+        hasAccesory = true;
+      }
+      if (hasAccesory) {
+        fileChooser.setAccessory(accessories);
       }
       fileChooser.addPropertyChangeListener(evt -> {
         String path = fileChooser.getCurrentDirectory().getPath();
@@ -97,6 +108,11 @@ public class FileChooserMenu extends JMenuItem {
         prefs.put("default." + ext, sFile.getAbsolutePath());
       }
     });
+  }
+
+  // Override in subclass
+  JComponent getAccessory (Preferences prefs, boolean save) {
+    return null;
   }
 
   private boolean openDialog (Component comp, boolean save) {

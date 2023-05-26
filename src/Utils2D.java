@@ -15,7 +15,7 @@ public class Utils2D {
    * @param size size of Circle shape
    * @return Shape object
    */
-  static Shape getCircle (Point2D.Double pnt, double radius) {
+  static Shape getCircleShape (Point2D.Double pnt, double radius) {
     return new Ellipse2D.Double(pnt.x - radius, pnt.y - radius, radius * 2, radius * 2);
   }
 
@@ -25,12 +25,12 @@ public class Utils2D {
    * @param size size of Plus sign shape
    * @return Shape object
    */
-  static Shape getPlus (Point2D.Double pnt, double size) {
+  static Shape getPlusShape (Point2D.Double pnt, double size) {
     Path2D.Double plus = new Path2D.Double();
-    plus.moveTo(pnt.x, pnt.y - size);
-    plus.lineTo(pnt.x, pnt.y + size);
-    plus.moveTo(pnt.x - size, pnt.y);
-    plus.lineTo(pnt.x + size, pnt.y);
+    plus.moveTo(pnt.x, pnt.y - size);             // upper (0,-)
+    plus.lineTo(pnt.x, pnt.y + size);             // lower (0,+)
+    plus.moveTo(pnt.x - size, pnt.y);             // left  (-,0)
+    plus.lineTo(pnt.x + size, pnt.y);             // right (+,0)
     return plus;
   }
 
@@ -40,16 +40,30 @@ public class Utils2D {
    * @param size size of Diamond shape
    * @return Shape object
    */
-  static Shape getDiamond (Point2D.Double pnt, double size) {
+  static Shape getDiamondShape (Point2D.Double pnt, double size) {
     Path2D.Double diamone = new Path2D.Double();
-    diamone.moveTo(pnt.x, pnt.y - size);          // upper
-    diamone.lineTo(pnt.x + size, pnt.y);          // right
-    diamone.lineTo(pnt.x, pnt.y + size);          // lower
-    diamone.lineTo(pnt.x - size, pnt.y);          // left
-    diamone.lineTo(pnt.x, pnt.y - size);          // upper
+    diamone.moveTo(pnt.x, pnt.y - size);          // upper (0,-)
+    diamone.lineTo(pnt.x + size, pnt.y);          // right (+,0)
+    diamone.lineTo(pnt.x, pnt.y + size);          // lower (0,+)
+    diamone.lineTo(pnt.x - size, pnt.y);          // left  (-,0)
+    diamone.lineTo(pnt.x, pnt.y - size);          // upper (0,-)
     return diamone;
   }
 
+  /**
+   * Generate an "X" Shape centered on Point of defined size
+   * @param pnt Point to center shape on
+   * @param size size of "X" Shape
+   * @return Shape object
+   */
+  static Shape getXShape (Point2D.Double pnt, double size) {
+    Path2D.Double xPnt = new Path2D.Double();
+    xPnt.moveTo(pnt.x - size, pnt.y - size);   // upper left  (-,-)
+    xPnt.lineTo(pnt.x + size, pnt.y + size);   // lower right (+,+)
+    xPnt.moveTo(pnt.x - size, pnt.y + size);   // lower left  (-,+)
+    xPnt.lineTo(pnt.x + size, pnt.y - size);   // upper right (+,-)
+    return xPnt;
+  }
 
   public static Path2D.Double getArrow (double x1, double y1, double x2, double y2, boolean atEnd) {
     Path2D.Double path = new Path2D.Double();
@@ -103,26 +117,6 @@ public class Utils2D {
     //  dash - the array representing the dashing pattern
     //  dash_phase - the offset to start the dashing pattern
     return new BasicStroke(strokeWidth, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 1.0f, dash1, 1.0f);
-  }
-
-  /**
-   * Checks, whether the given rectangle1 fully contains rectangle 2 (even if rectangle 2 has a height or
-   * width of zero!). Unlike the way Java2D handlies this!
-   *
-   * @param rect1 the first rectangle.
-   * @param rect2 the second rectangle.
-   * @return true if first contains second.
-   * @author David Gilbert
-   */
-
-  public static boolean contains (Rectangle2D rect1, Rectangle2D rect2) {
-    final double x0 = rect1.getX();
-    final double y0 = rect1.getY();
-    final double x = rect2.getX();
-    final double y = rect2.getY();
-    final double w = rect2.getWidth();
-    final double h = rect2.getHeight();
-    return ((x >= x0) && (y >= y0) && ((x + w) <= (x0 + rect1.getWidth())) && ((y + h) <= (y0 + rect1.getHeight())));
   }
 
   /**
@@ -400,12 +394,24 @@ public class Utils2D {
   }
 
   /**
-   * Creat preview image for FileChooserMenu (if implemented)
-   * @param inShape
-   * @return
+   * Combine a List of CADShape object into an Area Shape object
+   * @param shapes List of CADShape object
+   * @return an Area Shape object
    */
-  public static BufferedImage getPreviewImage (CADShape inShape) {
-    Shape shape = inShape.getWorkspaceTranslatedShape();
+  public static Shape convertListOfCADShapesInArea (List<CADShape> shapes) {
+    Area area = new Area();
+    for (CADShape shape : shapes) {
+      area.add(new Area(shape.getShape()));
+    }
+    return area;
+  }
+
+  /**
+   * Creat preview image for FileChooserMenu (if implemented)
+   * @param shape Shape object
+   * @return Preview image
+   */
+  public static BufferedImage getPreviewImage (Shape shape) {
     Rectangle2D.Double bnds1 = (Rectangle2D.Double) shape.getBounds2D();
     AffineTransform at = new AffineTransform();
     at.translate(-bnds1.x, -bnds1.y);

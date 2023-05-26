@@ -596,7 +596,7 @@ class CADShape implements Serializable {
    * Get shape's anchor point
    * @return adjusted location of anchor point
    */
-  private Point2D.Double getAnchorPoint () {
+  private Point2D.Double getShapeMoveHandle () {
     return new Point2D.Double(xLoc , yLoc);
   }
 
@@ -604,7 +604,7 @@ class CADShape implements Serializable {
    * Get location of unrotated point for resize/rotate control
    * @return unrotated location of grab point
    */
-  private Point2D.Double getGrabPoint () {
+  private Point2D.Double getResizeOrRotateHandle () {
     Rectangle2D bnds = getShapeBounds();
     return new Point2D.Double(xLoc + bnds.getX() + bnds.getWidth(), yLoc + bnds.getY() + bnds.getHeight());
   }
@@ -613,8 +613,8 @@ class CADShape implements Serializable {
    * Get location of rotated point for resize/rotate control
    * @return rotated location of grab point
    */
-  private Point2D.Double getRotatedGrabPoint () {
-    return Utils2D.rotateAroundPoint(getAnchorPoint(), getGrabPoint(), rotation);
+  private Point2D.Double getRotateddResizeOrRotateHandle () {
+    return Utils2D.rotateAroundPoint(getShapeMoveHandle(), getResizeOrRotateHandle(), rotation);
   }
 
   /**
@@ -623,8 +623,8 @@ class CADShape implements Serializable {
    * @param point      Location click on screen in model coordinates (inches)
    * @return true if close enough to consider a 'touch'
    */
-  public boolean isResizeOrRotateClicked (Point2D.Double point) {
-    Point2D.Double grab = getRotatedGrabPoint();
+  public boolean isResizeOrRotateHandleClicked (Point2D.Double point) {
+    Point2D.Double grab = getRotateddResizeOrRotateHandle();
     double dist = point.distance(grab.x, grab.y) * LaserCut.SCREEN_PPI;
     return dist < 5;
   }
@@ -637,8 +637,8 @@ class CADShape implements Serializable {
    */
   public void resizeOrRotateShape (Point2D.Double newLoc, Dimension workSize, boolean doRotate) {
     if (this instanceof LaserCut.Rotatable && doRotate) {
-      Point2D.Double anchor = getAnchorPoint();
-      Point2D.Double grab = getGrabPoint();
+      Point2D.Double anchor = getShapeMoveHandle();
+      Point2D.Double grab = getResizeOrRotateHandle();
       double angle1 = Math.toDegrees(Math.atan2(anchor.y - newLoc.y, anchor.x - newLoc.x));
       double angle2 = Math.toDegrees(Math.atan2(anchor.y - grab.y, anchor.x - grab.x));
       // Change angle in even, 1 degree steps
@@ -648,7 +648,7 @@ class CADShape implements Serializable {
       // Counter rotate mouse loc into cadShape's coordinate space to measure stretch/shrink
       double tx = Math.max(Math.min(newLoc.x, workSize.width / LaserCut.SCREEN_PPI), 0);
       double ty = Math.max(Math.min(newLoc.y, workSize.height / LaserCut.SCREEN_PPI), 0);
-      Point2D.Double grab = Utils2D.rotateAroundPoint(getAnchorPoint(), new Point2D.Double(tx, ty), -rotation);
+      Point2D.Double grab = Utils2D.rotateAroundPoint(getShapeMoveHandle(), new Point2D.Double(tx, ty), -rotation);
       double dx = grab.x - xLoc;
       double dy = grab.y - yLoc;
       ((LaserCut.Resizable) this).resize(dx, dy);
@@ -674,19 +674,25 @@ class CADShape implements Serializable {
     g2.setStroke(new BasicStroke(getStrokeWidth()));
     if (isSelected || this instanceof CADReference || this instanceof CADShapeSpline) {
       // Draw (+) grab point for move option
-      g2.draw(Utils2D.getPlus(new Point2D.Double(xLoc * zoom * LaserCut.SCREEN_PPI, yLoc * zoom * LaserCut.SCREEN_PPI), 4));
+      g2.draw(Utils2D.getPlusShape(new Point2D.Double(xLoc * zoom * LaserCut.SCREEN_PPI, yLoc * zoom * LaserCut.SCREEN_PPI), 4));
+/*
+      Rectangle2D.Double rect = getShapeBounds();
+      rect.x += xLoc;
+      rect.y += yLoc;
+      g2.draw(Utils2D.getXShape(new Point2D.Double(rect.x * zoom * LaserCut.SCREEN_PPI, rect.y * zoom * LaserCut.SCREEN_PPI), 4));
+*/
     }
     if (isSelected) {
       Graphics2D g2d = (Graphics2D) g.create();
       g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
       // Draw grab point for resizing image
-      Point2D.Double rGrab = getRotatedGrabPoint();
+      Point2D.Double rGrab = getRotateddResizeOrRotateHandle();
       double mx = rGrab.x * zoom * LaserCut.SCREEN_PPI;
       double my = rGrab.y * zoom * LaserCut.SCREEN_PPI;
       g2d.setColor(new Color(0, 153, 0));
       if (keyRotate && this instanceof LaserCut.Rotatable) {
         // Draw circle for Rotatable interface
-        g2d.draw(Utils2D.getCircle(new Point2D.Double(mx, my), 4));
+        g2d.draw(Utils2D.getCircleShape(new Point2D.Double(mx, my), 4));
         // Draw dashed line to connect axis if rotation to grap point
         g2d.setStroke(Utils2D.getDashedStroke(1, 5.0f, 9.0f));
         double cx = xLoc * zoom * LaserCut.SCREEN_PPI;
@@ -698,7 +704,7 @@ class CADShape implements Serializable {
         g2d.drawString("(θ=" + angle + ")", (float) mx + 10, (float) my + 4);
       } else if (keyResize && this instanceof LaserCut.Resizable) {
         // Draw diamond grap point for Resizable interface
-        g2d.draw(Utils2D.getDiamond(new Point2D.Double(mx, my), 4));
+        g2d.draw(Utils2D.getDiamondShape(new Point2D.Double(mx, my), 4));
       }
     }
     g2.dispose();

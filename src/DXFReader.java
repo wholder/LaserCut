@@ -276,11 +276,15 @@ public class DXFReader {
     private String                selected;
 
     DxfFileChooserMenu (Component comp, Preferences prefs, String type, String ext, boolean save) {
-      super(comp, prefs, type, ext, save, false);
+      super(comp, prefs, type, ext, save, true);
       checkboxes = new ArrayList<>();
       // Widen JChooser by 25%
       Dimension dim = getPreferredSize();
       setPreferredSize(new Dimension((int) (dim.width * 1.25), dim.height));
+    }
+
+    @Override
+    JComponent getAccessory (Preferences prefs, boolean save) {
       String[] units = {"Inches:in", "Centimeters:cm", "Millimeters:mm"};
       JPanel unitsPanel = new JPanel(new GridLayout(0, 1));
       ButtonGroup group = new ButtonGroup();
@@ -309,7 +313,7 @@ public class DXFReader {
         }
         panel.add(getPanel("Include:", importPanel));
       }
-      fileChooser.setAccessory(panel);
+      return panel;
     }
 
     private JPanel getPanel (String heading, JComponent guts) {

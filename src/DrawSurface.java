@@ -164,22 +164,20 @@ public class DrawSurface extends JPanel {
           // Note: newLoc is in workspace coords (inches)
           Point2D.Double newLoc = new Point2D.Double(ev.getX() / getScreenScale(), ev.getY() / getScreenScale());
           if (placer != null) {
-            if (doSnap && gridSpacing > 0) {
-              newLoc = toGrid(newLoc);
-            }
             if (placer != null) {
               // Place into DrawSurface
               pushToUndoStack();
-              placer.setPlacePosition(newLoc);
+              placer.setPlacePosition(toGrid(newLoc));
               placer.addToSurface(thisSurface);
               placer = null;
               setPlacerActive(false);
             }
-          } else if (keyOption) {    // Process Option, or ALT key
-            // Select cadShape and then do CTRL-Click on second cadShape to measure distance from origin to origin
+          } else if (keyOption) {
+            // Process Option, or ALT key
+            // Select CADShape and then do CTRL-Click on second CADShape to measure distance from origin to origin
             if (selected != null) {
               for (CADShape shape : shapes) {
-                // Check for mouse pointing to cadShape
+                // Check for mouse pointing to CADShape
                 if (shape.isPositionClicked(newLoc, zoomFactor) || shape.isShapeClicked(newLoc, zoomFactor)) {
                   double dx = shape.xLoc - selected.xLoc;
                   double dy = shape.yLoc - selected.yLoc;
@@ -202,8 +200,8 @@ public class DrawSurface extends JPanel {
             }
           } else if (keyShift) {        // Process SHIFT key (VK_SHIFT)
             if (selected instanceof LaserCut.Resizable || selected instanceof LaserCut.Rotatable) {
-              // Check for click on resizeOrRotate point (used to drag cadShape to new size, or orientation)
-              if (selected.isResizeOrRotateClicked(newLoc)) {
+              // Check for click on resizeOrRotate point (used to drag a CADShape to new size, or orientation)
+              if (selected.isResizeOrRotateHandleClicked(newLoc)) {
                 resizeOrRotate = selected;
                 setInfoText(selected.getInfo());
                 repaint();
@@ -211,7 +209,7 @@ public class DrawSurface extends JPanel {
               }
             }
             for (CADShape shape : shapes) {
-              // Add or remove clicked cadShape from dragList
+              // Add or remove clicked CADShape from dragList
               if (shape.isShapeClicked(newLoc, zoomFactor)) {
                 if (shape != selected && selected != null) {
                   dragList.add(selected);
@@ -230,18 +228,18 @@ public class DrawSurface extends JPanel {
               }
             }
             // Setup for shift-drag to add to dragList
-            dragStart = new Point2D.Double(newLoc.x, newLoc.y);
+            dragStart = toGrid(new Point2D.Double(newLoc.x, newLoc.y));
             setSelected(null);
           } else {
             if (selected != null) {
-              // Check for click and drag on selected cadShape's position anchor
+              // Check for click and drag on selected CADShape's position anchor
               if (selected.isPositionClicked(newLoc, zoomFactor)) {
                 dragged = selected;
                 showMeasure = false;
                 return;
               }
               for (CADShape shape : shapes) {
-                // Check for click and drag of another cadShape's position anchor
+                // Check for click and drag of another CADShape's position anchor
                 if (shape.isPositionClicked(newLoc, zoomFactor)) {
                   dragged = shape;
                   setSelected(shape);
@@ -250,21 +248,21 @@ public class DrawSurface extends JPanel {
                   return;
                 }
               }
-              // Check for click inside cadShape if it implements Updatable (used by CADMusicStrip)
+              // Check for click inside CADShape if it implements Updatable (used by CADMusicStrip)
               if (selected instanceof LaserCut.Updatable && ((LaserCut.Updatable) selected).updateInternalState(newLoc)) {
                 pushToUndoStack();
                 repaint();
                 return;
               }
-              // Check for click on anchor point (used to drag cadShape to new location)
+              // Check for click on anchor point (used to drag CADShape to new location)
               if (selected.selectMovePoint(DrawSurface.this, newLoc, toGrid(newLoc))) {
                 dragged = selected;
                 repaint();
                 return;
               }
               if (selected instanceof LaserCut.Resizable || selected instanceof LaserCut.Rotatable) {
-                // Check for click on resizeOrRotate point (used to drag cadShape to new size or orientation)
-                if (selected.isResizeOrRotateClicked(newLoc)) {
+                // Check for click on resizeOrRotate point (used to drag CADShape to new size or orientation)
+                if (selected.isResizeOrRotateHandleClicked(newLoc)) {
                   resizeOrRotate = selected;
                   setInfoText(selected.getInfo());
                   repaint();
@@ -292,7 +290,7 @@ public class DrawSurface extends JPanel {
               setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
             } else {
               // Clicked on nothing, so clear dragging and selection
-              dragStart = new Point2D.Double(newLoc.x, newLoc.y);
+              dragStart = toGrid(new Point2D.Double(newLoc.x, newLoc.y));
               clearDragList();
               setSelected(null);
               setInfoText("");
@@ -310,7 +308,7 @@ public class DrawSurface extends JPanel {
             double newZoom;
             int newX, newY;
             Point pos = scrollPane.getViewport().getViewPosition();
-            if (keyShift) {
+            if (ev.isShiftDown()) {
               newZoom = Math.max(zoomFactor / 2, 1);
               newX = pos.x - ev.getX() / 2;
               newY = pos.y - ev.getY() / 2;
@@ -352,7 +350,10 @@ public class DrawSurface extends JPanel {
             setSelected(null);
             // Add all Shapes inside dragBox to dragList
             for (CADShape shape : shapes) {
-              if (Utils2D.contains(dragBox, shape.getShapeBounds())) {
+              Rectangle2D.Double rect = shape.getShapeBounds();
+              rect.x += shape.xLoc;
+              rect.y += shape.yLoc;
+              if (dragBox.contains(rect)) {
                 if (dragList.contains(shape)) {
                   dragList.remove(shape);
                 } else {
@@ -379,9 +380,7 @@ public class DrawSurface extends JPanel {
             pushedToStack = true;
             pushToUndoStack();
           }
-          if (doSnap && gridSpacing > 0) {
-            newLoc = toGrid(newLoc);
-          }
+          newLoc = toGrid(newLoc);
           if (!dragged.doMovePoints(newLoc)) {
             Point2D.Double delta = dragged.dragPosition(newLoc, workSize);
             setInfoText(dragged.getShapePositionInfo());
@@ -403,9 +402,7 @@ public class DrawSurface extends JPanel {
           if (keyCtrl) {       // Process SHIFT key (VK_SHIFT)
             resizeOrRotate.resizeOrRotateShape(newLoc, workSize, true);   // Do rotate
           } else {
-            if (doSnap && gridSpacing > 0) {
-              newLoc = toGrid(newLoc);
-            }
+            newLoc = toGrid(newLoc);
             resizeOrRotate.resizeOrRotateShape(newLoc, workSize, false);  // Do resize
           }
           setInfoText(resizeOrRotate.getInfo());
@@ -421,9 +418,12 @@ public class DrawSurface extends JPanel {
           repaint();
         } else {
           if (dragStart != null) {
+            newLoc = toGrid(newLoc);
             double ulx = Math.min(dragStart.x, newLoc.x);
             double uly = Math.min(dragStart.y, newLoc.y);
-            dragBox = new Rectangle2D.Double(ulx, uly, Math.abs(newLoc.x - dragStart.x), Math.abs(newLoc.y - dragStart.y));
+            double wid = Math.abs(newLoc.x - dragStart.x);
+            double hyt = Math.abs(newLoc.y - dragStart.y);
+            dragBox = new Rectangle2D.Double(ulx, uly, wid, hyt);
           }
           repaint();
         }
@@ -646,7 +646,10 @@ public class DrawSurface extends JPanel {
 
   private double toGrid (double coord) {
     // From: https://stackoverflow.com/a/5421681 (answer #2)
-    return gridSpacing > 0 ? gridSpacing * Math.floor((coord / gridSpacing) + 0.5) : coord;
+    if (doSnap && gridSpacing > 0) {
+      return gridSpacing * Math.floor(coord / gridSpacing + 0.5);
+    }
+    return coord;
   }
 
   private Point2D.Double toGrid (Point2D.Double loc) {
@@ -806,7 +809,7 @@ public class DrawSurface extends JPanel {
   void placeShape (CADShape shape) {
     List<CADShape> items = new ArrayList<>();
     items.add(shape);
-    // Copy location of cadShape to Placer object, then zero cadShape's location
+    // Copy location of CADShape to Placer object, then zero CADShape's location
     Point2D.Double newLoc = new Point2D.Double(shape.xLoc, shape.yLoc);
     shape.setPosition(0, 0);
     placer = new Placer(items);
@@ -1227,7 +1230,7 @@ public class DrawSurface extends JPanel {
                 if (selected != null) {
                   if (selected.isPositionClicked(tipLoc, getZoomFactor())) {
                     tipText = "Click and drag to\nreposition the " + selected.getMenuName() + ".";
-                  } else if (selected.isResizeOrRotateClicked(tipLoc)) {
+                  } else if (selected.isResizeOrRotateHandleClicked(tipLoc)) {
                     if (selected instanceof LaserCut.Resizable && selected instanceof LaserCut.Rotatable) {
                       tipText = "Click and drag to resize the " + selected.getMenuName() + ".\n" +
                         "Hold shift and drag to rotate it.";
