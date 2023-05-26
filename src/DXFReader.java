@@ -276,7 +276,7 @@ public class DXFReader {
     private String                selected;
 
     DxfFileChooserMenu (Component comp, Preferences prefs, String type, String ext, boolean save) {
-      super(comp, prefs, type, ext, save);
+      super(comp, prefs, type, ext, save, false);
       checkboxes = new ArrayList<>();
       // Widen JChooser by 25%
       Dimension dim = getPreferredSize();

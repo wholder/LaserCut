@@ -152,8 +152,8 @@ class CADShape implements Serializable {
    *
    * @return absolute bounding rectangle
    */
-  Rectangle2D getShapeBounds () {
-    Rectangle2D bnds = getShape().getBounds2D();
+  Rectangle2D.Double getShapeBounds () {
+    Rectangle2D.Double bnds = (Rectangle2D.Double) getShape().getBounds2D();
     return bnds;
   }
 
@@ -597,7 +597,6 @@ class CADShape implements Serializable {
    * @return adjusted location of anchor point
    */
   private Point2D.Double getAnchorPoint () {
-    Rectangle2D bnds = getShapeBounds();
     return new Point2D.Double(xLoc , yLoc);
   }
 

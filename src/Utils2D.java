@@ -1,9 +1,11 @@
 import java.awt.*;
 import java.awt.geom.*;
+import java.awt.image.BufferedImage;
 import java.io.InputStream;
 import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.Properties;
 
 public class Utils2D {
@@ -395,6 +397,34 @@ public class Utils2D {
   public static Rectangle2D.Double scaleRect (Rectangle2D.Double rect, double scale) {
     double sc = scale / 100;
     return new Rectangle2D.Double(rect.x * sc, rect.y * sc, rect.width * sc, rect.height * sc);
+  }
+
+  /**
+   * Creat preview image for FileChooserMenu (if implemented)
+   * @param inShape
+   * @return
+   */
+  public static BufferedImage getPreviewImage (CADShape inShape) {
+    Shape shape = inShape.getWorkspaceTranslatedShape();
+    Rectangle2D.Double bnds1 = (Rectangle2D.Double) shape.getBounds2D();
+    AffineTransform at = new AffineTransform();
+    at.translate(-bnds1.x, -bnds1.y);
+    shape = at.createTransformedShape(shape);
+    at = AffineTransform.getScaleInstance(LaserCut.SCREEN_PPI, LaserCut.SCREEN_PPI);
+    shape = at.createTransformedShape(shape);
+    Rectangle2D.Double bnds2 = (Rectangle2D.Double) shape.getBounds2D();
+    int wid = (int) bnds2.width;
+    int hyt = (int) bnds2.height;
+    BufferedImage buf = new BufferedImage(wid, (int) hyt, Image.SCALE_FAST);
+    Graphics2D g2 = buf.createGraphics();
+    g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+    g2.setColor(Color.white);
+    g2.fill(new Rectangle2D.Double(0, 0, wid, hyt));
+    g2.setColor(Color.black);
+    g2.setStroke(new BasicStroke(3));
+    g2.drawRect(1, 1, wid - 2, hyt - 2);
+    g2.draw(shape);
+    return buf;
   }
 
   /*

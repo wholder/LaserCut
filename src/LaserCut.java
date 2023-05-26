@@ -7,6 +7,7 @@ import java.awt.*;
 //import java.awt.desktop.*;
 import java.awt.event.*;
 import java.awt.geom.*;
+import java.awt.image.BufferedImage;
 import java.io.*;
 import java.text.DecimalFormat;
 import java.util.*;
@@ -640,7 +641,7 @@ public class LaserCut extends JFrame {
     //
     // Add "Import SVG File" menu item
     //
-    importMenu.add(new FileChooserMenu(this, prefs, "SVG", "svg", false) {
+    importMenu.add(new FileChooserMenu(this, prefs, "SVG", "svg", false, true) {
       void processFile (File sFile) throws Exception {
         SVGParser parser = new SVGParser();
         parser.setPxDpi(pxDpi);
@@ -653,6 +654,17 @@ public class LaserCut extends JFrame {
           }
         } catch (IOException ex) {
           showErrorDialog("Unable to open SVG file");
+        }
+      }
+      @Override
+      BufferedImage getPreview (File file) throws IOException {
+        SVGParser parser = new SVGParser();
+        parser.setPxDpi(pxDpi);
+        try {
+          CADShape shp = parser.parseSvgFile(file);
+          return Utils2D.getPreviewImage(shp);
+        } catch (Exception ex) {
+          return null;
         }
       }
     });
@@ -682,7 +694,7 @@ public class LaserCut extends JFrame {
     //
     // Add "Import Gerber Zip" menu item
     //
-    importMenu.add(gerberZip = new FileChooserMenu(this, prefs, "Gerber Zip", "zip", false) {
+    importMenu.add(gerberZip = new FileChooserMenu(this, prefs, "Gerber Zip", "zip", false, false) {
       void processFile (File sFile) throws Exception {
         GerberZip gerber = new GerberZip(sFile);
         surface.placeShapes(gerber.getShapes());
@@ -691,7 +703,7 @@ public class LaserCut extends JFrame {
     /*
      *  Add "Import Notes to MusicBox Strip" Menu
      */
-    importMenu.add(new FileChooserMenu(this, prefs, "MusicBox", "mus", false) {
+    importMenu.add(new FileChooserMenu(this, prefs, "MusicBox", "mus", false, false) {
       void processFile (File sFile) throws Exception {
         try {
           CADMusicStrip mStrip = new CADMusicStrip();
@@ -714,7 +726,7 @@ public class LaserCut extends JFrame {
     //
     // Add "Export to PDF File" Menu Item
     //
-    exportMenu.add(new FileChooserMenu(this, prefs, "PDF", "pdf", true) {
+    exportMenu.add(new FileChooserMenu(this, prefs, "PDF", "pdf", true, false) {
       void processFile (File sFile) throws Exception {
         try {
           PDFTools.writePDF(surface.getDesign(), surface.getWorkSize(), sFile);
@@ -726,7 +738,7 @@ public class LaserCut extends JFrame {
     //
     // Add "Export to SVG File"" Menu Item
     //
-    exportMenu.add(new FileChooserMenu(this, prefs, "SVG", "svg", true) {
+    exportMenu.add(new FileChooserMenu(this, prefs, "SVG", "svg", true, false) {
       void processFile (File sFile) throws Exception {
         try {
           SVGParser.saveSvgFile(sFile, surface.getDesign(), surface.getWorkSize(), pxDpi);
@@ -755,7 +767,7 @@ public class LaserCut extends JFrame {
     //
     // Add "Export to EPS File"" Menu Item
     //
-    exportMenu.add(new FileChooserMenu(this, prefs, "EPS", "eps", true) {
+    exportMenu.add(new FileChooserMenu(this, prefs, "EPS", "eps", true, false) {
       void processFile (File sFile) throws Exception {
         try {
           EPSWriter.writeEpsFile(sFile, surface.getDesign());

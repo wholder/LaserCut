@@ -52,31 +52,30 @@ class CADRasterImage extends CADShape implements Serializable, LaserCut.Resizabl
     fileChooser.setDialogTitle("Select an Image File");
     fileChooser.setDialogType(JFileChooser.OPEN_DIALOG);
     FileNameExtensionFilter nameFilter = new FileNameExtensionFilter("Image files (jpg, jpeg, png, gif, bmp)",
-      "jpg", "jpeg", "png", "gif", "bmp");
+                                                                      "jpg", "jpeg", "png", "gif", "bmp");
     fileChooser.addChoosableFileFilter(nameFilter);
     fileChooser.setFileFilter(nameFilter);
     fileChooser.setSelectedFile(new File(prefs.get("image.dir", "/")));
     /*
      * Display preview image
      */
-    JPanel panel = new JPanel(new BorderLayout());
-    panel.setPreferredSize(new Dimension(IMG_WID + IMG_BORDER, IMG_HYT + IMG_BORDER));
-    panel.setBorder(BorderFactory.createLineBorder(Color.black));
-    JLabel imgLabel = new JLabel();
-    imgLabel.setHorizontalAlignment(JLabel.CENTER);
-    imgLabel.setVerticalAlignment(JLabel.CENTER);
-    panel.add(imgLabel, BorderLayout.CENTER);
-    fileChooser.setAccessory(panel);
-    Dimension dim1 = fileChooser.getPreferredSize();
-    fileChooser.setPreferredSize(new Dimension((int) (dim1.width * 1.25), dim1.height));
-    fileChooser.addPropertyChangeListener(new PropertyChangeListener() {
-
-      public void propertyChange (PropertyChangeEvent pe) {
-        if (pe.getPropertyName().equals("SelectedFileChangedProperty")) {
+    if (true) {
+      JPanel panel = new JPanel(new BorderLayout());
+      panel.setPreferredSize(new Dimension(IMG_WID + IMG_BORDER, IMG_HYT + IMG_BORDER));
+      panel.setBorder(BorderFactory.createLineBorder(Color.black));
+      JLabel imgLabel = new JLabel();
+      imgLabel.setHorizontalAlignment(JLabel.CENTER);
+      imgLabel.setVerticalAlignment(JLabel.CENTER);
+      panel.add(imgLabel, BorderLayout.CENTER);
+      fileChooser.setAccessory(panel);
+      Dimension dim1 = fileChooser.getPreferredSize();
+      fileChooser.setPreferredSize(new Dimension((int) (dim1.width * 1.25), dim1.height));
+      fileChooser.addPropertyChangeListener(evt -> {
+        if (evt.getPropertyName().equals("SelectedFileChangedProperty")) {
           SwingWorker<Image, Void> worker = new SwingWorker<Image, Void>() {
 
             protected Image doInBackground () {
-              if (pe.getPropertyName().equals(JFileChooser.SELECTED_FILE_CHANGED_PROPERTY)) {
+              if (evt.getPropertyName().equals(JFileChooser.SELECTED_FILE_CHANGED_PROPERTY)) {
                 File file = fileChooser.getSelectedFile();
                 try {
                   BufferedImage buf = ImageIO.read(Files.newInputStream(file.toPath()));
@@ -101,8 +100,8 @@ class CADRasterImage extends CADShape implements Serializable, LaserCut.Resizabl
           };
           worker.execute();
         }
-      }
-    });
+      });
+    }
     // Prompt for file
     if (fileChooser.showOpenDialog(laserCut) == JFileChooser.APPROVE_OPTION) {
       try {
