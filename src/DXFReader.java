@@ -275,8 +275,8 @@ public class DXFReader {
     private final List<JCheckBox> checkboxes;
     private String                selected;
 
-    DxfFileChooserMenu (Component comp, Preferences prefs, String type, String ext, boolean save) {
-      super(comp, prefs, type, ext, save, true);
+    DxfFileChooserMenu (LaserCut comp, String msg, String ext, boolean save, boolean preview) {
+      super(comp, msg, ext, save, preview);
       checkboxes = new ArrayList<>();
       // Widen JChooser by 25%
       Dimension dim = getPreferredSize();
@@ -341,23 +341,15 @@ public class DXFReader {
   }
 
   List<CADShape> readDxfFile (File sFile) throws IOException {
-    Shape[] shapes = Utils2D.removeOffset(parseFile(sFile, 12, 0));
-    CADShapeGroup group = new CADShapeGroup();
-    List<CADShape> gShapes = new ArrayList<>();
-    for (
-      Shape shape : shapes) {
+    Shape[] array = parseFile(sFile, 12, 0);
+    List<CADShape> list = new ArrayList<>();
+    for (Shape shape : array) {
       Rectangle2D sBnds = shape.getBounds2D();
-      double xLoc = sBnds.getX();
-      double yLoc = sBnds.getY();
-      double wid = sBnds.getWidth();
-      double hyt = sBnds.getHeight();
-      AffineTransform at = AffineTransform.getTranslateInstance(-xLoc - (wid / 2), -yLoc - (hyt / 2));
-      shape = at.createTransformedShape(shape);
-      CADShape cShape = new CADScaledShape(shape, xLoc, yLoc, 0);
-      group.addToGroup(cShape);
-      gShapes.add(cShape);
+      CADShape cShape = new CADScaledShape(shape, sBnds.getX(), sBnds.getY(), 0);
+      list.add(cShape);
     }
-    return gShapes;
+    return list;
+
   }
 
   static void writeDxfFile (File sFile, List<CADShape> shapes, String units) throws IOException{
@@ -492,68 +484,56 @@ public class DXFReader {
 
     @Override
     Shape getShape () {
-      if (false) {
-        // Test code
-        Path2D.Double path = new Path2D.Double();
-        // Draw 'X' as placeholder for MTEXT at definition midpoint
-        if (hAdjust != 0 || vAdjust != 0) {
-          addX(path, ix2, iy2, 4 * uScale);
-        } else {
-          addX(path, ix, iy, 4 * uScale);
-        }
-        return path;
-      } else {
-        // Note: I had to scale up font size by 10x to make it render properly
-        float points = (float) textHeight * 10f;
-        Font font = (new Font("Helvetica", Font.PLAIN, 72)).deriveFont(points);
-        HashMap<TextAttribute, Object> attrs = new HashMap<>();
-        attrs.put(TextAttribute.KERNING, TextAttribute.KERNING_ON);
-        attrs.put(TextAttribute.LIGATURES, TextAttribute.LIGATURES_ON);
-        attrs.put(TextAttribute.TRACKING, 0.1);
-        font = font.deriveFont(attrs);
-        GlyphVector gv = font.createGlyphVector(canvas.getFontMetrics(font).getFontRenderContext(), text);
-        // Step 1 - Convert GlyphVector to Shape
-        AffineTransform at1 = new AffineTransform();
-        Shape shape = at1.createTransformedShape(gv.getOutline());
-        Rectangle2D bnds = shape.getBounds2D();
-        // Step 2 - Translate cadShape according to vAdjust and hAdjust values
-        AffineTransform at2 = new AffineTransform();
-        // TODO: test all attachment point cases
-        if (vAdjust == 3 && hAdjust == 0) {                             // Top left
-          at2.translate(0, bnds.getHeight());
-        } else if (vAdjust == 3 && hAdjust == 1) {                      // Top center
-          at2.translate(-bnds.getWidth() / 2, bnds.getHeight());
-        } else if (vAdjust == 3 && hAdjust == 2) {                      // Top right
-          at2.translate(-bnds.getWidth(), bnds.getHeight());
-        } else if (vAdjust == 2 && hAdjust == 0) {                      // Middle left
-          at2.translate(0, bnds.getHeight() / 2);
-        } else if (vAdjust == 2 && hAdjust == 1) {                      // Middle center
-          at2.translate(-bnds.getWidth() / 2, bnds.getHeight() / 2);
-        } else if (vAdjust == 2 && hAdjust == 2) {                      // Middle right
-          at2.translate(-bnds.getWidth(), bnds.getHeight() / 2);
-        } else if (vAdjust == 1 && hAdjust == 0) {                      // Bottom left (natural position)
-          at2.translate(0, 0);
-        } else if (vAdjust == 1 && hAdjust == 1) {                      // Bottom center
-          at2.translate(-bnds.getWidth() / 2, 0);
-        } else if (vAdjust == 1 && hAdjust == 2) {                      // Bottom right
-          at2.translate(-bnds.getWidth(), 0);
-        }
-        shape = at2.createTransformedShape(shape);
-        // Step 3 - Rotate and Scale cadShape
-        AffineTransform at3 = new AffineTransform();
-        at3.rotate(Math.toRadians(rotation));
-        at3.scale(.1, -.1);
-        shape = at3.createTransformedShape(shape);
-        // Step 4 - Translate cadShape to final position
-        AffineTransform at4 = new AffineTransform();
-        if (hAdjust != 0 || vAdjust != 0) {
-          at4.translate(ix2, iy2);
-        } else {
-          at4.translate(ix, iy);
-        }
-        shape = at4.createTransformedShape(shape);
-        return shape;
+      // Note: I had to scale up font size by 10x to make it render properly
+      float points = (float) textHeight * 10f;
+      Font font = (new Font("Helvetica", Font.PLAIN, 72)).deriveFont(points);
+      HashMap<TextAttribute, Object> attrs = new HashMap<>();
+      attrs.put(TextAttribute.KERNING, TextAttribute.KERNING_ON);
+      attrs.put(TextAttribute.LIGATURES, TextAttribute.LIGATURES_ON);
+      attrs.put(TextAttribute.TRACKING, 0.1);
+      font = font.deriveFont(attrs);
+      GlyphVector gv = font.createGlyphVector(canvas.getFontMetrics(font).getFontRenderContext(), text);
+      // Step 1 - Convert GlyphVector to Shape
+      AffineTransform at1 = new AffineTransform();
+      Shape shape = at1.createTransformedShape(gv.getOutline());
+      Rectangle2D bnds = shape.getBounds2D();
+      // Step 2 - Translate cadShape according to vAdjust and hAdjust values
+      AffineTransform at2 = new AffineTransform();
+      // TODO: test all attachment point cases
+      if (vAdjust == 3 && hAdjust == 0) {                             // Top left
+        at2.translate(0, bnds.getHeight());
+      } else if (vAdjust == 3 && hAdjust == 1) {                      // Top center
+        at2.translate(-bnds.getWidth() / 2, bnds.getHeight());
+      } else if (vAdjust == 3 && hAdjust == 2) {                      // Top right
+        at2.translate(-bnds.getWidth(), bnds.getHeight());
+      } else if (vAdjust == 2 && hAdjust == 0) {                      // Middle left
+        at2.translate(0, bnds.getHeight() / 2);
+      } else if (vAdjust == 2 && hAdjust == 1) {                      // Middle center
+        at2.translate(-bnds.getWidth() / 2, bnds.getHeight() / 2);
+      } else if (vAdjust == 2 && hAdjust == 2) {                      // Middle right
+        at2.translate(-bnds.getWidth(), bnds.getHeight() / 2);
+      } else if (vAdjust == 1 && hAdjust == 0) {                      // Bottom left (natural position)
+        at2.translate(0, 0);
+      } else if (vAdjust == 1 && hAdjust == 1) {                      // Bottom center
+        at2.translate(-bnds.getWidth() / 2, 0);
+      } else if (vAdjust == 1 && hAdjust == 2) {                      // Bottom right
+        at2.translate(-bnds.getWidth(), 0);
       }
+      shape = at2.createTransformedShape(shape);
+      // Step 3 - Rotate and Scale cadShape
+      AffineTransform at3 = new AffineTransform();
+      at3.rotate(Math.toRadians(rotation));
+      at3.scale(.1, -.1);
+      shape = at3.createTransformedShape(shape);
+      // Step 4 - Translate cadShape to final position
+      AffineTransform at4 = new AffineTransform();
+      if (hAdjust != 0 || vAdjust != 0) {
+        at4.translate(ix2, iy2);
+      } else {
+        at4.translate(ix, iy);
+      }
+      shape = at4.createTransformedShape(shape);
+      return shape;
     }
   }
 

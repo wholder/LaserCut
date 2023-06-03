@@ -17,7 +17,6 @@ import java.awt.geom.*;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
@@ -56,7 +55,7 @@ public class SVGParser {
     this.pxDpi = pxDpi;
   }
 
-  Shape[] parseSVG (File file) throws Exception {
+  List<Shape> parseSVG (File file) throws Exception {
     SAXParserFactory factory = SAXParserFactory.newInstance();
     // Turn off validation to improve parsing speed
     factory.setNamespaceAware(false);
@@ -66,7 +65,7 @@ public class SVGParser {
     factory.setFeature("http://apache.org/xml/features/nonvalidating/load-dtd-grammar", false);
     factory.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false);
     SAXParser saxParser = factory.newSAXParser();
-    ArrayList<Shape> shapes = new ArrayList<>();
+    List<Shape> shapes = new ArrayList<>();
     DefaultHandler handler = new DefaultHandler() {
       AffineTransform atScale = AffineTransform.getScaleInstance(1 / 96d, 1 / 96d);
       public void startElement (String uri, String localName, String qName, Attributes attributes) {
@@ -333,7 +332,7 @@ public class SVGParser {
       }
     };
     saxParser.parse(file, handler);
-    return shapes.toArray(new Shape[0]);
+    return shapes;
   }
 
   CADShape parseSvgFile (File sFile) throws Exception {
@@ -631,8 +630,8 @@ public class SVGParser {
         }
         for (File file : files) {
           SVGParser parser = new SVGParser();
-          Shape[] shapes = parser.parseSVG(file);
-          shapes = Utils2D.removeOffset(shapes);
+          List<Shape> shp = parser.parseSVG(file);
+          List<Shape> shapes = Utils2D.removeOffset(shp);
           Shape shape = Utils2D.combinePaths(shapes);
           Rectangle2D bounds = shape.getBounds2D();
           String fName = file.getName().substring(0, file.getName().length() - 4);
@@ -645,9 +644,8 @@ public class SVGParser {
       } else {
         SVGParser parser = new SVGParser();
         parser.enableDebug(true);
-        Shape[] shapes = Utils2D.removeOffset(parser.parseSVG(new File("Test/SVG Files/rotate.svg")));
-        Shape shape = Utils2D.combinePaths(shapes);
-        new ShapeWindow(new Shape[]{shape}, .25);
+        List<Shape> shapes = Utils2D.removeOffset(parser.parseSVG(new File("Test/SVG Files/rotate.svg")));
+        new ShapeWindow(shapes, .25);
       }
     }
   }

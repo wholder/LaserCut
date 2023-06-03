@@ -3,10 +3,8 @@ import java.awt.geom.*;
 import java.awt.image.BufferedImage;
 import java.io.InputStream;
 import java.io.StringReader;
-import java.util.ArrayList;
-import java.util.Collection;
+import java.util.*;
 import java.util.List;
-import java.util.Properties;
 
 public class Utils2D {
   /**
@@ -310,13 +308,14 @@ public class Utils2D {
 
   /**
    * Scan all Shapes objects to determine x/y offset, if any, then remove offset.
-   * @param shapes Array of Shape objects
-   * @return Array of transformed Shape objects
+   * @param List Array of Shape objects
+   * @return List of transformed Shape objects
    */
-  static Shape[] removeOffset (Shape[] shapes) {
-    if (shapes.length > 0) {
+  static List<Shape> removeOffset (List<Shape> shapes) {
+    Shape[] shapes1 = shapes.toArray(new Shape[0]);
+    if (shapes1.length > 0) {
       Rectangle2D bounds = null;
-      for (Shape shape : shapes) {
+      for (Shape shape : shapes1) {
         if (bounds == null) {
           bounds = BetterBoundingBox.getBounds(shape);
         } else {
@@ -332,21 +331,21 @@ public class Utils2D {
         double minY = bounds.getY();
         if (minX != 0 || minY != 0) {
           AffineTransform atScale = AffineTransform.getTranslateInstance(-minX, -minY);
-          for (int ii = 0; ii < shapes.length; ii++) {
-            shapes[ii] = atScale.createTransformedShape(shapes[ii]);
+          for (int ii = 0; ii < shapes1.length; ii++) {
+            shapes1[ii] = atScale.createTransformedShape(shapes1[ii]);
           }
         }
       }
     }
-    return shapes;
+    return Arrays.asList(shapes1);
   }
 
   /**
-   * Create a new Shape (Path2D.Double) object that combines all the elements of the Array of Shapes
-   * @param shapes Array of Shape objects
+   * Create a new Shape (Path2D.Double) object that combines all the elements of the List of Shapes
+   * @param shapes List of Shape objects
    * @return New Shape object that contains all the features of the Array of Shapes
    */
-  static Shape combinePaths (Shape[] shapes) {
+  static Shape combinePaths (List<Shape> shapes) {
     Path2D.Double newShape = new Path2D.Double();
     AffineTransform atScale = AffineTransform.getTranslateInstance(0, 0);
     for (Shape shape : shapes) {
@@ -373,32 +372,11 @@ public class Utils2D {
   }
 
   /**
-   * Scale a Point2D.Double object
-   * @param pnt Point2D.Double to scale
-   * @param scale scale factor (0 - 100)
-   * @return scaled Point2D.Double object
-   */
-  public static Point2D.Double scalePoint (Point2D.Double pnt, double scale) {
-    return new Point2D.Double(pnt.x * scale / 100, pnt.y * scale / 100);
-  }
-
-  /**
-   * Scale a Rectangle2D.Double object
-   * @param rect Rectangle2D.Double object to scale
-   * @param scale scale factor (0 - 100)
-   * @return scaled Rectangle2D.Double object
-   */
-  public static Rectangle2D.Double scaleRect (Rectangle2D.Double rect, double scale) {
-    double sc = scale / 100;
-    return new Rectangle2D.Double(rect.x * sc, rect.y * sc, rect.width * sc, rect.height * sc);
-  }
-
-  /**
    * Combine a List of CADShape object into an Area Shape object
    * @param shapes List of CADShape object
    * @return an Area Shape object
    */
-  public static Shape convertListOfCADShapesInArea (List<CADShape> shapes) {
+  public static Shape listOfCADShapesToArea (List<CADShape> shapes) {
     Area area = new Area();
     for (CADShape shape : shapes) {
       area.add(new Area(shape.getShape()));
@@ -412,44 +390,78 @@ public class Utils2D {
    * @return Preview image
    */
   public static BufferedImage getPreviewImage (Shape shape) {
-    Rectangle2D.Double bnds1 = (Rectangle2D.Double) shape.getBounds2D();
-    AffineTransform at = new AffineTransform();
-    at.translate(-bnds1.x, -bnds1.y);
-    shape = at.createTransformedShape(shape);
-    at = AffineTransform.getScaleInstance(LaserCut.SCREEN_PPI, LaserCut.SCREEN_PPI);
-    shape = at.createTransformedShape(shape);
-    Rectangle2D.Double bnds2 = (Rectangle2D.Double) shape.getBounds2D();
-    int wid = (int) bnds2.width;
-    int hyt = (int) bnds2.height;
-    BufferedImage buf = new BufferedImage(wid, (int) hyt, Image.SCALE_FAST);
-    Graphics2D g2 = buf.createGraphics();
-    g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-    g2.setColor(Color.white);
-    g2.fill(new Rectangle2D.Double(0, 0, wid, hyt));
-    g2.setColor(Color.black);
-    g2.setStroke(new BasicStroke(3));
-    g2.drawRect(1, 1, wid - 2, hyt - 2);
-    g2.draw(shape);
-    return buf;
+    List<Shape> shapes = new ArrayList<>();
+    shapes.add(shape);
+    return getPreviewImage(shapes);
+  }
+
+  /**
+   * Creat preview image for FileChooserMenu (if implemented)
+   * @param shapes List of Shape objects
+   *               TODO: Needs code to properly scale the image
+   * @return Preview image
+   */
+  public static BufferedImage getPreviewImage (List<Shape> shapes) {
+    double scale = 200;
+    double border = 0.02;
+    if (shapes.size() > 0) {
+      Rectangle2D bounds = null;
+      // Create a bounding box that's the union of all shapes in the shapes array
+      for (Shape shape : shapes) {
+        bounds = bounds == null ? BetterBoundingBox.getBounds(shape) : bounds.createUnion(BetterBoundingBox.getBounds(shape));
+      }
+      int wid = (int) Math.round((bounds.getWidth()  + border * 2) * scale);
+      int hyt = (int) Math.round((bounds.getHeight() + border * 2) * scale);
+      int maxDim = Math.max(wid, hyt);
+
+      int stroke = Math.max((int) ((double) maxDim / 130), 2);
+      //System.out.println("maxDim: " + maxDim + ", stroke: " + stroke);
+      BufferedImage img = new BufferedImage(wid, hyt, BufferedImage.SCALE_FAST);
+      shapes = removeOffset(shapes);
+      Graphics2D g2 = img.createGraphics();
+      g2.setColor(Color.white);
+      g2.fillRect(0, 0, wid, hyt);
+      AffineTransform at = new AffineTransform();
+      at.translate(border * scale, border * scale);
+      at.scale(scale, scale);
+      g2.setStroke(new BasicStroke(stroke));
+      g2.setColor(Color.black);
+      for (Shape shape : shapes) {
+        g2.draw(at.createTransformedShape(shape));
+      }
+      return img;
+    }
+    return null;
   }
 
   /*
    *  Debuging tools
+   *  See: https://alvinalexander.com/programming/printf-format-cheat-sheet/
+   *  Note: in this format string "%7.3f" the value of 7 sets the total space used
    */
 
   public static void printPoint (Point2D.Double point) {
-    System.out.printf("x = %3.3f, y = %3.3f\n", point.x, point.y);
+    System.out.printf("x = %7.3f, y = %7.3f\n", point.x, point.y);
   }
 
   public static void printPoint (String prefix, Point2D.Double point) {
-    System.out.printf("%s: x = %3.3f, y = %3.3f\n", prefix, point.x, point.y);
+    System.out.printf("%s: x = %7.3f, y = %7.3f\n", prefix, point.x, point.y);
   }
 
+  public static void printDimension (Dimension dimension) {
+    System.out.printf("width = %d, width = %d\n", dimension.width, dimension.height);
+  }
+
+  public static void printDimension (String prefix, Dimension dimension) {
+    System.out.printf("%s: width = %d, width = %d\n", prefix, dimension.width, dimension.height);
+  }
+
+
   public static void printRect (Rectangle2D.Double rect) {
-    System.out.printf("x = %3.3f, y = %3.3f, wid = %3.3f, hyt = %3.3f\n", rect.x, rect.y, rect.width, rect.height);
+    System.out.printf("x = %7.3f, y = %7.3f, wid = %7.3f, hyt = %7.3f\n", rect.x, rect.y, rect.width, rect.height);
   }
 
   public static void printRect (String prefix, Rectangle2D.Double rect) {
-    System.out.printf("%s: x = %3.3f, y = %3.3f, wid = %3.3f, hyt = %3.3f\n",prefix,  rect.x, rect.y, rect.width, rect.height);
+    System.out.printf("%s: x = %7.3f, y = %7.3f, wid = %7.3f, hyt = %7.3f\n",prefix,  rect.x, rect.y, rect.width, rect.height);
   }
 }

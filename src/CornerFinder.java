@@ -3,11 +3,12 @@ import java.awt.geom.*;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 
-  // Bezier circle: http://spencermortensen.com/articles/bezier-circle/
+// Bezier circle: http://spencermortensen.com/articles/bezier-circle/
 
 public class CornerFinder {
   private static final DecimalFormat  df = new DecimalFormat("#.####");
 
+/*
   public static void main (String[] args) {
     Shape shape;
     // Create + cadShape via additive and subtractive geometric operations
@@ -18,10 +19,11 @@ public class CornerFinder {
     AffineTransform rot = AffineTransform.getRotateInstance(Math.toRadians(45));
     shape = rot.createTransformedShape(shape);
     shape = Utils2D.removeOffset(new Shape[] {shape})[0];
-    ArrayList<Shape> shapes = new ArrayList<>();
+    List<Shape> shapes = new ArrayList<>();
     shapes.add(roundCorners(shape, .125));
     new ShapeWindow(shapes.toArray(new Shape[0]), .25);
   }
+*/
 
   static Shape roundCorners (Shape shape, double radius) {
     ArrayList<Point2D.Double> points = getPoints(shape);

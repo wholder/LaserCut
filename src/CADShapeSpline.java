@@ -18,7 +18,7 @@ class CADShapeSpline extends CADShape implements Serializable, LaserCut.StateMes
   private boolean                     pathClosed;
   private Path2D.Double               path = new Path2D.Double();
   public double                       scale = 100.0;
-  transient public double             lastScale = 100.0;
+  transient public double             lastScale;
 
 
 

@@ -2,22 +2,21 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Rectangle2D;
-import java.io.File;
+import java.util.List;
+import java.io.*;
 
 /**
  * ShapeWindow: Used by test code in SVGParser, GearGen and CornerFinder
  */
 
 class ShapeWindow extends JFrame {
-  private static final double   SCREEN_PPI = java.awt.Toolkit.getDefaultToolkit().getScreenResolution();
-
   static class ShapeCanvas extends Canvas {
-    private transient Image   offScr;
-    private Dimension         lastDim;
-    private final Shape[]           shapes;
-    private final double            border;
+    private transient Image       offScr;
+    private Dimension             lastDim;
+    private final List<Shape>     shapes;
+    private final double          border;
 
-    ShapeCanvas (Shape[] shapes, double border) {
+    ShapeCanvas (List<Shape> shapes, double border) {
       this.shapes = shapes;
       this.border = border;
       Rectangle2D bounds = null;
@@ -26,9 +25,9 @@ class ShapeWindow extends JFrame {
         bounds = bounds == null ? BetterBoundingBox.getBounds(shape) : bounds.createUnion(BetterBoundingBox.getBounds(shape));
       }
       if (bounds != null) {
-        int wid = (int) Math.round((bounds.getWidth() + border * 2) * SCREEN_PPI);
-        int hyt = (int) Math.round((bounds.getHeight() + border * 2) * SCREEN_PPI);
-        setSize(wid, hyt);
+        int wid = (int) Math.round((bounds.getWidth() + border * 2) * LaserCut.SCREEN_PPI);
+        int hyt = (int) Math.round((bounds.getHeight() + border * 2) * LaserCut.SCREEN_PPI);
+        setSize(new Dimension(wid, hyt));
       }
     }
 
@@ -42,8 +41,8 @@ class ShapeWindow extends JFrame {
       g2.clearRect(0, 0, d.width, d.height);
       g2.setColor(Color.black);
       AffineTransform atScale = new AffineTransform();
-      atScale.translate(border * SCREEN_PPI, border * SCREEN_PPI);
-      atScale.scale(SCREEN_PPI, SCREEN_PPI);
+      atScale.translate(border * LaserCut.SCREEN_PPI, border * LaserCut.SCREEN_PPI);
+      atScale.scale(LaserCut.SCREEN_PPI, LaserCut.SCREEN_PPI);
       for (Shape shape : shapes) {
         g2.draw(atScale.createTransformedShape(shape));
       }
@@ -51,16 +50,18 @@ class ShapeWindow extends JFrame {
     }
   }
 
-  ShapeWindow (Shape[] shapes, double border) {
+  ShapeWindow (List<Shape> shapes, double border) {
+    shapes = Utils2D.removeOffset(shapes);
     add(new ShapeCanvas(shapes, border), BorderLayout.CENTER);
-    setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+    setLocationRelativeTo(null);
     pack();
     setVisible(true);
   }
 
   public static void main (String[] args) throws Exception {
     SVGParser parser = new SVGParser();
-    Shape[] shapes = parser.parseSVG(new File("Test/SVG Files/heart.svg"));
+    List<Shape> shapes = parser.parseSVG(new File("Test/SVG Files/heart.svg"));
+    shapes = Utils2D.removeOffset(shapes);
     new ShapeWindow(Utils2D.removeOffset(shapes), 0.125);
   }
 }

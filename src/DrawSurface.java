@@ -164,14 +164,12 @@ public class DrawSurface extends JPanel {
           // Note: newLoc is in workspace coords (inches)
           Point2D.Double newLoc = new Point2D.Double(ev.getX() / getScreenScale(), ev.getY() / getScreenScale());
           if (placer != null) {
-            if (placer != null) {
-              // Place into DrawSurface
-              pushToUndoStack();
-              placer.setPlacePosition(toGrid(newLoc));
-              placer.addToSurface(thisSurface);
-              placer = null;
-              setPlacerActive(false);
-            }
+            // Place into DrawSurface
+            pushToUndoStack();
+            placer.setPlacePosition(toGrid(newLoc));
+            placer.addToSurface(thisSurface);
+            placer = null;
+            setPlacerActive(false);
           } else if (keyOption) {
             // Process Option, or ALT key
             // Select CADShape and then do CTRL-Click on second CADShape to measure distance from origin to origin
@@ -745,7 +743,7 @@ public class DrawSurface extends JPanel {
     return shapes;
   }
 
-  ArrayList<CADShape> getSelectedAsDesign () {
+  List<CADShape> getSelectedAsDesign () {
     ArrayList<CADShape> design = new ArrayList<>();
     design.add(selected);
     CADShapeGroup grp = selected.getGroup();
@@ -778,15 +776,14 @@ public class DrawSurface extends JPanel {
     return crc.getValue();
   }
 
-  void setDesign (List<CADShape> shapes, SurfaceSettings settings) {
-    this.shapes = shapes;
-    if (settings != null) {
-      setZoomFactor(settings.zoomFactor);
-      setGridSize(settings.gridStep, settings.gridMajor);
-    } else {
-      setZoomFactor(1);         // 1:1 scale
-      setGridSize( 0.1, 10);    // 1/10th inch, 10 per inch
-    }
+  /**
+   * Used by reopen and Open code
+   * @param settings
+   */
+  void setDesign (SurfaceSettings settings) {
+    this.shapes = settings.getDesign();
+    setZoomFactor(settings.zoomFactor);
+    setGridSize(settings.gridStep, settings.gridMajor);
     repaint();
   }
 
@@ -807,6 +804,7 @@ public class DrawSurface extends JPanel {
   }
 
   void placeShape (CADShape shape) {
+    System.out.println("placeShape");
     List<CADShape> items = new ArrayList<>();
     items.add(shape);
     // Copy location of CADShape to Placer object, then zero CADShape's location
@@ -820,33 +818,50 @@ public class DrawSurface extends JPanel {
   }
 
   void placeShapes (List<CADShape> shapes) {
+    System.out.println("placeShapes");
     if (shapes.size() > 0) {
-      Rectangle2D bounds = getSetBounds(shapes);
+      Rectangle2D.Double bnds = (Rectangle2D.Double) getSetBounds(shapes);
+      //bnds.x = 0;
+      //bnds.y = 0;
       // Subtract offset from all the shapes to position set at 0,0
       for (CADShape shape : shapes) {
-        shape.movePosition(new Point2D.Double(-bounds.getX(), -bounds.getY()));
+        shape.xLoc -= bnds.x + bnds.width / 2;
+        shape.yLoc -= bnds.y + bnds.height / 2;
       }
       placer = new Placer(shapes);
+      Point2D.Double pos = new Point2D.Double(workSize.width / 2.0, workSize.height / 2.0 );
+      placer.setPlacePosition(pos);
       setPlacerActive(true);
       requestFocus();
     }
     repaint();
   }
 
-  // Compute bounds for a set of CADShape objects
+  /**
+   * Place LaserCut file into current draw surface list
+   * Note: needs special handling for older format files (In SurfaceSettings object, version is null)
+   * @param settings SurfaceSettings object (contains list of CADShape objects)
+   */
+  void placeLaserCutFile (SurfaceSettings settings) {
+    System.out.println("placeLaserCutFile");
+    List<CADShape> shapes = settings.getDesign();
+    placeShapes(shapes);
+  }
+
+  // Compute bounds for a set of CADShape objects in workspace coords
   private static Rectangle2D getSetBounds (List<CADShape> shapes) {
-    double minX = Double.MAX_VALUE;
-    double minY = Double.MAX_VALUE;
-    double maxWid = 0;
-    double maxHyt = 0;
+    Rectangle2D bnds = null;
     for (CADShape shape : shapes) {
-      Rectangle2D bounds = shape.getShapeBounds();
-      minX = Math.min(minX, bounds.getX());
-      minY = Math.min(minY, bounds.getY());
-      maxWid = Math.max(maxWid, bounds.getX() + bounds.getWidth());
-      maxHyt = Math.max(maxHyt, bounds.getY() + bounds.getHeight());
+      Shape shp = shape.getWorkspaceTranslatedShape();
+      Rectangle2D bounds = shp.getBounds2D();
+      if (bnds == null) {
+        bnds = new Rectangle2D.Double(bounds.getX(), bounds.getY(), bounds.getWidth(), bounds.getHeight());
+      } else {
+        bnds = bnds.createUnion(bounds);
+      }
+      bnds = bnds.createUnion(bounds);
     }
-    return new Rectangle2D.Double(minX, minY, maxWid, maxHyt);
+    return bnds;
   }
 
   boolean hasData () {
@@ -1129,7 +1144,6 @@ public class DrawSurface extends JPanel {
 
   private void setSelected (CADShape newSelected) {
     selected = newSelected;
-    //System.out.printf("selected: x = %3.2f, x = %3.2f\n", selected.xLoc, selected.yLoc);
     for (LaserCut.ShapeSelectListener listener : selectListerners) {
       listener.shapeSelected(selected, selected != null);
     }
@@ -1196,12 +1210,14 @@ public class DrawSurface extends JPanel {
   }
 
   private void tipTracker (Point2D.Double loc) {
-    if (tipText != null && loc != null) {
+    if (tipLoc != null && loc != null) {
       if (tipLoc.distance(loc) * LaserCut.SCREEN_PPI > 3) {
         cancelTip();
       }
     } else {
-      tipLoc = new Point2D.Double(loc.x, loc.y);
+      if (loc != null) {
+        tipLoc = new Point2D.Double(loc.x, loc.y);
+      }
       cancelTip();
     }
   }

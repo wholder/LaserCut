@@ -2,7 +2,6 @@ import java.awt.*;
 import java.awt.geom.*;
 import java.io.IOException;
 import java.io.Serializable;
-import java.text.DecimalFormat;
 import java.util.Arrays;
 import java.util.List;
 
@@ -71,19 +70,6 @@ class CNCPath extends CADShape implements Serializable, LaserCut.ChangeListener 
     Path2D.Double path = new Path2D.Double();
     boolean first = true;
     for (Line2D.Double[] lines : Utils2D.transformShapeToLines(baseShape.getShape(), 1.0, .01)) {
-      if (false) {
-        DecimalFormat df = new DecimalFormat("#.###");
-        for (Line2D.Double line : lines) {
-          if (line.x1 == line.x2 && line.y1 == line.y2) {
-            int dum = 0;
-          } else {
-            double x1 = (line.x1 + .15) * 4000;
-            double y1 = (line.y1 + .15) * 4000;
-            double x2 = (line.x2 + .15) * 4000;
-            double y2 = (line.y2 + .15) * 4000;
-          }
-        }
-      }
       Point2D.Double[] points = CNCTools.pruneOverlap(CNCTools.getParallelPath(lines, radius, !inset));
       for (Point2D.Double point : points) {
         if (first) {

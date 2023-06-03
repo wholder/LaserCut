@@ -11,7 +11,6 @@ import java.awt.image.WritableRaster;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Properties;
 import java.util.prefs.Preferences;
 
 // https://www.cnccookbook.com/g-code-basics-program-format-structure-blocks/

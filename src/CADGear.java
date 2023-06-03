@@ -1,6 +1,5 @@
 import java.awt.*;
 import java.awt.geom.Ellipse2D;
-import java.awt.geom.Rectangle2D;
 import java.io.Serializable;
 
 class CADGear extends CADShape implements Serializable, LaserCut.Rotatable {

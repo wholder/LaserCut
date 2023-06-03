@@ -153,8 +153,7 @@ class CADShape implements Serializable {
    * @return absolute bounding rectangle
    */
   Rectangle2D.Double getShapeBounds () {
-    Rectangle2D.Double bnds = (Rectangle2D.Double) getShape().getBounds2D();
-    return bnds;
+    return (Rectangle2D.Double) getShape().getBounds2D();
   }
 
   /**
@@ -675,12 +674,6 @@ class CADShape implements Serializable {
     if (isSelected || this instanceof CADReference || this instanceof CADShapeSpline) {
       // Draw (+) grab point for move option
       g2.draw(Utils2D.getPlusShape(new Point2D.Double(xLoc * zoom * LaserCut.SCREEN_PPI, yLoc * zoom * LaserCut.SCREEN_PPI), 4));
-/*
-      Rectangle2D.Double rect = getShapeBounds();
-      rect.x += xLoc;
-      rect.y += yLoc;
-      g2.draw(Utils2D.getXShape(new Point2D.Double(rect.x * zoom * LaserCut.SCREEN_PPI, rect.y * zoom * LaserCut.SCREEN_PPI), 4));
-*/
     }
     if (isSelected) {
       Graphics2D g2d = (Graphics2D) g.create();

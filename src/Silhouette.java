@@ -295,9 +295,7 @@ class Silhouette implements LaserCut.OutputDevice {
             double dist = cControl[0].distance(cControl[3]);
             // Kludge: to increase number of line segments for larger curves
             int segments = 16 * Math.max((int) Math.sqrt(dist / 100), 1);
-            if (false) {
-              System.out.printf("        dist: %.2f, segments: %d\n", dist, segments);
-            }
+            //System.out.printf("        dist: %.2f, segments: %d\n", dist, segments);
             for (int ii = 0; ii < segments; ii++) {
               double t = ((double) ii) / (segments - 1);
               for (int jj = 0; jj < cControl.length; jj++) {

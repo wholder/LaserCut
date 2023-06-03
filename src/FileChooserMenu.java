@@ -15,17 +15,21 @@ public class FileChooserMenu extends JMenuItem {
   private static final int  IMG_HYT = 200;
   private static final int  IMG_BORDER = 30;
   String                    currentPath;
+  String                    lastFile;
   JLabel                    imgLabel;
   JFileChooser              fileChooser;
 
-  FileChooserMenu (Component comp, Preferences prefs, String type, String ext, boolean save, boolean preview) {
-    super(save ? "Export to " + type + " File" : "Import " + type + " File");
+  FileChooserMenu (LaserCut lcut, String msg, String ext, boolean save, boolean preview) {
+    super(msg);
+    Preferences prefs = lcut.getPreferences();
     fileChooser = new JFileChooser();
     imgLabel = new JLabel();
     addActionListener(ev -> {
-      fileChooser.setDialogTitle(save ? "Export " + type + " File" : "Import " + type + " File");
+      fileChooser = new JFileChooser();
+      imgLabel = new JLabel();
+      fileChooser.setDialogTitle(msg);
       fileChooser.setDialogType(save ? JFileChooser.SAVE_DIALOG : JFileChooser.OPEN_DIALOG);
-      FileNameExtensionFilter nameFilter = new FileNameExtensionFilter(type + " files (*." + ext + ")", ext);
+      FileNameExtensionFilter nameFilter = new FileNameExtensionFilter(ext.toUpperCase() + " files (*." + ext + ")", ext);
       fileChooser.addChoosableFileFilter(nameFilter);
       fileChooser.setFileFilter(nameFilter);
       fileChooser.setCurrentDirectory(new File(currentPath = prefs.get("default." + ext + ".dir", "/")));
@@ -53,28 +57,47 @@ public class FileChooserMenu extends JMenuItem {
         fileChooser.setAccessory(accessories);
       }
       fileChooser.addPropertyChangeListener(evt -> {
+        // Update currentPath as the user navigates directories
         String path = fileChooser.getCurrentDirectory().getPath();
         if (!path.equals(currentPath)) {
           prefs.put("default." + ext + ".dir", currentPath = path);
         }
         if (preview) {
-          if (evt.getPropertyName().equals("SelectedFileChangedProperty")) {
+          // Display a file preview image
+          String propName = evt.getPropertyName();
+          if ("SelectedFileChangedProperty".equals(propName)) {
             SwingWorker<Image, Void> worker = new SwingWorker<Image, Void>() {
 
               protected Image doInBackground () {
+                // LOad the preview image
                 if (evt.getPropertyName().equals(JFileChooser.SELECTED_FILE_CHANGED_PROPERTY)) {
                   File file = fileChooser.getSelectedFile();
-                  try {
-                    BufferedImage buf = getPreview(file);
-                    return buf.getScaledInstance(IMG_WID, IMG_WID, BufferedImage.SCALE_FAST);
-                  } catch (Exception e) {
-                    imgLabel.setText(" Invalid image/Unable to read");
+                  String newFile = file.getAbsolutePath();
+                  if (!newFile.equals(lastFile)) {
+                    lastFile = newFile;
+                    try {
+                      BufferedImage buf = getPreview(file);
+                      if (buf != null) {
+                        int wid = buf.getWidth();
+                        int hyt = buf.getHeight();
+                        if (wid < hyt) {
+                          double ratio = (double) wid / hyt;
+                          return buf.getScaledInstance((int) (IMG_WID * ratio), IMG_HYT, BufferedImage.SCALE_FAST);
+                        } else {
+                          double ratio = (double) hyt / wid;
+                          return buf.getScaledInstance(IMG_WID, (int) (IMG_HYT * ratio), BufferedImage.SCALE_FAST);
+                        }
+                      }
+                    } catch (Exception e) {
+                      imgLabel.setText(" Invalid image/Unable to read");
+                    }
                   }
                 }
                 return null;
               }
 
               protected void done () {
+                // display the preview image
                 try {
                   Image img = get(1L, TimeUnit.NANOSECONDS);
                   if (img != null) {
@@ -89,7 +112,7 @@ public class FileChooserMenu extends JMenuItem {
           }
         }
       });
-      if (openDialog(this, save)) {
+      if (openDialog(lcut, save)) {
         File sFile = fileChooser.getSelectedFile();
         if (save && !sFile.exists()) {
           String fPath = sFile.getPath();
@@ -98,11 +121,11 @@ public class FileChooserMenu extends JMenuItem {
           }
         }
         try {
-          if (!save || (!sFile.exists() || showConfirmDialog(this, "Overwrite Existing file?", "Warning", YES_NO_OPTION, PLAIN_MESSAGE) == OK_OPTION)) {
+          if (!save || (!sFile.exists() || showConfirmDialog(lcut, "Overwrite Existing file?", "Warning", YES_NO_OPTION, PLAIN_MESSAGE) == OK_OPTION)) {
             processFile(sFile);
           }
         } catch (Exception ex) {
-          showMessageDialog(this, save ? "Unable to save file" : "Unable to open file", "Error", PLAIN_MESSAGE);
+          showMessageDialog(lcut, save ? "Unable to save file" : "Unable to open file", "Error", PLAIN_MESSAGE);
           ex.printStackTrace();
         }
         prefs.put("default." + ext, sFile.getAbsolutePath());
@@ -110,12 +133,13 @@ public class FileChooserMenu extends JMenuItem {
     });
   }
 
-  // Override in subclass
+  // Override in subclass to get an accessory component
   JComponent getAccessory (Preferences prefs, boolean save) {
     return null;
   }
 
   private boolean openDialog (Component comp, boolean save) {
+    // Open an open or save dialog
     if (save) {
       return fileChooser.showSaveDialog(comp) == JFileChooser.APPROVE_OPTION;
     } else {
@@ -123,11 +147,11 @@ public class FileChooserMenu extends JMenuItem {
     }
   }
 
-  // Override, as needed
+  // Override, as needed to create an accessory component, such as a JPanel (see DXFReader)
   void processFile (File sFile) throws Exception {
   }
 
-  // Override, as needed
+  // Override, as needed to load a preview image
   BufferedImage getPreview (File file) throws IOException {
     return ImageIO.read(Files.newInputStream(file.toPath()));
   }

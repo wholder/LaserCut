@@ -297,9 +297,9 @@ abstract class GRBLBase {
 
   class DroPanel extends JPanel {
     private final LaserCut      laserCut;
-    final DecimalFormat  fmtMm = new DecimalFormat("#0.0");
-    final DecimalFormat  fmtCm = new DecimalFormat("#0.00");
-    final DecimalFormat  fmtIn = new DecimalFormat("#0.000");
+    final DecimalFormat         fmtMm = new DecimalFormat("#0.0");
+    final DecimalFormat         fmtCm = new DecimalFormat("#0.00");
+    final DecimalFormat         fmtIn = new DecimalFormat("#0.000");
     private final String[]      vals;
     private final JTextField[]  lbl = new JTextField[3];
 
