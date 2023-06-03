@@ -15,7 +15,7 @@ public class FileChooserMenu extends JMenuItem {
   private static final int  IMG_HYT = 200;
   private static final int  IMG_BORDER = 30;
   String                    currentPath;
-  String                    lastFile;
+  String lastImgFile;
   JLabel                    imgLabel;
   JFileChooser              fileChooser;
 
@@ -26,6 +26,8 @@ public class FileChooserMenu extends JMenuItem {
     imgLabel = new JLabel();
     addActionListener(ev -> {
       fileChooser = new JFileChooser();
+      String lastFile = prefs.get("lastFile", "");
+      fileChooser.setSelectedFile(new File(lastFile));
       imgLabel = new JLabel();
       fileChooser.setDialogTitle(msg);
       fileChooser.setDialogType(save ? JFileChooser.SAVE_DIALOG : JFileChooser.OPEN_DIALOG);
@@ -73,8 +75,8 @@ public class FileChooserMenu extends JMenuItem {
                 if (evt.getPropertyName().equals(JFileChooser.SELECTED_FILE_CHANGED_PROPERTY)) {
                   File file = fileChooser.getSelectedFile();
                   String newFile = file.getAbsolutePath();
-                  if (!newFile.equals(lastFile)) {
-                    lastFile = newFile;
+                  if (!newFile.equals(lastImgFile)) {
+                    lastImgFile = newFile;
                     try {
                       BufferedImage buf = getPreview(file);
                       if (buf != null) {

@@ -698,6 +698,10 @@ class CADShape implements Serializable {
       } else if (keyResize && this instanceof LaserCut.Resizable) {
         // Draw diamond grap point for Resizable interface
         g2d.draw(Utils2D.getDiamondShape(new Point2D.Double(mx, my), 4));
+        // Draw text indicating current angle of rotation
+        int angle = (int) rotation;
+        g2d.setFont(new Font("Arial", Font.PLAIN, 14));
+        g2d.drawString("Resize", (float) mx + 10, (float) my + 4);
       }
     }
     g2.dispose();

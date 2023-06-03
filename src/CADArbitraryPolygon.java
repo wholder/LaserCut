@@ -1,21 +1,23 @@
 import java.awt.*;
-import java.awt.geom.Line2D;
-import java.awt.geom.Path2D;
-import java.awt.geom.Point2D;
+import java.awt.geom.*;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.prefs.Preferences;
 
-class CADArbitraryPolygon extends CADShape implements Serializable, LaserCut.StateMessages, LaserCut.Rotatable {
+class CADArbitraryPolygon extends CADShape implements Serializable, LaserCut.StateMessages, LaserCut.Resizable, LaserCut.Rotatable {
   private static final long           serialVersionUID = 1175193935200692376L;
-  private final List<Point2D.Double>  points = new ArrayList<>();
+  private List<Point2D.Double>        points = new ArrayList<>();
   private Point2D.Double              movePoint;
-  private boolean                     closePath;
+  private boolean                     pathClosed;
   private Path2D.Double               path = new Path2D.Double();
+  public double                       scale = 100.0;
+  transient public double             lastScale;
+
 
   CADArbitraryPolygon () {
+    lastScale = scale;
   }
 
   @Override
@@ -30,7 +32,7 @@ class CADArbitraryPolygon extends CADShape implements Serializable, LaserCut.Sta
 
   // Implement StateMessages interface
   public String getStateMsg () {
-    if (closePath) {
+    if (pathClosed) {
       return "Click and drag am existing point to move it\n - - \nclick on line to add new point" +
         "\n - - \nor SHIFT click on lower right bound point to rotate";
     } else {
@@ -45,8 +47,18 @@ class CADArbitraryPolygon extends CADShape implements Serializable, LaserCut.Sta
     return Arrays.asList(
       "xLoc|in",
       "yLoc|in",
-      "rotation|deg{degrees to rotate}");
+      "rotation|deg{degrees to rotate}",
+      "scale|%"
+      );
   }
+
+  List<Point2D.Double>  getScaledPoints () {
+    List<Point2D.Double> scaledPts = new ArrayList<>();
+    for (Point2D.Double cp : points) {
+      scaledPts.add(new Point2D.Double(cp.x * scale / 100, cp.y * scale / 100));
+    }
+    return scaledPts;
+  };
 
   @Override
   boolean isShapeClicked (Point2D.Double point, double zoomFactor) {
@@ -54,7 +66,7 @@ class CADArbitraryPolygon extends CADShape implements Serializable, LaserCut.Sta
   }
 
   boolean isPathClosed () {
-    return closePath;
+    return pathClosed;
   }
 
   /**
@@ -62,35 +74,37 @@ class CADArbitraryPolygon extends CADShape implements Serializable, LaserCut.Sta
    *
    * @param surface Reference to DrawSurface
    * @param point   Point clicked in Workspace coordinates (inches)
-   * @param gPoint  Closest grid point clicked in Workspace coordinates
+   * @param gPoint  Closest grid point clicked in Workspace coordinates (inches)
    * @return true if clicked
    */
   @Override
   boolean selectMovePoint (DrawSurface surface, Point2D.Double point, Point2D.Double gPoint) {
-    Point2D.Double mse = Utils2D.rotatePoint(new Point2D.Double(point.x - xLoc, point.y - yLoc), -rotation);
+    // Note: mse is in unrotated coords relative to the points, such as mse: x = 0.327, y = -0.208
+    Point2D.Double mse = rotatePoint(new Point2D.Double(point.x - xLoc, point.y - yLoc), -rotation);
     for (int ii = 0; ii < points.size(); ii++) {
       Point2D.Double cp = points.get(ii);
-      double dist = mse.distance(cp.x, cp.y) * LaserCut.SCREEN_PPI;
+      double dist = mse.distance(cp) * LaserCut.SCREEN_PPI;
       if (dist < 5) {
-        if (ii == 0 && !closePath) {
+        if (ii == 0 && !pathClosed) {
           surface.pushToUndoStack();
-          closePath = true;
-         updatePath();
+          pathClosed = true;
+          updatePath();
         }
+        // Note: movePoint is relative to coords of points
         movePoint = cp;
         return true;
       }
     }
     int idx;
-    if (closePath && (idx = getInsertionPoint(point)) >= 0) {
+    if (pathClosed && (idx = getInsertionPoint(point)) >= 0) {
       surface.pushToUndoStack();
-      points.add(idx + 1, movePoint = Utils2D.rotatePoint(new Point2D.Double(gPoint.x - xLoc, gPoint.y - yLoc), -rotation));
+      points.add(idx + 1, movePoint = rotatePoint(new Point2D.Double(gPoint.x - xLoc, gPoint.y - yLoc), -rotation));
       updatePath();
       return true;
     }
-    if (!closePath) {
+    if (!pathClosed) {
       surface.pushToUndoStack();
-      points.add(Utils2D.rotatePoint(movePoint = new Point2D.Double(gPoint.x - xLoc, gPoint.y - yLoc), -rotation));
+      points.add(rotatePoint(movePoint = new Point2D.Double(gPoint.x - xLoc, gPoint.y - yLoc), -rotation));
       updatePath();
       return true;
     }
@@ -104,7 +118,7 @@ class CADArbitraryPolygon extends CADShape implements Serializable, LaserCut.Sta
    * @return index into points List where we need to add new point
    */
   int getInsertionPoint (Point2D.Double point) {
-    Point2D.Double mse = Utils2D.rotatePoint(new Point2D.Double(point.x - xLoc, point.y - yLoc), -rotation);
+    Point2D.Double mse = rotatePoint(new Point2D.Double(point.x - xLoc, point.y - yLoc), -rotation);
     int idx = 1;
     Point2D.Double chk = points.get(idx);
     for (Line2D.Double[] lines : Utils2D.transformShapeToLines(getShape(), 1, .01)) {
@@ -122,9 +136,23 @@ class CADArbitraryPolygon extends CADShape implements Serializable, LaserCut.Sta
     return -1;
   }
 
+  /**
+   * Rotate 2D point around 0,0 point
+   *
+   * @param point Point to rotate
+   * @param angle Angle to rotate
+   * @return Rotated 2D point
+   */
+  private Point2D.Double rotatePoint (Point2D.Double point, double angle) {
+    AffineTransform center = AffineTransform.getRotateInstance(Math.toRadians(angle), 0, 0);
+    Point2D.Double np = new Point2D.Double();
+    center.transform(point, np);
+    return np;
+  }
+
   @Override
   boolean doMovePoints (Point2D.Double point) {
-    Point2D.Double mse = Utils2D.rotatePoint(new Point2D.Double(point.x - xLoc, point.y - yLoc), -rotation);
+    Point2D.Double mse = rotatePoint(new Point2D.Double(point.x - xLoc, point.y - yLoc), -rotation);
     if (movePoint != null) {
       double dx = mse.x - movePoint.x;
       double dy = mse.y - movePoint.y;
@@ -147,7 +175,7 @@ class CADArbitraryPolygon extends CADShape implements Serializable, LaserCut.Sta
   }
 
   private void updatePath () {
-    if (closePath) {
+    if (pathClosed) {
       path = Utils2D.convertPointsToPath(points.toArray(new Point2D.Double[0]), true);
     } else {
       Point2D.Double[] pnts = points.toArray(new Point2D.Double[points.size() + 1]);
@@ -159,17 +187,38 @@ class CADArbitraryPolygon extends CADShape implements Serializable, LaserCut.Sta
   }
 
   @Override
-  void draw (Graphics g, double zoom, boolean keyRotate, boolean keyResize, boolean keyCtrl) {
-    super.draw(g, zoom, keyRotate, keyResize, keyCtrl);
+  protected Shape getWorkspaceTranslatedShape () {
+    AffineTransform at = new AffineTransform();
+    at.translate(xLoc, yLoc);
+    return at.createTransformedShape(getLocallyTransformedShape());
+  }
+
+  // Implement Resizable interface
+  public void resize (double dx, double dy) {
+    Rectangle2D.Double bnds = Utils2D.boundsOf(points);
+    scale = (Math.min(dx / bnds.getWidth(), dy / bnds.getHeight())) * 100;
+    if (scale != lastScale) {
+      // transform all the points to new scale;
+      points = getScaledPoints();
+      lastScale = scale;
+      updatePath();
+    }
+  }
+
+    @Override
+  void draw (Graphics g, double zoom, boolean keyRotate, boolean keyResize, boolean keyOption) {
+    super.draw(g, zoom, keyRotate, keyResize, keyOption);
     Graphics2D g2 = (Graphics2D) g;
     // Draw all the Control Points
-    g2.setColor(isSelected ? Color.red : closePath ? Color.lightGray : Color.darkGray);
-    for (Point2D.Double cp : points) {
-      Point2D.Double np = Utils2D.rotatePoint(cp, rotation);
-      double mx = (xLoc + np.x) * zoom * LaserCut.SCREEN_PPI;
-      double my = (yLoc + np.y) * zoom * LaserCut.SCREEN_PPI;
-      double mWid = 2 * zoom;
-      g2.fill(new Rectangle.Double(mx - mWid, my - mWid, mWid * 2, mWid * 2));
+    g2.setColor(isSelected ? Color.red : pathClosed ? Color.lightGray : Color.darkGray);
+    if (isSelected){
+      for (Point2D.Double cp : points) {
+        Point2D.Double np = rotatePoint(cp, rotation);
+        double mx = (xLoc + np.x) * zoom * LaserCut.SCREEN_PPI;
+        double my = (yLoc + np.y) * zoom * LaserCut.SCREEN_PPI;
+        double mWid = 3;
+        g2.fill(new Rectangle.Double(mx - mWid, my - mWid, mWid * 2, mWid * 2));
+      }
     }
   }
 }

@@ -252,20 +252,20 @@ public class DrawSurface extends JPanel {
                 repaint();
                 return;
               }
-              // Check for click on anchor point (used to drag CADShape to new location)
-              if (selected.selectMovePoint(DrawSurface.this, newLoc, toGrid(newLoc))) {
-                dragged = selected;
-                repaint();
-                return;
-              }
+              // Check for click on resizeOrRotate point (used to drag CADShape to new size or orientation)
               if (selected instanceof LaserCut.Resizable || selected instanceof LaserCut.Rotatable) {
-                // Check for click on resizeOrRotate point (used to drag CADShape to new size or orientation)
-                if (selected.isResizeOrRotateHandleClicked(newLoc)) {
+                if (selected.isResizeOrRotateHandleClicked(newLoc) && (keyShift || keyCtrl)) {
                   resizeOrRotate = selected;
                   setInfoText(selected.getInfo());
                   repaint();
                   return;
                 }
+              }
+              // Check for click on anchor point (used to drag CADShape to new location)
+              if (selected.selectMovePoint(DrawSurface.this, newLoc, toGrid(newLoc))) {
+                dragged = selected;
+                repaint();
+                return;
               }
             }
             for (CADShape shape : shapes) {
