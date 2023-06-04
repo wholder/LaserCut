@@ -5,6 +5,7 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
 //import java.awt.desktop.*;
+import java.awt.desktop.*;
 import java.awt.event.*;
 import java.awt.geom.*;
 import java.awt.image.BufferedImage;
@@ -35,6 +36,7 @@ import static javax.swing.JOptionPane.*;
 
 public class LaserCut extends JFrame {
   static final String                 VERSION = "1.2 beta";
+  static final String                 USER = "wholder2";
   static final double                 SCREEN_PPI = java.awt.Toolkit.getDefaultToolkit().getScreenResolution();
   static final DecimalFormat          df = new DecimalFormat("#0.0###");
   private static final int            cmdMask = Toolkit.getDefaultToolkit().getMenuShortcutKeyMask();
@@ -42,7 +44,7 @@ public class LaserCut extends JFrame {
   DrawSurface surface;
   private final JScrollPane           scrollPane;
   private final JMenuBar              menuBar = new JMenuBar();
-  private final JMenuItem             gerberZip;
+  private JMenuItem                   gerberZip;
   private int                         pxDpi = prefs.getInt("svg.pxDpi", 96);
   private long                        savedCrc;
   private boolean                     useMouseWheel = prefs.getBoolean("useMouseWheel", false);
@@ -66,8 +68,7 @@ public class LaserCut extends JFrame {
       shapeClasses.add(new CADGear());
       shapeClasses.add(new CADNemaMotor());
       shapeClasses.add(new CADBobbin());
-      String user = System.getProperty("user.name");
-      if ("wholder".equals(user)) {
+      if (USER.equals(System.getProperty("user.name"))) {
         shapeClasses.add(new CADMusicStrip());
       }
     } catch (Exception ex) {
@@ -133,17 +134,23 @@ public class LaserCut extends JFrame {
 
   private void showPreferencesBox () {
     Map<String, ParameterDialog.ParmItem> items = new LinkedHashMap<>();
-    items.put("onStartup", new ParameterDialog.ParmItem("On Startup:Blank Page|blank:Reopen Last File|reopen:Demo Page|demo", onStartup));
+    items.put("onStartup", new ParameterDialog.ParmItem("On Startup:Blank Page|blank:Reopen Last File|reopen:Demo Page|demo",
+                                                         onStartup));
     String device = Integer.toString(prefs.getInt("outputDevice", 0));
     items.put("outputDevice", new ParameterDialog.ParmItem("Output Device:None|0:Epilog Zing|1:Mini Laser|2:" +
       "Micro Laser|3:MiniCNC|4:Silhouette|5:Mini Cutter|6", device));
     items.put("useMouseWheel", new ParameterDialog.ParmItem("Mouse Wheel Scrolling", prefs.getBoolean("useMouseWheel", false)));
     items.put("useDblClkZoom", new ParameterDialog.ParmItem("Double-click Zoom{Dbl click to Zoom 2x, Shift + dbl click to unZoom}",
       prefs.getBoolean("useDblClkZoom", false)));
-    items.put("enableGerber", new ParameterDialog.ParmItem("Enable Gerber ZIP Import", prefs.getBoolean("gerber.import", false)));
+    if (USER.equals(System.getProperty("user.name"))) {
+      items.put("enableGerber", new ParameterDialog.ParmItem("Enable Gerber ZIP Import",
+                prefs.getBoolean("gerber.import", false)));
+    }
+    items.put("macMenuBar", new ParameterDialog.ParmItem("Enable Mac Menu Bar", prefs.getBoolean("macMenuBar", false)));
     items.put("pxDpi", new ParameterDialog.ParmItem("px per Inch (SVG Import/Export)", prefs.getInt("svg.pxDpi", 96)));
     ParameterDialog.ParmItem[] parmSet = items.values().toArray(new ParameterDialog.ParmItem[0]);
-    ParameterDialog dialog = (new ParameterDialog("LaserCut Preferences", parmSet, new String[]{"Save", "Cancel"}, prefs.get("displayUnits", "in")));
+    ParameterDialog dialog = (new ParameterDialog("LaserCut Preferences", parmSet, new String[]{"Save", "Cancel"},
+                              prefs.get("displayUnits", "in")));
     dialog.setLocationRelativeTo(this);
     dialog.setVisible(true);              // Note: this call invokes dialog
     if (dialog.wasPressed()) {
@@ -180,6 +187,14 @@ public class LaserCut extends JFrame {
           boolean enabled = (Boolean) parm.value;
           prefs.putBoolean("gerber.import", (Boolean) parm.value);
           gerberZip.setVisible(enabled);
+        } else if ("macMenuBar".equals(name)) {
+          boolean enabled = (Boolean) parm.value;
+          boolean restart = enabled != prefs.getBoolean("macMenuBar", false);
+          prefs.putBoolean("macMenuBar", (Boolean) parm.value);
+          System.setProperty("apple.laf.useScreenMenuBar", enabled ? "true" : "false");
+          if (restart) {
+            showErrorDialog("Restart LaserCut for Manu Bar change");
+          }
         } else if ("pxDpi".equals(name)) {
           pxDpi = (Integer) parm.value;
           prefs.putInt("svg.pxDpi", pxDpi);
@@ -252,11 +267,11 @@ public class LaserCut extends JFrame {
     boolean hasAboutHandler = false;
     boolean hasPreferencesHandler = false;
     boolean hasQuitHandler = false;
-    /*
+    // Set Icon image for LaserCut
     if (Taskbar.isTaskbarSupported()) {
       Taskbar taskbar = Taskbar.getTaskbar();
       if (taskbar.isSupported(Taskbar.Feature.ICON_IMAGE)) {
-        taskbar.setIconImage(new ImageIcon(getClass().getResource("/images/laser_wip_black.png")).getImage());
+        taskbar.setIconImage(new ImageIcon(getClass().getResource("/images/LaserCut Logo.png")).getImage());
       }
     }
     if (Desktop.isDesktopSupported()) {
@@ -276,7 +291,7 @@ public class LaserCut extends JFrame {
         desktop.setQuitHandler(new QuitHandler() {
           @Override
           public void handleQuitRequestWith (QuitEvent e, QuitResponse response) {
-            if (quitHandler()) {
+            if (quitHandler() && showWarningDialog("Really quit?")) {
               response.performQuit();
             } else {
               response.cancelQuit();
@@ -284,24 +299,29 @@ public class LaserCut extends JFrame {
           }
         });
       }
-      if (hasPreferencesHandler = desktop.isSupported(Desktop.Action.APP_PREFERENCES)) {
-        desktop.setPreferencesHandler(new PreferencesHandler() {
-          @Override
-          public void handlePreferences (PreferencesEvent e) {
-            showPreferencesBox();
-          }
-        });
+      // Display "About Box" in Mac Menu Bar
+      if (prefs.getBoolean("macMenuBar", false)) {
+        if (hasPreferencesHandler = desktop.isSupported(Desktop.Action.APP_PREFERENCES)) {
+          desktop.setPreferencesHandler(new PreferencesHandler() {
+            @Override
+            public void handlePreferences (PreferencesEvent e) {
+              showPreferencesBox();
+            }
+          });
+        }
       }
-    }*/
+    }
     addWindowListener(new WindowAdapter() {
       @Override
       public void windowClosing (WindowEvent e) {
-        if (quitHandler()) {
+        if (quitHandler() && showWarningDialog("Really exit?")) {
           System.exit(0);
         }
       }
     });
-    // Add Menu Bar to Window
+    // Use Mac Menu Bar
+    System.setProperty("apple.laf.useScreenMenuBar", prefs.getBoolean("macMenuBar", false) ? "true" : "false");
+    // Add Menu Bar
     setJMenuBar(menuBar);
     surface.addPlacerListener(placing -> {
       for (int ii = 0; ii < menuBar.getMenuCount(); ii++) {
@@ -312,6 +332,7 @@ public class LaserCut extends JFrame {
      *  Add "File" Menu
      */
     JMenu fileMenu = new JMenu("File");
+    menuBar.add(fileMenu);
     if (!hasAboutHandler) {
       //
       // Add "About" Item to File Menu
@@ -332,7 +353,7 @@ public class LaserCut extends JFrame {
     //
     // Add "New" Item to File Menu
     //
-    JMenuItem newObj = new MyMenuItem("New", KeyEvent.VK_N);
+    JMenuItem newObj = new MyMenuItem("New LaserCut Project", KeyEvent.VK_N);
     newObj.addActionListener(ev -> {
       if (surface.hasData()) {
         if (!showWarningDialog("Discard current design?")) {
@@ -348,35 +369,27 @@ public class LaserCut extends JFrame {
     // Add "Open" Item to File menu
     //
     FileChooserMenu openMenu = new FileChooserMenu(this, "Open LaserCut File", "lzr", false, true) {
-      void processFile (File oFile) {
+      void processFile (File oFile) throws Exception {
         if (showWarningDialog("Discard current design?")) {
           surface.pushToUndoStack();
-          try {
-            SurfaceSettings settings = loadLaserCutFile(oFile);
-            surface.setDesign(settings);
-            setTitle("LaserCut - " + oFile.getAbsolutePath());
-            savedCrc = surface.getDesignChecksum();
-            prefs.put("default.dir", oFile.getAbsolutePath());
-            prefs.put("lastFile", oFile.getAbsolutePath());
-            setTitle("LaserCut - (" + oFile + ")");
-          } catch (Exception ex) {
-            showErrorDialog("Error loading LaserCut file");
-          }
+          SurfaceSettings settings = loadLaserCutFile(oFile);
+          surface.setDesign(settings);
+          setTitle("LaserCut - " + oFile.getAbsolutePath());
+          savedCrc = surface.getDesignChecksum();
+          prefs.put("default.dir", oFile.getAbsolutePath());
+          prefs.put("lastFile", oFile.getAbsolutePath());
+          setTitle("LaserCut - (" + oFile + ")");
         }
       }
       @Override
-      BufferedImage getPreview (File file) {
-        try {
-          SurfaceSettings settings = loadLaserCutFile(file);
-          List<CADShape> shapes = settings.getDesign();
-          List<Shape> shps = new ArrayList<>();
-          for (CADShape shape : shapes) {
-            shps.add(shape.getWorkspaceTranslatedShape());
-          }
-          return Utils2D.getPreviewImage(shps);
-        } catch (Exception ex) {
-          return null;
+      BufferedImage getPreview (File file) throws Exception {
+        SurfaceSettings settings = loadLaserCutFile(file);
+        List<CADShape> shapes = settings.getDesign();
+        List<Shape> shps = new ArrayList<>();
+        for (CADShape shape : shapes) {
+          shps.add(shape.getWorkspaceTranslatedShape());
         }
+        return Utils2D.getPreviewImage(shps);
       }
     };
     openMenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, cmdMask));
@@ -385,16 +398,12 @@ public class LaserCut extends JFrame {
     // Add "Save As" Item to File menu
     //
     FileChooserMenu saveAsMenu = new FileChooserMenu(this, "Save LaserCut File As", "lzr", true, false) {
-      void processFile (File sFile) {
-        try {
-          writeToLaserCutFile(sFile, false);
-          savedCrc = surface.getDesignChecksum();
-          setTitle("LaserCut - " + sFile);
-          prefs.put("lastFile", sFile.getAbsolutePath());
-          prefs.put("default.dir", sFile.getAbsolutePath());
-        } catch (Exception ex) {
-          showErrorDialog("Error saving LaserCut file");
-        }
+      void processFile (File sFile) throws Exception {
+        writeToLaserCutFile(sFile, false);
+        savedCrc = surface.getDesignChecksum();
+        setTitle("LaserCut - " + sFile);
+        prefs.put("lastFile", sFile.getAbsolutePath());
+        prefs.put("default.dir", sFile.getAbsolutePath());
       }
     };
     saveAsMenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, cmdMask));
@@ -403,16 +412,12 @@ public class LaserCut extends JFrame {
     // Add "Save Selected As" Item to File menu
     //
     FileChooserMenu saveSelectedMenu = new FileChooserMenu(this, "Save Selected As", "lzr", true, false) {
-      void processFile (File sFile) {
-        try {
-          writeToLaserCutFile(sFile, true);
-          savedCrc = surface.getDesignChecksum();
-          setTitle("LaserCut - " + sFile);
-          prefs.put("lastFile", sFile.getAbsolutePath());
-          prefs.put("default.dir", sFile.getAbsolutePath());
-        } catch (Exception ex) {
-          showErrorDialog("Error saving LaserCut file");
-        }
+      void processFile (File sFile) throws Exception {
+        writeToLaserCutFile(sFile, true);
+        savedCrc = surface.getDesignChecksum();
+        setTitle("LaserCut - " + sFile);
+        prefs.put("lastFile", sFile.getAbsolutePath());
+        prefs.put("default.dir", sFile.getAbsolutePath());
       }
     };
     saveSelectedMenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, cmdMask));
@@ -430,11 +435,11 @@ public class LaserCut extends JFrame {
       });
       fileMenu.add(quitObj);
     }
-    menuBar.add(fileMenu);
     /*
      *  Add "Shapes" Menu
      */
     JMenu shapesMenu = new JMenu("Shapes");
+    menuBar.add(shapesMenu);
     for (CADShape shapeClass : shapeClasses) {
       JMenuItem mItem = new JMenuItem(shapeClass.getMenuName());
       mItem.addActionListener(ev -> {
@@ -447,7 +452,6 @@ public class LaserCut extends JFrame {
       });
       shapesMenu.add(mItem);
     }
-    menuBar.add(shapesMenu);
     /*
      *  Add "Grid" menu
      */
@@ -482,6 +486,8 @@ public class LaserCut extends JFrame {
      *  Add "Edit" Menu
      */
     JMenu editMenu = new JMenu("Edit");
+    menuBar.add(editMenu);
+
     //
     // Add "Undo" Menu Item
     //
@@ -630,36 +636,28 @@ public class LaserCut extends JFrame {
       unGroupSelected.setEnabled(selected);
       dupSelected.setEnabled(selected);
     });
-    menuBar.add(editMenu);
     /*
      *  Add "Import" Menu
      */
     JMenu importMenu = new JMenu("Import");
+    menuBar.add(importMenu);
     //
     // Add "Import LaserCut File" Item to File menu
     //
     importMenu.add(new FileChooserMenu(this, "Import LaserCut file", "lzr", false, true) {
-      void processFile (File sFile) {
-        try {
-          SurfaceSettings settings = loadLaserCutFile(sFile);
-          surface.placeLaserCutFile(settings);
-        } catch (Exception ex) {
-          showErrorDialog("Unable to open LaserCut file");
-        }
+      void processFile (File sFile) throws Exception {
+        SurfaceSettings settings = loadLaserCutFile(sFile);
+        surface.placeLaserCutFile(settings);
       }
       @Override
-      BufferedImage getPreview (File file) {
-        try {
-          SurfaceSettings settings = loadLaserCutFile(file);
-          List<CADShape> shapes = settings.getDesign();
-          List<Shape> shps = new ArrayList<>();
-          for (CADShape shape : shapes) {
-            shps.add(shape.getWorkspaceTranslatedShape());
-          }
-          return Utils2D.getPreviewImage(shps);
-        } catch (Exception ex) {
-          return null;
+      BufferedImage getPreview (File file) throws Exception {
+        SurfaceSettings settings = loadLaserCutFile(file);
+        List<CADShape> shapes = settings.getDesign();
+        List<Shape> shps = new ArrayList<>();
+        for (CADShape shape : shapes) {
+          shps.add(shape.getWorkspaceTranslatedShape());
         }
+        return Utils2D.getPreviewImage(shps);
       }
     });
     //
@@ -669,35 +667,27 @@ public class LaserCut extends JFrame {
       void processFile (File sFile) throws Exception {
         SVGParser parser = new SVGParser();
         parser.setPxDpi(pxDpi);
-        try {
-          CADShape shp = parser.parseSvgFile(sFile);
-          if (shp.placeParameterDialog(surface, prefs.get("displayUnits", "in"))) {
-            surface.placeShape(shp);
-          } else {
-            surface.setInfoText("Import cancelled");
-          }
-        } catch (IOException ex) {
-          showErrorDialog("Unable to open SVG file");
+        CADShape shp = parser.parseSvgFile(sFile);
+        if (shp.placeParameterDialog(surface, prefs.get("displayUnits", "in"))) {
+          surface.placeShape(shp);
+        } else {
+          surface.setInfoText("Import cancelled");
         }
       }
       @Override
-      BufferedImage getPreview (File file) {
+      BufferedImage getPreview (File file) throws Exception {
         SVGParser parser = new SVGParser();
         parser.setPxDpi(pxDpi);
-        try {
-          CADShape shp = parser.parseSvgFile(file);
-          Shape shape = shp.getWorkspaceTranslatedShape();
-          return Utils2D.getPreviewImage(shape);
-        } catch (Exception ex) {
-          return null;
-        }
+        CADShape shp = parser.parseSvgFile(file);
+        Shape shape = shp.getWorkspaceTranslatedShape();
+        return Utils2D.getPreviewImage(shape);
       }
     });
     //
     // Add "Import DXF File" menu item
     //
     importMenu.add(new DXFReader.DxfFileChooserMenu(this, "Import DXF file", "dxf", false, true) {
-      void processFile (File sFile) {
+      void processFile (File sFile) throws Exception {
         String importUnits = getSelectedUnits();
         DXFReader dxf = new DXFReader(importUnits);
         if (isOptionSelected("TEXT")) {
@@ -709,40 +699,34 @@ public class LaserCut extends JFrame {
         if (isOptionSelected("DIMENSION")) {
           dxf.enableDimen(true);
         }
-        try {
-          List<CADShape> list = dxf.readDxfFile(sFile);
-          surface.placeShapes(list);
-        } catch (IOException ex) {
-          showErrorDialog("Unable to open DXF file");
-        }
+        List<CADShape> list = dxf.readDxfFile(sFile);
+        surface.placeShapes(list);
       }
       @Override
-      BufferedImage getPreview (File file) {
+      BufferedImage getPreview (File file) throws Exception {
         DXFReader dxf = new DXFReader("in");
-        try {
-          List<CADShape> shapes = dxf.readDxfFile (file);
-          Shape shape = Utils2D.listOfCADShapesToArea(shapes);
-          return Utils2D.getPreviewImage(shape);
-        } catch (Exception ex) {
-          return null;
-        }
+        List<CADShape> shapes = dxf.readDxfFile (file);
+        Shape shape = Utils2D.listOfCADShapesToArea(shapes);
+        return Utils2D.getPreviewImage(shape);
       }
     });
     //
     // Add "Import Gerber Zip" menu item
     //
-    importMenu.add(gerberZip = new FileChooserMenu(this, "Import Gerber Zip file", "zip", false, false) {
-      void processFile (File sFile) throws Exception {
-        GerberZip gerber = new GerberZip(sFile);
-        surface.placeShapes(gerber.getShapes());
-      }
-    });
+    if (USER.equals(System.getProperty("user.name"))) {
+      importMenu.add(gerberZip = new FileChooserMenu(this, "Import Gerber Zip file", "zip", false, false) {
+        void processFile (File sFile) throws Exception {
+          GerberZip gerber = new GerberZip(sFile);
+          surface.placeShapes(gerber.getShapes());
+        }
+      });
+    }
     /*
      *  Add "Import Notes to MusicBox Strip" Menu
      */
-    importMenu.add(new FileChooserMenu(this, "Import MusicBox file", "mus", false, false) {
-      void processFile (File sFile) {
-        try {
+    if (USER.equals(System.getProperty("user.name"))) {
+      importMenu.add(new FileChooserMenu(this, "Import MusicBox file", "mus", false, false) {
+        void processFile (File sFile) throws Exception {
           CADMusicStrip mStrip = new CADMusicStrip();
           mStrip.readMusicBoxFile(sFile);
           if (mStrip.placeParameterDialog(surface, prefs.get("displayUnits", "in"))) {
@@ -750,70 +734,49 @@ public class LaserCut extends JFrame {
           } else {
             surface.setInfoText("Import cancelled");
           }
-        } catch (Exception ex) {
-          showErrorDialog("Unable to read music box file");
         }
-      }
-    });
-    menuBar.add(importMenu);
+      });
+    }
     /*
      *  Add "Export" Menu
      */
     JMenu exportMenu = new JMenu("Export");
+    menuBar.add(exportMenu);
     //
     // Add "Export to PDF File" Menu Item
     //
     exportMenu.add(new FileChooserMenu(this, "Export PDF file", "pdf", true, false) {
-      void processFile (File sFile) {
-        try {
-          PDFTools.writePDF(surface.getDesign(), surface.getWorkSize(), sFile);
-        } catch (Exception ex) {
-          showErrorDialog("Unable to save PDF file");
-        }
+      void processFile (File sFile) throws Exception {
+        PDFTools.writePDF(surface.getDesign(), surface.getWorkSize(), sFile);
       }
     });
     //
     // Add "Export to SVG File"" Menu Item
     //
     exportMenu.add(new FileChooserMenu(this, "Export SVG file", "svg", true, false) {
-      void processFile (File sFile) {
-        try {
-          SVGParser.saveSvgFile(sFile, surface.getDesign(), surface.getWorkSize(), pxDpi);
-        } catch (Exception ex) {
-          showErrorDialog("Unable to save SVG file");
-        }
+      void processFile (File sFile) throws Exception {
+        SVGParser.saveSvgFile(sFile, surface.getDesign(), surface.getWorkSize(), pxDpi);
       }
     });
-
     //
     // Add "Export to DXF File"" Menu Item
     // Based on: https://jsevy.com/wordpress/index.php/java-and-android/jdxf-java-dxf-library/
     //  by Jonathan Sevy (released under the MIT License; https://choosealicense.com/licenses/mit/)
     //
     exportMenu.add(new DXFReader.DxfFileChooserMenu(this, "Export DXF file", "dxf", true, false) {
-      void processFile (File sFile) {
+      void processFile (File sFile) throws Exception {
         String units = getSelectedUnits();
-        try {
-          DXFReader.writeDxfFile(sFile, surface.getDesign(), units);
-        } catch (IOException ex) {
-          showErrorDialog("Unable to save DXF file");
-        }
+        DXFReader.writeDxfFile(sFile, surface.getDesign(), units);
       }
     });
-
     //
     // Add "Export to EPS File"" Menu Item
     //
     exportMenu.add(new FileChooserMenu(this, "Export EPS file", "eps", true, false) {
       void processFile (File sFile) throws Exception {
-        try {
-          EPSWriter.writeEpsFile(sFile, surface.getDesign());
-        } catch (IOException ex) {
-          showErrorDialog("Unable to save DXF file");
-        }
+        EPSWriter.writeEpsFile(sFile, surface.getDesign());
       }
     });
-    menuBar.add(exportMenu);
     /*
      *  Add Menu for selected output device
      */
@@ -826,6 +789,7 @@ public class LaserCut extends JFrame {
      *  Add "Units" Menu
      */
     JMenu unitsMenu = new JMenu("Units");
+    menuBar.add(unitsMenu);
     unitsMenu.setToolTipText("Select units to be used in controls");
     ButtonGroup unitGroup = new ButtonGroup();
     String[] unitSet = {"Inches:in", "Centimeters:cm", "Millimeters:mm"};
@@ -841,7 +805,6 @@ public class LaserCut extends JFrame {
         surface.setUnits(parts[1]);
       });
     }
-    menuBar.add(unitsMenu);
     /*
      * Track window move events and save in prefs
     */

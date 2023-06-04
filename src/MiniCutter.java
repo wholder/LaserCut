@@ -277,7 +277,6 @@ class MiniCutter implements LaserCut.OutputDevice {
         response.append((char) cc);
       }
     }
-
     // Wait for command to complete, or 10 second timeout
     private void cmdWait () throws InterruptedException {
       boolean wait;

@@ -699,7 +699,7 @@ abstract class GRBLBase {
           jPort.sendString(jogCmd);
           stepWait();
           dro.setDroPosition(lastResponse);
-          // Minimum move time 20ms
+          // Minimum move time 20 ms
           if (firstPress) {
             firstPress = false;
             Thread.sleep(20);
@@ -751,10 +751,10 @@ abstract class GRBLBase {
    */
   private class GRBLRunner implements Runnable, JSSCPort.RXEvent {
     private final StringBuilder   buf = new StringBuilder();
-    private final StringBuilder line = new StringBuilder();
-    private int             timeoutCount;
-    private final int seconds;
-    transient boolean       running, done, ready, timeout;
+    private final StringBuilder   line = new StringBuilder();
+    private int                   timeoutCount;
+    private final int             seconds;
+    transient boolean             running, done, ready, timeout;
 
     GRBLRunner (int seconds) {
       this.seconds = seconds;

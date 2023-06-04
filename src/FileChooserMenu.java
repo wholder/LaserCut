@@ -123,12 +123,12 @@ public class FileChooserMenu extends JMenuItem {
           }
         }
         try {
-          if (!save || (!sFile.exists() || showConfirmDialog(lcut, "Overwrite Existing file?", "Warning", YES_NO_OPTION, PLAIN_MESSAGE) == OK_OPTION)) {
+          if (!save || (!sFile.exists() || lcut.showWarningDialog("Overwrite Existing file?"))) {
             processFile(sFile);
           }
         } catch (Exception ex) {
-          showMessageDialog(lcut, save ? "Unable to save file" : "Unable to open file", "Error", PLAIN_MESSAGE);
-          ex.printStackTrace();
+          lcut.showErrorDialog(save ? "Unable to save file" : "Unable to open file");
+          //ex.printStackTrace();
         }
         prefs.put("default." + ext, sFile.getAbsolutePath());
       }
@@ -149,12 +149,12 @@ public class FileChooserMenu extends JMenuItem {
     }
   }
 
-  // Override, as needed to create an accessory component, such as a JPanel (see DXFReader)
+  // Override to perform open, or save operation
   void processFile (File sFile) throws Exception {
   }
 
   // Override, as needed to load a preview image
-  BufferedImage getPreview (File file) throws IOException {
+  BufferedImage getPreview (File file) throws Exception {
     return ImageIO.read(Files.newInputStream(file.toPath()));
   }
 }
