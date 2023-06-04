@@ -478,8 +478,12 @@ public class SVGParser {
   }
 
   private double parseCoord (String val) {
-    if (val != null && val.length() > 0) {
-      return Double.parseDouble(val);
+    try {
+      if (val != null && val.length() > 0) {
+        return Double.parseDouble(val);
+      }
+    } catch (Exception ex) {
+      ex.printStackTrace();
     }
     return 0;
   }

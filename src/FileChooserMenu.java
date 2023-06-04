@@ -90,8 +90,10 @@ public class FileChooserMenu extends JMenuItem {
                           return buf.getScaledInstance(IMG_WID, (int) (IMG_HYT * ratio), BufferedImage.SCALE_FAST);
                         }
                       }
-                    } catch (Exception e) {
-                      imgLabel.setText(" Invalid image/Unable to read");
+                    } catch (Exception ex) {
+                      imgLabel.setText("Unable to preview");
+                      imgLabel.setIcon(null);
+                      ex.printStackTrace();
                     }
                   }
                 }
@@ -104,9 +106,12 @@ public class FileChooserMenu extends JMenuItem {
                   Image img = get(1L, TimeUnit.NANOSECONDS);
                   if (img != null) {
                     imgLabel.setIcon(new ImageIcon(img));
+                    imgLabel.setText(null);
                   }
-                } catch (Exception e) {
+                } catch (Exception ex) {
                   imgLabel.setText(" Error");
+                  imgLabel.setIcon(null);
+                  ex.printStackTrace();
                 }
               }
             };

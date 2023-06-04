@@ -5,7 +5,6 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
 //import java.awt.desktop.*;
-import java.awt.desktop.*;
 import java.awt.event.*;
 import java.awt.geom.*;
 import java.awt.image.BufferedImage;
@@ -24,9 +23,6 @@ import static javax.swing.JOptionPane.*;
   Gears: http://lcamtuf.coredump.cx/gcnc/ch6/
   PDF export: http://trac.erichseifert.de/vectorgraphics2d/wiki/Usage
   Export to EPS, SVG, PDF: https://github.com/eseifert/vectorgraphics2d
-  Zoom & Pan: https://community.oracle.com/thread/1263955
-  https://developer.apple.com/library/content/documentation/Java/Conceptual/Java14Development/07-NativePlatformIntegration/NativePlatformIntegration.html
-  http://www.ntu.edu.sg/home/ehchua/programming/java/j4a_gui_2.html
 
   Marlin Renderer: https://github.com/bourgesl/marlin-renderer
 
@@ -36,7 +32,7 @@ import static javax.swing.JOptionPane.*;
 
 public class LaserCut extends JFrame {
   static final String                 VERSION = "1.2 beta";
-  static final String                 USER = "wholder2";
+  static final String                 USER = "wholder";
   static final double                 SCREEN_PPI = java.awt.Toolkit.getDefaultToolkit().getScreenResolution();
   static final DecimalFormat          df = new DecimalFormat("#0.0###");
   private static final int            cmdMask = Toolkit.getDefaultToolkit().getMenuShortcutKeyMask();
@@ -267,6 +263,7 @@ public class LaserCut extends JFrame {
     boolean hasAboutHandler = false;
     boolean hasPreferencesHandler = false;
     boolean hasQuitHandler = false;
+/*
     // Set Icon image for LaserCut
     if (Taskbar.isTaskbarSupported()) {
       Taskbar taskbar = Taskbar.getTaskbar();
@@ -319,6 +316,7 @@ public class LaserCut extends JFrame {
         }
       }
     });
+*/
     // Use Mac Menu Bar
     System.setProperty("apple.laf.useScreenMenuBar", prefs.getBoolean("macMenuBar", false) ? "true" : "false");
     // Add Menu Bar

@@ -79,6 +79,7 @@ class CADShape implements Serializable {
   public boolean            centered;               // Note: must preserve to be compatible with older files
   CADShapeGroup             group;
   Shape                     shape;
+  static final Color        DRAG_COLOR = new Color(238, 54, 199);
   transient Shape           builtShape;
   transient boolean         isSelected, inGroup, dragged;
   transient java.util.List<LaserCut.ChangeListener> changeSubscribers;
