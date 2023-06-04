@@ -804,7 +804,6 @@ public class DrawSurface extends JPanel {
   }
 
   void placeShape (CADShape shape) {
-    System.out.println("placeShape");
     List<CADShape> items = new ArrayList<>();
     items.add(shape);
     // Copy location of CADShape to Placer object, then zero CADShape's location
@@ -818,7 +817,6 @@ public class DrawSurface extends JPanel {
   }
 
   void placeShapes (List<CADShape> shapes) {
-    System.out.println("placeShapes");
     if (shapes.size() > 0) {
       Rectangle2D.Double bnds = (Rectangle2D.Double) getSetBounds(shapes);
       //bnds.x = 0;
@@ -843,7 +841,6 @@ public class DrawSurface extends JPanel {
    * @param settings SurfaceSettings object (contains list of CADShape objects)
    */
   void placeLaserCutFile (SurfaceSettings settings) {
-    System.out.println("placeLaserCutFile");
     List<CADShape> shapes = settings.getDesign();
     placeShapes(shapes);
   }

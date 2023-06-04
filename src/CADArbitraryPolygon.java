@@ -186,17 +186,10 @@ class CADArbitraryPolygon extends CADShape implements Serializable, LaserCut.Sta
     updateShape();
   }
 
-  @Override
-  protected Shape getWorkspaceTranslatedShape () {
-    AffineTransform at = new AffineTransform();
-    at.translate(xLoc, yLoc);
-    return at.createTransformedShape(getLocallyTransformedShape());
-  }
-
   // Implement Resizable interface
   public void resize (double dx, double dy) {
     Rectangle2D.Double bnds = Utils2D.boundsOf(points);
-    scale = (Math.min(dx / bnds.getWidth(), dy / bnds.getHeight())) * 100;
+    scale = (Math.min(dx / bnds.getWidth(), dy / bnds.getHeight())) * 200;
     if (scale != lastScale) {
       // transform all the points to new scale;
       points = getScaledPoints();
