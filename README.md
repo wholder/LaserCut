@@ -7,6 +7,9 @@ If you just want to try out the program, you don't need to download and compile 
 ## Requirements
 The current code and runnable Jar file requires a **64 bit version of Java 8**, or later.  [Click Here to download and install the latest version of Java from Oracle](https://www.java.com/en/download/).  I wrote LaserCut on a Mac Pro using the _Community_ version of [IntelliJ IDEA from JetBrains](https://www.jetbrains.com/idea/) and macOs is the only environment where I have extensively tested and used LaserCut .  However, as the code is nearly 100% Java, it should also run on MS Windows and Linux systems.  One exception is JSSC (Java Simple Serial Connector), which contains low-level, native drivers and is only needed to talk to certain output devices, such as GRBL-based laser cutters.  Feel free to report any issues you discover.  I'll do my best, when time permits, to investigate them, but I cannot guarantee fixes, timely or otherwise.
 
+### Issue with Java Serilization
+LaserCut files saved under Java 8 will be incompatible with laster versions of java due to changes with how files are serialized.  Future places involves switching to some form of alternate serialization, such as JSON files.
+
 ### Issue with JSSC 2.8.0 and Java 9, or later on 64 bit Windows 10
 The issue with a JSSC's `jSSC-2.8_x86_64.dll` driver when using Java 9, or later on 64 bit Windows 10 seems to be resolved using Java 10.0.1+10 and Windows 10 Home, Version 1803, Build 17134.165.  As of 7/17/2018 I have successfully run LaserCut's MiniLaser feature using JSSC 2.8.0 (built in) to communicate with GRBL 1.1.
 

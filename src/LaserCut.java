@@ -263,6 +263,9 @@ public class LaserCut extends JFrame {
     boolean hasAboutHandler = false;
     boolean hasPreferencesHandler = false;
     boolean hasQuitHandler = false;
+    /*
+     * Note: the following code only works on Java 11, or above
+     */
 /*
     // Set Icon image for LaserCut
     if (Taskbar.isTaskbarSupported()) {
@@ -815,6 +818,7 @@ public class LaserCut extends JFrame {
     });
     setLocation(prefs.getInt("window.x", 10), prefs.getInt("window.y", 10));
     pack();
+    setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
     setVisible(true);
     String reopen = prefs.get("lastFile", null);
     if ("reopen".equals(onStartup) && reopen != null) {
@@ -1042,7 +1046,7 @@ public class LaserCut extends JFrame {
           setFieldValue(resultClassDescriptor, "name", realName);
         }
         localClass = Class.forName(descName);
-      } catch (Exception e) {
+      } catch (Exception ex) {
         return resultClassDescriptor;
       }
       ObjectStreamClass localClassDescriptor = ObjectStreamClass.lookup(localClass);
