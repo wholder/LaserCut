@@ -3,15 +3,12 @@ package test;
 import javax.swing.*;
 import java.awt.*;
 import java.beans.*;
-import javax.swing.border.Border;
-import javax.swing.border.CompoundBorder;
 import javax.swing.filechooser.*;
 import java.awt.image.*;
 import javax.imageio.*;
 import java.io.*;
 import java.nio.file.Files;
 import java.util.concurrent.*;
-import java.awt.event.*;
 
 // /Users/wholder/IdeaProjects/LaserCut2/Test/PNG Files/Clipboard-icon.png
 
@@ -91,7 +88,7 @@ class ImagePreviewJFileChooser extends JFrame {
   }
 
 
-  public static void main (String args[]) {
+  public static void main (String[] args) {
     new ImagePreviewJFileChooser(true);
   }
 }

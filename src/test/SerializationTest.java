@@ -1,6 +1,5 @@
 package test;
 
-import javax.swing.*;
 import java.awt.*;
 import java.io.*;
 import java.util.ArrayList;
@@ -42,7 +41,7 @@ public class SerializationTest {
     s2.add("s1b");
     s2.add("s2b");
     s2.add("s3b");
-    SurfaceSettings settings1 = new SurfaceSettings(new Point(0, 1), 1, 2, 3);
+    SurfaceSettings settings1 = new SurfaceSettings();
     //
     // Write serialized data
     //
