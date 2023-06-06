@@ -82,7 +82,7 @@ class CADShape implements Serializable {
   static final Color        DRAG_COLOR = new Color(238, 54, 199);
   transient Shape           builtShape;
   transient boolean         isSelected, inGroup, dragged;
-  transient java.util.List<LaserCut.ChangeListener> changeSubscribers;
+  transient List<LaserCut.ChangeListener> changeSubscribers;
 
   /**
    * Default constructor is used to instantiate subclasses in "Shapes" Menu
@@ -439,7 +439,7 @@ class CADShape implements Serializable {
   }
 
   // Note: override in subclass, as needed
-  protected java.util.List<String> getPlaceFields () {
+  protected List<String> getPlaceFields () {
     return Arrays.asList(
       "rotation|deg",
       "engrave"
@@ -447,7 +447,7 @@ class CADShape implements Serializable {
   }
 
   // Note: override in subclass, as needed
-  protected java.util.List<String> getEditFields () {
+  protected List<String> getEditFields () {
     return Arrays.asList(
       "xLoc|in",
       "yLoc|in",
@@ -490,7 +490,7 @@ class CADShape implements Serializable {
    * @param actionButton Text for action button, such as "Save" or "Place"
    * @return true if used clicked action button, else false if they clicked cancel.
    */
-  private boolean displayShapeParameterDialog (DrawSurface surface, java.util.List<String> parmNames, String actionButton, String dUnits) {
+  private boolean displayShapeParameterDialog (DrawSurface surface, List<String> parmNames, String actionButton, String dUnits) {
     parmNames.addAll(Arrays.asList(getParameterNames()));
     ParameterDialog.ParmItem[] parmSet = new ParameterDialog.ParmItem[parmNames.size()];
     for (int ii = 0; ii < parmSet.length; ii++) {

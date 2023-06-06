@@ -348,6 +348,7 @@ public class LaserCut extends JFrame {
       //
       JMenuItem preferencesBox = new JMenuItem("Preferences");
       preferencesBox.addActionListener(ev -> showPreferencesBox());
+      preferencesBox.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_P, cmdMask));
       fileMenu.add(preferencesBox);
     }
     fileMenu.addSeparator();
@@ -407,7 +408,7 @@ public class LaserCut extends JFrame {
         prefs.put("default.dir", sFile.getAbsolutePath());
       }
     };
-    saveAsMenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, cmdMask));
+    saveAsMenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, cmdMask));
     fileMenu.add(saveAsMenu);
     //
     // Add "Save Selected As" Item to File menu
@@ -421,8 +422,6 @@ public class LaserCut extends JFrame {
         prefs.put("default.dir", sFile.getAbsolutePath());
       }
     };
-    saveSelectedMenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, cmdMask));
-    fileMenu.add(saveSelectedMenu);
     //
     // Add "Quit" Item to File menu
     //
@@ -993,6 +992,7 @@ public class LaserCut extends JFrame {
   }
 
   private static SurfaceSettings loadLaserCutFile (File readFile) throws Exception {
+    System.out.println("\nLoad: " + readFile.getName());
     SurfaceSettings settings = null;
     FileInputStream fileIn = new FileInputStream(readFile);
     ObjectInputStream in = new FixInputStream(fileIn);
@@ -1041,12 +1041,15 @@ public class LaserCut extends JFrame {
       Class localClass; // the class in the local JVM that this descriptor represents.
       try {
         String descName = resultClassDescriptor.getName();
-        String realName = descName.substring(9);
         if (descName.startsWith("LaserCut$")) {
+          String realName = descName.substring(9);
+          System.out.println("  Convert " + descName + " -> " + realName);
           setFieldValue(resultClassDescriptor, "name", realName);
         }
         localClass = Class.forName(descName);
       } catch (Exception ex) {
+        System.out.println("  Err: " + ex.getMessage() + ", cause: " + ex.getCause());
+        //ex.printStackTrace();
         return resultClassDescriptor;
       }
       ObjectStreamClass localClassDescriptor = ObjectStreamClass.lookup(localClass);
