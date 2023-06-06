@@ -276,7 +276,7 @@ public class DXFReader {
     private String                selected;
 
     DxfFileChooserMenu (LaserCut comp, String msg, String ext, boolean save, boolean preview) {
-      super(comp, msg, ext, save, preview);
+      super(comp, msg, ext, 0, save, preview);
       checkboxes = new ArrayList<>();
       // Widen JChooser by 25%
       Dimension dim = getPreferredSize();

@@ -235,7 +235,7 @@ public class LaserCut extends JFrame {
     MyMenuItem (String name, int key, int mask) {
       super(name);
       String code = key + ":" + mask;
-      if (keys.containsKey(code)) {
+      if (key > 0 && keys.containsKey(code)) {
         throw new IllegalStateException("Duplicate accelerator key for '" + keys.get(code) + "' & '" + name + "'");
       }
       keys.put(code, name);
@@ -370,7 +370,7 @@ public class LaserCut extends JFrame {
     //
     // Add "Open" Item to File menu
     //
-    FileChooserMenu openMenu = new FileChooserMenu(this, "Open LaserCut File", "lzr", false, true) {
+    FileChooserMenu openMenu = new FileChooserMenu(this, "Open LaserCut File", "lzr", KeyEvent.VK_O, false, true) {
       void processFile (File oFile) throws Exception {
         if (showWarningDialog("Discard current design?")) {
           surface.pushToUndoStack();
@@ -394,12 +394,12 @@ public class LaserCut extends JFrame {
         return Utils2D.getPreviewImage(shps);
       }
     };
-    openMenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, cmdMask));
+    //openMenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, cmdMask));
     fileMenu.add(openMenu);
     //
     // Add "Save As" Item to File menu
     //
-    FileChooserMenu saveAsMenu = new FileChooserMenu(this, "Save LaserCut File As", "lzr", true, false) {
+    FileChooserMenu saveAsMenu = new FileChooserMenu(this, "Save LaserCut File As", "lzr", KeyEvent.VK_S, true, false) {
       void processFile (File sFile) throws Exception {
         writeToLaserCutFile(sFile, false);
         savedCrc = surface.getDesignChecksum();
@@ -408,12 +408,12 @@ public class LaserCut extends JFrame {
         prefs.put("default.dir", sFile.getAbsolutePath());
       }
     };
-    saveAsMenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, cmdMask));
+    //saveAsMenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, cmdMask));
     fileMenu.add(saveAsMenu);
     //
     // Add "Save Selected As" Item to File menu
     //
-    FileChooserMenu saveSelectedMenu = new FileChooserMenu(this, "Save Selected As", "lzr", true, false) {
+    FileChooserMenu saveSelectedMenu = new FileChooserMenu(this, "Save Selected As", "lzr", 0, true, false) {
       void processFile (File sFile) throws Exception {
         writeToLaserCutFile(sFile, true);
         savedCrc = surface.getDesignChecksum();
@@ -644,7 +644,7 @@ public class LaserCut extends JFrame {
     //
     // Add "Import LaserCut File" Item to File menu
     //
-    importMenu.add(new FileChooserMenu(this, "Import LaserCut file", "lzr", false, true) {
+    importMenu.add(new FileChooserMenu(this, "Import LaserCut file", "lzr", 0, false, true) {
       void processFile (File sFile) throws Exception {
         SurfaceSettings settings = loadLaserCutFile(sFile);
         surface.placeLaserCutFile(settings);
@@ -663,7 +663,7 @@ public class LaserCut extends JFrame {
     //
     // Add "Import SVG File" menu item
     //
-    importMenu.add(new FileChooserMenu(this, "Import SVG file", "svg", false, true) {
+    importMenu.add(new FileChooserMenu(this, "Import SVG file", "svg", 0, false, true) {
       void processFile (File sFile) throws Exception {
         SVGParser parser = new SVGParser();
         parser.setPxDpi(pxDpi);
@@ -714,7 +714,7 @@ public class LaserCut extends JFrame {
     // Add "Import Gerber Zip" menu item
     //
     if (USER.equals(System.getProperty("user.name"))) {
-      importMenu.add(gerberZip = new FileChooserMenu(this, "Import Gerber Zip file", "zip", false, false) {
+      importMenu.add(gerberZip = new FileChooserMenu(this, "Import Gerber Zip file", "zip", 0, false, false) {
         void processFile (File sFile) throws Exception {
           GerberZip gerber = new GerberZip(sFile);
           surface.placeShapes(gerber.getShapes());
@@ -725,7 +725,7 @@ public class LaserCut extends JFrame {
      *  Add "Import Notes to MusicBox Strip" Menu
      */
     if (USER.equals(System.getProperty("user.name"))) {
-      importMenu.add(new FileChooserMenu(this, "Import MusicBox file", "mus", false, false) {
+      importMenu.add(new FileChooserMenu(this, "Import MusicBox file", "mus", 0, false, false) {
         void processFile (File sFile) throws Exception {
           CADMusicStrip mStrip = new CADMusicStrip();
           mStrip.readMusicBoxFile(sFile);
@@ -745,7 +745,7 @@ public class LaserCut extends JFrame {
     //
     // Add "Export to PDF File" Menu Item
     //
-    exportMenu.add(new FileChooserMenu(this, "Export PDF file", "pdf", true, false) {
+    exportMenu.add(new FileChooserMenu(this, "Export PDF file", "pdf", 0, true, false) {
       void processFile (File sFile) throws Exception {
         PDFTools.writePDF(surface.getDesign(), surface.getWorkSize(), sFile);
       }
@@ -753,7 +753,7 @@ public class LaserCut extends JFrame {
     //
     // Add "Export to SVG File"" Menu Item
     //
-    exportMenu.add(new FileChooserMenu(this, "Export SVG file", "svg", true, false) {
+    exportMenu.add(new FileChooserMenu(this, "Export SVG file", "svg", 0, true, false) {
       void processFile (File sFile) throws Exception {
         SVGParser.saveSvgFile(sFile, surface.getDesign(), surface.getWorkSize(), pxDpi);
       }
@@ -772,7 +772,7 @@ public class LaserCut extends JFrame {
     //
     // Add "Export to EPS File"" Menu Item
     //
-    exportMenu.add(new FileChooserMenu(this, "Export EPS file", "eps", true, false) {
+    exportMenu.add(new FileChooserMenu(this, "Export EPS file", "eps", 0, true, false) {
       void processFile (File sFile) throws Exception {
         EPSWriter.writeEpsFile(sFile, surface.getDesign());
       }
@@ -992,7 +992,6 @@ public class LaserCut extends JFrame {
   }
 
   private static SurfaceSettings loadLaserCutFile (File readFile) throws Exception {
-    System.out.println("\nLoad: " + readFile.getName());
     SurfaceSettings settings = null;
     FileInputStream fileIn = new FileInputStream(readFile);
     ObjectInputStream in = new FixInputStream(fileIn);
@@ -1043,12 +1042,12 @@ public class LaserCut extends JFrame {
         String descName = resultClassDescriptor.getName();
         if (descName.startsWith("LaserCut$")) {
           String realName = descName.substring(9);
-          System.out.println("  Convert " + descName + " -> " + realName);
+          //System.out.println("  Convert " + descName + " -> " + realName);
           setFieldValue(resultClassDescriptor, "name", realName);
         }
         localClass = Class.forName(descName);
       } catch (Exception ex) {
-        System.out.println("  Err: " + ex.getMessage() + ", cause: " + ex.getCause());
+        //System.out.println("  Err: " + ex.getMessage() + ", cause: " + ex.getCause());
         //ex.printStackTrace();
         return resultClassDescriptor;
       }

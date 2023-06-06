@@ -10,7 +10,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.prefs.Preferences;
 import static javax.swing.JOptionPane.*;
 
-public class FileChooserMenu extends JMenuItem {
+public class FileChooserMenu extends LaserCut.MyMenuItem {
   private static final int  IMG_WID = 200;
   private static final int  IMG_HYT = 200;
   private static final int  IMG_BORDER = 30;
@@ -19,8 +19,8 @@ public class FileChooserMenu extends JMenuItem {
   JLabel                    imgLabel;
   JFileChooser              fileChooser;
 
-  FileChooserMenu (LaserCut lcut, String msg, String ext, boolean save, boolean preview) {
-    super(msg);
+  FileChooserMenu (LaserCut lcut, String msg, String ext, int key, boolean save, boolean preview) {
+    super(msg, key);
     Preferences prefs = lcut.getPreferences();
     fileChooser = new JFileChooser();
     imgLabel = new JLabel();
