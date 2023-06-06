@@ -1667,10 +1667,13 @@ public class DXFReader {
   }
 
   public static void main (String[] args) throws Exception {
+/*
     if (args.length < 1) {
       System.out.println("Usage: java -jar DXFReader.jar <dxf file>");
     } else {
       new DXFViewer(args[0], 14.0, 8.0);
     }
+*/
+    new DXFViewer("Test/DXF Files/butterfly1.dxf", 14.0, 8.0);
   }
 }

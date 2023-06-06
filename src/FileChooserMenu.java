@@ -19,6 +19,15 @@ public class FileChooserMenu extends LaserCut.MyMenuItem {
   JLabel                    imgLabel;
   JFileChooser              fileChooser;
 
+  /**
+   * Create all the file dialogs for LaserCut
+   * @param lcut reference to LaserCut (used to invoke message dialogs)
+   * @param msg message at top of file dialog
+   * @param ext file extention
+   * @param key code for key shortcut, else zero (0)
+   * @param save true if save file dialog, else false
+   * @param preview true if file dialog displays a preview image (save must also be false)
+   */
   FileChooserMenu (LaserCut lcut, String msg, String ext, int key, boolean save, boolean preview) {
     super(msg, key);
     Preferences prefs = lcut.getPreferences();

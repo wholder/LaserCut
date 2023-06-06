@@ -488,15 +488,16 @@ class CADShape implements Serializable {
    * @param surface      parent Component for Dialog
    * @param parmNames    List of parameter names
    * @param actionButton Text for action button, such as "Save" or "Place"
+   * @param dUnits prefs.get("displayUnits"
    * @return true if used clicked action button, else false if they clicked cancel.
    */
   private boolean displayShapeParameterDialog (DrawSurface surface, List<String> parmNames, String actionButton, String dUnits) {
     parmNames.addAll(Arrays.asList(getParameterNames()));
     ParameterDialog.ParmItem[] parmSet = new ParameterDialog.ParmItem[parmNames.size()];
     for (int ii = 0; ii < parmSet.length; ii++) {
-      String name = parmNames.get(ii);
+      String parmName = parmNames.get(ii);
       try {
-        parmSet[ii] = new ParameterDialog.ParmItem(name, null);
+        parmSet[ii] = new ParameterDialog.ParmItem(parmName, null);
         Object val = this.getClass().getField(parmSet[ii].name).get(this);
         parmSet[ii].setValue(val);
       } catch (Exception ex) {

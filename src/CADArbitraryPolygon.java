@@ -174,6 +174,17 @@ class CADArbitraryPolygon extends CADShape implements Serializable, LaserCut.Sta
     return path;
   }
 
+  @Override
+  void updateShape () {
+    super.updateShape();
+    if (scale != lastScale) {
+      // transform all the points to new scale;
+      points = getScaledPoints();
+      lastScale = scale;
+      updatePath();
+    }
+  }
+
   private void updatePath () {
     if (pathClosed) {
       path = Utils2D.convertPointsToPath(points.toArray(new Point2D.Double[0]), true);

@@ -434,6 +434,60 @@ public class Utils2D {
     return null;
   }
 
+  /**
+   * Convert a set of points for a Catmmull-ROM spline into an equivalent Bézier Curve
+   *  See: https://pomax.github.io/bezierinfo/
+   *  And: https://gist.github.com/njvack/6925609
+   * @param points List of Point objects containing the control points
+   * @param close true if curve is closed, else false
+   * @return Path2D object containing the Bézier curve
+   */
+  static Path2D.Double convertPointsToBezier (List<Point2D.Double> points, boolean close) {
+    Point2D.Double[] pnts = points.toArray(new Point2D.Double[0]);
+    if (!close) {
+      // Duplicate last point so we can draw a curve through all points in the path
+      pnts = new Point2D.Double[points.size() + 1];
+      pnts[pnts.length - 1] = pnts[pnts.length - 2];
+    }
+    Path2D.Double path = new Path2D.Double();
+    path.moveTo(pnts[0].x, pnts[0].y);
+    int end = close ? pnts.length + 1 : pnts.length - 1;
+    for (int ii = 0; ii < end - 1; ii++) {
+      Point2D.Double p0, p1, p2, p3;
+      if (close) {
+        int idx0 = Math.floorMod(ii - 1, pnts.length);
+        int idx1 = Math.floorMod(idx0 + 1, pnts.length);
+        int idx2 = Math.floorMod(idx1 + 1, pnts.length);
+        int idx3 = Math.floorMod(idx2 + 1, pnts.length);
+        p0 = new Point2D.Double(pnts[idx0].x, pnts[idx0].y);
+        p1 = new Point2D.Double(pnts[idx1].x, pnts[idx1].y);
+        p2 = new Point2D.Double(pnts[idx2].x, pnts[idx2].y);
+        p3 = new Point2D.Double(pnts[idx3].x, pnts[idx3].y);
+      } else {
+        p0 = new Point2D.Double(pnts[Math.max(ii - 1, 0)].x, pnts[Math.max(ii - 1, 0)].y);
+        p1 = new Point2D.Double(pnts[ii].x, pnts[ii].y);
+        p2 = new Point2D.Double(pnts[ii + 1].x, pnts[ii + 1].y);
+        p3 = new Point2D.Double(pnts[Math.min(ii + 2, pnts.length - 1)].x, pnts[Math.min(ii + 2, pnts.length - 1)].y);
+      }
+      // Catmull-Rom to Cubic Bezier conversion matrix
+      //    0       1       0       0
+      //  -1/6      1      1/6      0
+      //    0      1/6      1     -1/6
+      //    0       0       1       0
+      double x1 = (-p0.x + 6 * p1.x + p2.x) / 6;  // First control point
+      double y1 = (-p0.y + 6 * p1.y + p2.y) / 6;
+      double x2 = (p1.x + 6 * p2.x - p3.x) / 6;  // Second control point
+      double y2 = (p1.y + 6 * p2.y - p3.y) / 6;
+      double x3 = p2.x;                           // End point
+      double y3 = p2.y;
+      path.curveTo(x1, y1, x2, y2, x3, y3);
+    }
+    if (close) {
+      path.closePath();
+    }
+    return path;
+  }
+
   /*
    *  Debuging tools
    *  See: https://alvinalexander.com/programming/printf-format-cheat-sheet/

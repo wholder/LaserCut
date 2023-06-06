@@ -332,7 +332,7 @@ class ParameterDialog extends JDialog {
    * Constructor for Pop Up Parameters Dialog with error checking
    * @param parms array of ParmItem objects that describe each parameter
    * @param buttons String] array of button names (first name in array is action button)
-   * @param dUnits Selected display units; "in", "cm", or "mm"
+   * @param dUnits Selected display units; "in", "cm", or "mm" (from prefs.get("displayUnits")
    */
   ParameterDialog (String title, ParmItem[] parms, String[] buttons, String dUnits) {
     this(title, parms, buttons, dUnits, null);
@@ -343,7 +343,7 @@ class ParameterDialog extends JDialog {
    * @param title text for parameter dialog window
    * @param parms array of ParmItem objects that describe each parameter
    * @param buttons String] array of button names (first name in array is action button)
-   * @param dUnits Selected display units; "in", "cm", or "mm"
+   * @param dUnits Selected display units; "in", "cm", or "mm" (from prefs.get("displayUnits")
    * @param info Properties object containing ParmItem info displayed in an extra column (see getGRBLSettingsMenu())
    */
   ParameterDialog (String title, ParmItem[] parms, String[] buttons, String dUnits, Properties info) {

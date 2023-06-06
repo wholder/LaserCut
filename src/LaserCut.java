@@ -394,7 +394,6 @@ public class LaserCut extends JFrame {
         return Utils2D.getPreviewImage(shps);
       }
     };
-    //openMenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, cmdMask));
     fileMenu.add(openMenu);
     //
     // Add "Save As" Item to File menu
@@ -408,7 +407,6 @@ public class LaserCut extends JFrame {
         prefs.put("default.dir", sFile.getAbsolutePath());
       }
     };
-    //saveAsMenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, cmdMask));
     fileMenu.add(saveAsMenu);
     //
     // Add "Save Selected As" Item to File menu
