@@ -18,9 +18,8 @@ import static javax.swing.JOptionPane.showMessageDialog;
 public class DrawSurface extends JPanel {
   private final Preferences                   prefs;
   private Dimension                           workSize;
-  private JTextField                          infoText;
   private List<CADShape>                      shapes = new ArrayList<>();
-  private CADShape                            selected, dragged, resizeOrRotate;
+  private CADShape                            selected, dragged;
   private Placer                              placer;
   private PlacerListener                      placerListener;
   private double                              gridSpacing = 0.1;
@@ -180,13 +179,6 @@ public class DrawSurface extends JPanel {
                   double dx = shape.xLoc - selected.xLoc;
                   double dy = shape.yLoc - selected.yLoc;
                   double diag = Math.sqrt(dx * dx + dy * dy);
-                  setInfoText(" dx: " + LaserCut.df.format(dx) + "in," +
-                    " dy: " + LaserCut.df.format(dy) + "in, " +
-                    " diagonal: " + LaserCut.df.format(diag) + "in  " +
-                    "(" + LaserCut.df.format(Utils2D.inchesToMM(dx)) + " mm," +
-                    " " + LaserCut.df.format(Utils2D.inchesToMM(dy)) + " mm," +
-                    " " + LaserCut.df.format(Utils2D.inchesToMM(diag)) + " mm)"
-                  );
                   measure1 = new Point2D.Double(selected.xLoc * zoomFactor * LaserCut.SCREEN_PPI,
                     selected.yLoc * zoomFactor * LaserCut.SCREEN_PPI);
                   measure2 = new Point2D.Double(shape.xLoc * zoomFactor * LaserCut.SCREEN_PPI,
@@ -196,33 +188,29 @@ public class DrawSurface extends JPanel {
                 }
               }
             }
-          } else if (keyShift) {        // Process SHIFT key (VK_SHIFT)
-            if (selected instanceof LaserCut.Resizable || selected instanceof LaserCut.Rotatable) {
-              // Check for click on resizeOrRotate point (used to drag a CADShape to new size, or orientation)
-              if (selected.isResizeOrRotateHandleClicked(newLoc)) {
-                resizeOrRotate = selected;
-                setInfoText(selected.getInfo());
-                repaint();
-                return;
-              }
-            }
-            for (CADShape shape : shapes) {
+          } else if (keyShift) {
+            // Check for click on resize point (used to drag a CADShape to new size, or orientation)
+            if (selected instanceof LaserCut.Resizable && selected.isResizeOrRotateHandleClicked(newLoc)) {
+              return;
+            } else {
               // Add or remove clicked CADShape from dragList
-              if (shape.isShapeClicked(newLoc, zoomFactor)) {
-                if (shape != selected && selected != null) {
-                  dragList.add(selected);
+              for (CADShape shape : shapes) {
+                if (shape.isShapeClicked(newLoc, zoomFactor)) {
+                  if (shape != selected && selected != null) {
+                    dragList.add(selected);
+                  }
+                  if (dragList.contains(shape)) {
+                    dragList.remove(shape);
+                  } else {
+                    dragList.add(shape);
+                  }
+                  setSelected(null);
+                  for (LaserCut.ShapeDragSelectListener listener : dragSelectListerners) {
+                    listener.shapeDragSelect(dragList.size() > 0);
+                  }
+                  repaint();
+                  return;
                 }
-                if (dragList.contains(shape)) {
-                  dragList.remove(shape);
-                } else {
-                  dragList.add(shape);
-                }
-                setSelected(null);
-                for (LaserCut.ShapeDragSelectListener listener : dragSelectListerners) {
-                  listener.shapeDragSelect(dragList.size() > 0);
-                }
-                repaint();
-                return;
               }
             }
             // Setup for shift-drag to add to dragList
@@ -241,7 +229,6 @@ public class DrawSurface extends JPanel {
                 if (shape.isPositionClicked(newLoc, zoomFactor)) {
                   dragged = shape;
                   setSelected(shape);
-                  setInfoText(shape.getShapePositionInfo());
                   showMeasure = false;
                   return;
                 }
@@ -252,17 +239,15 @@ public class DrawSurface extends JPanel {
                 repaint();
                 return;
               }
-              // Check for click on resizeOrRotate point (used to drag CADShape to new size or orientation)
+              // Check for click on Resize or Rotate point (used to drag CADShape to new size or orientation)
               if (selected instanceof LaserCut.Resizable || selected instanceof LaserCut.Rotatable) {
                 if (selected.isResizeOrRotateHandleClicked(newLoc) && (keyShift || keyCtrl)) {
-                  resizeOrRotate = selected;
-                  setInfoText(selected.getInfo());
                   repaint();
                   return;
                 }
               }
               // Check for click on anchor point (used to drag CADShape to new location)
-              if (selected.selectMovePoint(DrawSurface.this, newLoc, toGrid(newLoc))) {
+              if (selected.isControlPoint(DrawSurface.this, newLoc, toGrid(newLoc))) {
                 dragged = selected;
                 repaint();
                 return;
@@ -278,11 +263,10 @@ public class DrawSurface extends JPanel {
                 return;
               }
             }
-            if (keyMeta) {      // Process CMD key (VK_META)
+            if (keyMeta) {
               // Clicked on nothing with Meta Down, so setup to drag workspace
               pushToUndoStack();
               setSelected(null);
-              setInfoText("");
               showMeasure = false;
               scrollPoint = newLoc;
               setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
@@ -291,7 +275,6 @@ public class DrawSurface extends JPanel {
               dragStart = toGrid(new Point2D.Double(newLoc.x, newLoc.y));
               clearDragList();
               setSelected(null);
-              setInfoText("");
               showMeasure = false;
             }
           }
@@ -337,7 +320,6 @@ public class DrawSurface extends JPanel {
           mouseDown = false;
           cancelTip();
           dragged = null;
-          resizeOrRotate = null;
           scrollPoint = null;
           setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
           pushedToStack = false;
@@ -379,9 +361,11 @@ public class DrawSurface extends JPanel {
             pushToUndoStack();
           }
           newLoc = toGrid(newLoc);
-          if (!dragged.doMovePoints(newLoc)) {
+          if (dragged.isMovingControlPoint()) {
+            // Move the selected control point
+            dragged.doMovePoints(newLoc);
+          } else {
             Point2D.Double delta = dragged.dragPosition(newLoc, workSize);
-            setInfoText(dragged.getShapePositionInfo());
             CADShapeGroup group = dragged.getGroup();
             if (group != null) {
               for (CADShape shape : group.getGroupList()) {
@@ -392,18 +376,20 @@ public class DrawSurface extends JPanel {
             }
           }
           repaint();
-        } else if (resizeOrRotate != null) {
+        } else if (selected != null && keyShift) {
           if (!pushedToStack) {
             pushedToStack = true;
             pushToUndoStack();
           }
-          if (keyCtrl) {       // Process SHIFT key (VK_SHIFT)
-            resizeOrRotate.resizeOrRotateShape(newLoc, workSize, true);   // Do rotate
-          } else {
-            newLoc = toGrid(newLoc);
-            resizeOrRotate.resizeOrRotateShape(newLoc, workSize, false);  // Do resize
+          newLoc = toGrid(newLoc);
+          selected.resizeShape(newLoc, workSize);  // Do resize
+          repaint();
+        } else if (selected != null && keyCtrl) {
+          if (!pushedToStack) {
+            pushedToStack = true;
+            pushToUndoStack();
           }
-          setInfoText(resizeOrRotate.getInfo());
+          selected.rotateShape(newLoc, workSize);   // Do rotate
           repaint();
         } else if (scrollPoint != null) {
           // Drag the mouse to move the JScrollPane
@@ -438,7 +424,7 @@ public class DrawSurface extends JPanel {
         }
       }
     });
-    // Track JPanel resizeOrRotate events and save in prefs
+    // Track JPanel events and save in prefs
     addComponentListener(new ComponentAdapter() {
       public void componentResized (ComponentEvent ev)  {
         Rectangle bounds = ev.getComponent().getBounds();
@@ -468,12 +454,6 @@ public class DrawSurface extends JPanel {
     pe.runPeriodic();
   }
 
-  void setInfoText (String text) {
-    if (infoText != null) {
-      infoText.setText(text);
-    }
-  }
-
   void setDoubleClickZoomEnable (boolean enable) {
     prefs.putBoolean("useDblClkZoom", useDblClkZoom = enable);
   }
@@ -498,7 +478,6 @@ public class DrawSurface extends JPanel {
     if (workSize.width > screenSize.width || workSize.height > screenSize.height) {
       workSize = screenSize;
     }
-    setInfoText("");
     setSize(workSize);
     JFrame container = (JFrame) getFocusCycleRootAncestor();
     container.pack();
@@ -799,10 +778,6 @@ public class DrawSurface extends JPanel {
     repaint();
   }
 
-  void registerInfoJTextField (JTextField itemInfo) {
-    this.infoText = itemInfo;
-  }
-
   void placeShape (CADShape shape) {
     List<CADShape> items = new ArrayList<>();
     items.add(shape);
@@ -1063,6 +1038,7 @@ public class DrawSurface extends JPanel {
       // Group Optimized shapes
       for (Shape shape : opt) {
         Rectangle2D bnds = shape.getBounds2D();
+        // TODO: is this correct?
         double xLoc = bnds.getX();
         double yLoc = bnds.getY();
         AffineTransform at2 = AffineTransform.getTranslateInstance(-xLoc - bnds.getWidth() / 2, -yLoc - bnds.getHeight() / 2);

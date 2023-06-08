@@ -247,18 +247,8 @@ public class LaserCut extends JFrame {
     setTitle("LaserCut");
     surface = new DrawSurface(prefs, scrollPane = new JScrollPane());
     scrollPane.setViewportView(surface);
-    JTextField itemInfo = new JTextField();
-    surface.registerInfoJTextField(itemInfo);
     configureMouseWheel();
     add(scrollPane, BorderLayout.CENTER);
-    JPanel bottomPane = new JPanel(new BorderLayout());
-    bottomPane.setBorder(new EmptyBorder(1, 4, 1, 1));
-    bottomPane.add(new JLabel("Info: "), BorderLayout.WEST);
-    bottomPane.add(itemInfo, BorderLayout.CENTER);
-    itemInfo.setEditable(false);
-    itemInfo.setFocusable(false);
-    bottomPane.setFocusable(false);
-    add(bottomPane, BorderLayout.SOUTH);
     requestFocusInWindow();
     boolean hasAboutHandler = false;
     boolean hasPreferencesHandler = false;
@@ -668,8 +658,6 @@ public class LaserCut extends JFrame {
         CADShape shp = parser.parseSvgFile(sFile);
         if (shp.placeParameterDialog(surface, prefs.get("displayUnits", "in"))) {
           surface.placeShape(shp);
-        } else {
-          surface.setInfoText("Import cancelled");
         }
       }
       @Override
@@ -729,8 +717,6 @@ public class LaserCut extends JFrame {
           mStrip.readMusicBoxFile(sFile);
           if (mStrip.placeParameterDialog(surface, prefs.get("displayUnits", "in"))) {
             surface.placeShape(mStrip);
-          } else {
-            surface.setInfoText("Import cancelled");
           }
         }
       });

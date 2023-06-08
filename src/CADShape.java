@@ -112,8 +112,6 @@ class CADShape implements Serializable {
   void createAndPlace (DrawSurface surface, LaserCut laserCut, Preferences prefs) {
     if (placeParameterDialog(surface, prefs.get("displayUnits", "in"))) {
       surface.placeShape(this);
-    } else {
-      surface.setInfoText("Place " + getMenuName() + " cancelled");
     }
   }
 
@@ -141,11 +139,6 @@ class CADShape implements Serializable {
     this.xLoc = xLoc;
     this.yLoc = yLoc;
     this.rotation = rotation;
-  }
-
-  // Override in subclass, as needed
-  String getShapePositionInfo () {
-    return "xLoc: " + LaserCut.df.format(xLoc) + ", yLoc: " + LaserCut.df.format(yLoc);
   }
 
   /**
@@ -325,11 +318,19 @@ class CADShape implements Serializable {
   }
 
   /**
+   * Override in subclass to determine if user has selected a control point to move
+   * @return true if moving a control point
+   */
+  boolean isMovingControlPoint () {
+    return false;
+  }
+
+  /**
    * Override in subclass to check if a moveable internal point was clicked
    *
    * @return true if a moveable internal point is was clicked, else false
    */
-  boolean selectMovePoint (DrawSurface surface, Point2D.Double point, Point2D.Double gPoint) {
+  boolean isControlPoint (DrawSurface surface, Point2D.Double point, Point2D.Double gPoint) {
     return false;
   }
 
@@ -538,57 +539,6 @@ class CADShape implements Serializable {
     return false;
   }
 
-  /**
-   * Used to return a string showing cadShape's current parameters
-   *
-   * @return String showing cadShape's current parameters
-   */
-  String getInfo () {
-    StringBuilder buf = new StringBuilder(getMenuName() + ": ");
-    List<String> parmNames = new ArrayList<>(Arrays.asList(
-      "xLoc|in",
-      "yLoc|in",
-      "width|in",
-      "height|in",
-      "rotation|deg"
-      ));
-    parmNames.addAll(Arrays.asList(getParameterNames()));
-    boolean first = true;
-    Rectangle2D bnds = getShape().getBounds2D();
-    for (String name : parmNames) {
-      ParameterDialog.ParmItem item = new ParameterDialog.ParmItem(name, null);
-      if (!first) {
-        buf.append(", ");
-      }
-      first = false;
-      buf.append(item.name);
-      buf.append(": ");
-      if ("width".equals(item.name)) {
-        buf.append(LaserCut.df.format(bnds.getWidth()));
-      } else if ("height".equals(item.name)) {
-        buf.append(LaserCut.df.format(bnds.getHeight()));
-      } else {
-        try {
-          Field fld = this.getClass().getField(item.name);
-          Object value = fld.get(this);
-          if (item.valueType instanceof String[]) {
-            String[] labels = ParameterDialog.getLabels((String[]) item.valueType);
-            String[] values = ParameterDialog.getValues((String[]) item.valueType);
-            //noinspection SuspiciousMethodCalls
-            value = labels[Arrays.asList(values).indexOf(value)];
-          }
-          buf.append(((value instanceof Double) ? LaserCut.df.format(value) : value));
-        } catch (Exception ex) {
-          ex.printStackTrace();
-        }
-        if (item.units.length() > 0) {
-          buf.append(" ").append(item.units);
-        }
-      }
-    }
-    return buf.toString();
-  }
-
   /*
    * * * * * * * Resize and Rotate Logic * * * * * * * *
    */
@@ -599,6 +549,9 @@ class CADShape implements Serializable {
    */
   private Point2D.Double getShapeMoveHandle () {
     return new Point2D.Double(xLoc , yLoc);
+    // This doesn't work... Breaks rotate/resize drag controls
+    //Rectangle2D bnds = getShapeBounds();
+    //return new Point2D.Double(bnds.getX() + bnds.getWidth() / 2, bnds.getY() + bnds.getHeight() / 2);
   }
 
   /**
@@ -618,12 +571,6 @@ class CADShape implements Serializable {
     return Utils2D.rotateAroundPoint(getShapeMoveHandle(), getResizeOrRotateHandle(), rotation);
   }
 
-  /**
-   * Implement Resizeble to check if 'point' is close to cadShape's resize/rotate handle
-   *
-   * @param point      Location click on screen in model coordinates (inches)
-   * @return true if close enough to consider a 'touch'
-   */
   public boolean isResizeOrRotateHandleClicked (Point2D.Double point) {
     Point2D.Double grab = getRotateddResizeOrRotateHandle();
     double dist = point.distance(grab.x, grab.y) * LaserCut.SCREEN_PPI;
@@ -636,26 +583,37 @@ class CADShape implements Serializable {
    * @param newLoc   new x/y position (in workspace coordinates, inches)
    * @param workSize size of workspace in screen units
    */
-  public void resizeOrRotateShape (Point2D.Double newLoc, Dimension workSize, boolean doRotate) {
-    if (this instanceof LaserCut.Rotatable && doRotate) {
-      Point2D.Double anchor = getShapeMoveHandle();
-      Point2D.Double grab = getResizeOrRotateHandle();
-      double angle1 = Math.toDegrees(Math.atan2(anchor.y - newLoc.y, anchor.x - newLoc.x));
-      double angle2 = Math.toDegrees(Math.atan2(anchor.y - grab.y, anchor.x - grab.x));
-      // Change angle in even, 1 degree steps
-      rotation = Math.floor((angle1 - angle2) + 0.5);
-      rotation = rotation >= 360 ? rotation - 360 : rotation < 0 ? rotation + 360 : rotation;
-    } else if (this instanceof LaserCut.Resizable) {
-      // Counter rotate mouse loc into cadShape's coordinate space to measure stretch/shrink
-      double tx = Math.max(Math.min(newLoc.x, workSize.width / LaserCut.SCREEN_PPI), 0);
-      double ty = Math.max(Math.min(newLoc.y, workSize.height / LaserCut.SCREEN_PPI), 0);
-      Point2D.Double grab = Utils2D.rotateAroundPoint(getShapeMoveHandle(), new Point2D.Double(tx, ty), -rotation);
-      double dx = grab.x - xLoc;
-      double dy = grab.y - yLoc;
+  public void resizeShape (Point2D.Double newLoc, Dimension workSize) {
+    // Counter rotate mouse loc into cadShape's coordinate space to measure stretch/shrink
+    double tx = Math.max(Math.min(newLoc.x, workSize.width / LaserCut.SCREEN_PPI), 0);
+    double ty = Math.max(Math.min(newLoc.y, workSize.height / LaserCut.SCREEN_PPI), 0);
+    Point2D.Double grab = Utils2D.rotateAroundPoint(getShapeMoveHandle(), new Point2D.Double(tx, ty), -rotation);
+    double dx = grab.x - xLoc;
+    double dy = grab.y - yLoc;
+    if (this instanceof LaserCut.Resizable){
       ((LaserCut.Resizable) this).resize(dx, dy);
     }
     updateShape();
   }
+
+  /**
+   * Implement Resizeble to resize cadShape using newLoc to compute change
+   *
+   * @param newLoc   new x/y position (in workspace coordinates, inches)
+   * @param workSize size of workspace in screen units
+   */
+  public void rotateShape (Point2D.Double newLoc, Dimension workSize) {
+    Point2D.Double anchor = getShapeMoveHandle();
+    Point2D.Double grab = getResizeOrRotateHandle();
+    double angle1 = Math.toDegrees(Math.atan2(anchor.y - newLoc.y, anchor.x - newLoc.x));
+    double angle2 = Math.toDegrees(Math.atan2(anchor.y - grab.y, anchor.x - grab.x));
+    // Change angle in even, 1 degree steps
+    rotation = Math.floor((angle1 - angle2) + 0.5);
+    rotation = rotation >= 360 ? rotation - 360 : rotation < 0 ? rotation + 360 : rotation;
+    updateShape();
+  }
+
+
 
   /**
    * Draw cadShape to screen

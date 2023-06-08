@@ -6,8 +6,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /*
- * CADScaledShape is a container for a resizable Shape.  Currently used to encapsulate designed loaded
- * by the "Import from SVG" feature.
+ * CADScaledShape is a container for a resizable Shape.  Currently used to encapsulate designs loaded
+ * by the "Import from SVG" and "Import from DXF" features.
  * Note: scale is in percent (%)
  */
 class CADScaledShape extends CADShape implements Serializable, LaserCut.Resizable, LaserCut.Rotatable {

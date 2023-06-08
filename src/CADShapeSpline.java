@@ -79,9 +79,9 @@ class CADShapeSpline extends CADShape implements Serializable, LaserCut.StateMes
    * @return true if clicked
    */
   @Override
-  boolean selectMovePoint (DrawSurface surface, Point2D.Double point, Point2D.Double gPoint) {
+  boolean isControlPoint (DrawSurface surface, Point2D.Double point, Point2D.Double gPoint) {
     // Note: mse is in unrotated coords relative to the points, such as mse: x = 0.327, y = -0.208
-    Point2D.Double mse = rotatePoint(new Point2D.Double(point.x - xLoc, point.y - yLoc), -rotation);
+    Point2D.Double mse = Utils2D.rotatePoint(new Point2D.Double(point.x - xLoc, point.y - yLoc), -rotation);
     for (int ii = 0; ii < points.size(); ii++) {
       Point2D.Double cp = points.get(ii);
       double dist = mse.distance(cp) * LaserCut.SCREEN_PPI;
@@ -99,13 +99,13 @@ class CADShapeSpline extends CADShape implements Serializable, LaserCut.StateMes
     int idx;
     if (pathClosed && (idx = getInsertionPoint(point)) >= 0) {
       surface.pushToUndoStack();
-      points.add(idx + 1, movePoint = rotatePoint(new Point2D.Double(gPoint.x - xLoc, gPoint.y - yLoc), -rotation));
+      points.add(idx + 1, movePoint = Utils2D.rotatePoint(new Point2D.Double(gPoint.x - xLoc, gPoint.y - yLoc), -rotation));
       updatePath();
       return true;
     }
     if (!pathClosed) {
       surface.pushToUndoStack();
-      points.add(rotatePoint(movePoint = new Point2D.Double(gPoint.x - xLoc, gPoint.y - yLoc), -rotation));
+      points.add(Utils2D.rotatePoint(movePoint = new Point2D.Double(gPoint.x - xLoc, gPoint.y - yLoc), -rotation));
       updatePath();
       return true;
     }
@@ -119,7 +119,7 @@ class CADShapeSpline extends CADShape implements Serializable, LaserCut.StateMes
    * @return index into points List where we need to add new point
    */
   int getInsertionPoint (Point2D.Double point) {
-    Point2D.Double mse = rotatePoint(new Point2D.Double(point.x - xLoc, point.y - yLoc), -rotation);
+    Point2D.Double mse = Utils2D.rotatePoint(new Point2D.Double(point.x - xLoc, point.y - yLoc), -rotation);
     int idx = 1;
     Point2D.Double chk = points.get(idx);
     for (Line2D.Double[] lines : Utils2D.transformShapeToLines(getShape(), 1, .01)) {
@@ -137,24 +137,14 @@ class CADShapeSpline extends CADShape implements Serializable, LaserCut.StateMes
     return -1;
   }
 
-  /**
-   * Rotate 2D point around 0,0 point
-   *
-   * @param point Point to rotate
-   * @param angle Angle to rotate
-   * @return Rotated 2D point
-   */
-  private Point2D.Double rotatePoint (Point2D.Double point, double angle) {
-    AffineTransform center = AffineTransform.getRotateInstance(Math.toRadians(angle), 0, 0);
-    Point2D.Double np = new Point2D.Double();
-    center.transform(point, np);
-    return np;
+  boolean isMovingControlPoint () {
+    return movePoint != null;
   }
 
   @Override
   boolean doMovePoints (Point2D.Double point) {
-    Point2D.Double mse = rotatePoint(new Point2D.Double(point.x - xLoc, point.y - yLoc), -rotation);
     if (movePoint != null) {
+      Point2D.Double mse = Utils2D.rotatePoint(new Point2D.Double(point.x - xLoc, point.y - yLoc), -rotation);
       double dx = mse.x - movePoint.x;
       double dy = mse.y - movePoint.y;
       movePoint.x += dx;
@@ -211,7 +201,7 @@ class CADShapeSpline extends CADShape implements Serializable, LaserCut.StateMes
     g2.setColor(isSelected ? Color.red : pathClosed ? Color.lightGray : Color.darkGray);
     if (isSelected){
       for (Point2D.Double cp : points) {
-        Point2D.Double np = rotatePoint(cp, rotation);
+        Point2D.Double np = Utils2D.rotatePoint(cp, rotation);
         double mx = (xLoc + np.x) * zoom * LaserCut.SCREEN_PPI;
         double my = (yLoc + np.y) * zoom * LaserCut.SCREEN_PPI;
         double mWid = 3;

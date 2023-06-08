@@ -125,9 +125,6 @@ class CADRasterImage extends CADShape implements Serializable, LaserCut.Resizabl
               surface.placeShape(this);
               placed = true;
             }
-          } else {
-            surface.setInfoText("Image load cancelled");
-            break;
           }
         } while (!placed);
       } catch (Exception ex) {
