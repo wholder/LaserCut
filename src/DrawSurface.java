@@ -51,10 +51,10 @@ public class DrawSurface extends JPanel {
 
   /**
    *  State keys mapping
-   *    Shift:    Diaplay Resize drag point
+   *    Shift:    Diaplay Resize drag point and unzoom on double click on zoomed workspace
    *    Control:  Display Rotate drag point
-   *    Option:   See code
-   *    Meta:     See code
+   *    Option:   Measure distance from one shape to another (see code)
+   *    Meta:     Drag workspace (when zoomed)
    */
 
   static class Placer {
@@ -443,15 +443,13 @@ public class DrawSurface extends JPanel {
             placer = null;
             setPlacerActive(false);
             setSelected(null);
-            showInfoDialog("Placing shape cancelled");
             repaint();
           }
         }
       }
     });
     // Start periodic event for tip timer
-    PeriodicEvent pe = new PeriodicEvent();
-    pe.runPeriodic();
+    new PeriodicEvent().runPeriodic();
   }
 
   void setDoubleClickZoomEnable (boolean enable) {
@@ -1034,6 +1032,17 @@ public class DrawSurface extends JPanel {
           shapes.remove(shape);
         }
       }
+      Rectangle2D bnds = path.getBounds2D();
+      double xLoc = bnds.getX();
+      double yLoc = bnds.getY();
+      // Transform back to 0, 0
+      AffineTransform at2 = AffineTransform.getTranslateInstance(-xLoc - bnds.getWidth() / 2, -yLoc - bnds.getHeight() / 2);
+      Shape nPath = at2.createTransformedShape(path);
+      // Move back to original center x/y
+      CADShape cShape;
+      shapes.add(cShape = new CADShape(nPath, xLoc + bnds.getWidth() / 2, yLoc + bnds.getHeight() / 2, 0));
+      setSelected(cShape);
+/*
       List<Shape> opt = ShapeOptimizer.optimizeShape(path);
       // Group Optimized shapes
       for (Shape shape : opt) {
@@ -1043,9 +1052,10 @@ public class DrawSurface extends JPanel {
         double yLoc = bnds.getY();
         AffineTransform at2 = AffineTransform.getTranslateInstance(-xLoc - bnds.getWidth() / 2, -yLoc - bnds.getHeight() / 2);
         shape = at2.createTransformedShape(shape);
-        CADShape cadShape = new CADShape(shape, xLoc, yLoc, 0);
+        CADShape cadShape = new CADShape(shape, xLoc + bnds.getWidth() / 2, yLoc + bnds.getHeight() / 2, 0);
         shapes.add(cadShape);
       }
+*/
       clearDragList();
       repaint();
     }
@@ -1053,12 +1063,14 @@ public class DrawSurface extends JPanel {
 
   void duplicateSelected () {
     if (dragList.size() > 0) {
+      // Duplicate items in dragList
       pushToUndoStack();
       List<CADShape> dupList = new ArrayList<>();
       Map<CADShape, CADShape> alreadyDuped = new HashMap<>();
       for (CADShape shape : dragList) {
         CADShapeGroup group = shape.getGroup();
         if (group != null) {
+          // Duplicate group
           CADShapeGroup newGroup = new CADShapeGroup();
           for (CADShape gShape : group.getGroupList()) {
             if (!alreadyDuped.containsKey(gShape)) {
@@ -1066,7 +1078,6 @@ public class DrawSurface extends JPanel {
               CADShape dup = gShape.copy();
               newGroup.addToGroup(dup);
               dupList.add(dup);
-              shapes.add(dup);
             }
           }
         } else {
@@ -1074,19 +1085,17 @@ public class DrawSurface extends JPanel {
             alreadyDuped.put(shape, shape);
             CADShape dup = shape.copy();
             dupList.add(dup);
-            shapes.add(dup);
           }
         }
       }
       dragList.clear();
-      if (dupList.size() > 0) {
-        dragList.addAll(dupList);
-        moveSelected();
-      }
+      placeShapes(dupList);
     } else if (selected != null) {
+      // Duplicate single CADShape object, or a group of objects
       pushToUndoStack();
       CADShapeGroup group = selected.getGroup();
       if (group != null) {
+        // Duplicate a group of objects
         CADShapeGroup newGroup = new CADShapeGroup();
         List<CADShape> dupList = new ArrayList<>();
         for (CADShape shape : group.getGroupList()) {
@@ -1096,13 +1105,10 @@ public class DrawSurface extends JPanel {
           }
           newGroup.addToGroup(dup);
           dupList.add(dup);
-          shapes.add(dup);
         }
-        if (dupList.size() > 0) {
-          dragList.addAll(dupList);
-          moveSelected();
-        }
+        placeShapes(dupList);
       } else {
+        // Duplicate single CADShape object
         CADShape dup = selected.copy();
         setSelected(dup);
         placeShape(dup);
@@ -1208,8 +1214,7 @@ public class DrawSurface extends JPanel {
         } else if (tipTimer == 10) {
           if (!mouseDown) {
             if (placer != null) {
-              tipText = "Click to place " + placer.shapes.get(0).getMenuName() + "\n - - \n" +
-                "or ESC to cancel";
+              tipText = "Click to place " + placer.shapes.get(0).getMenuName() + "\n - - \n" + "or ESC to cancel";
               repaint();
             } else {
               tipTimer = 0;
@@ -1220,10 +1225,10 @@ public class DrawSurface extends JPanel {
                   if (selected.isPositionClicked(tipLoc, getZoomFactor())) {
                     tipText = "Click and drag to\nreposition the " + selected.getMenuName() + ".";
                   } else if (selected.isResizeOrRotateHandleClicked(tipLoc)) {
-                    if (selected instanceof LaserCut.Resizable && selected instanceof LaserCut.Rotatable) {
+                    if (selected instanceof LaserCut.Resizable) {
                       tipText = "Click and drag to resize the " + selected.getMenuName() + ".\n" +
                         "Hold shift and drag to rotate it.";
-                    } else if (selected instanceof LaserCut.Rotatable) {
+                    } else if (selected != null) {
                       tipText = "Click and drag to rotate the " + selected.getMenuName() + ".";
                     }
                   } else if (selected.isShapeClicked(tipLoc, getZoomFactor())) {

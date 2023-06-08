@@ -1,5 +1,6 @@
 import java.awt.*;
 import java.awt.geom.*;
+import java.awt.geom.Point2D.Double;
 import java.io.*;
 import java.lang.reflect.Field;
 import java.util.*;
@@ -72,7 +73,7 @@ import java.util.prefs.Preferences;
  * String[] 	getParameterNames ()
  * void 			hookParameters (Map<String, ParameterDialog.ParmItem> pNames)
  */
-class CADShape implements Serializable {
+class CADShape implements Serializable, LaserCut.Rotatable {
   private static final long serialVersionUID = 3716741066289930874L;
   public double             xLoc, yLoc, rotation;   // Note: must be public for reflection
   public boolean            engrave;                // Note: must be public for reflection
@@ -310,11 +311,8 @@ class CADShape implements Serializable {
 
   /**
    * Override in subclass to let mouse drag move internal control points
-   *
-   * @return true if an internal point is was dragged, else false
    */
-  boolean doMovePoints (Point2D.Double point) {
-    return false;
+  void doMovePoints (Double point) {
   }
 
   /**
@@ -457,7 +455,7 @@ class CADShape implements Serializable {
   }
 
   /**
-   * Bring up editable parameter dialog box do user can edit fields.  Uses reflection to read and save
+   * Bring up editable parameter dialog box so user can edit fields.  Uses reflection to read and save
    * parameter values before clicking the mouse to place the cadShape.
    *
    * @return true if used clicked OK to save
@@ -630,7 +628,6 @@ class CADShape implements Serializable {
     g2.setStroke(new BasicStroke(getStrokeWidth()));
     g2.setColor(getShapeColor());
     g2.draw(dShape);
-    g2.setStroke(new BasicStroke(getStrokeWidth()));
     if (isSelected || this instanceof CADReference || this instanceof CADShapeSpline) {
       // Draw (+) grab point for move option
       g2.draw(Utils2D.getPlusShape(new Point2D.Double(xLoc * zoom * LaserCut.SCREEN_PPI, yLoc * zoom * LaserCut.SCREEN_PPI), 4));
@@ -643,7 +640,7 @@ class CADShape implements Serializable {
       double mx = rGrab.x * zoom * LaserCut.SCREEN_PPI;
       double my = rGrab.y * zoom * LaserCut.SCREEN_PPI;
       g2d.setColor(new Color(0, 153, 0));
-      if (keyRotate && this instanceof LaserCut.Rotatable) {
+      if (keyRotate) {
         // Draw circle for Rotatable interface
         g2d.draw(Utils2D.getCircleShape(new Point2D.Double(mx, my), 4));
         // Draw dashed line to connect axis if rotation to grap point

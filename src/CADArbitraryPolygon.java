@@ -1,5 +1,6 @@
 import java.awt.*;
 import java.awt.geom.*;
+import java.awt.geom.Point2D.Double;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -141,7 +142,7 @@ class CADArbitraryPolygon extends CADShape implements Serializable, LaserCut.Sta
   }
 
   @Override
-  boolean doMovePoints (Point2D.Double point) {
+  void doMovePoints (Double point) {
     if (movePoint != null) {
       Point2D.Double mse = Utils2D.rotatePoint(new Point2D.Double(point.x - xLoc, point.y - yLoc), -rotation);
       double dx = mse.x - movePoint.x;
@@ -149,9 +150,7 @@ class CADArbitraryPolygon extends CADShape implements Serializable, LaserCut.Sta
       movePoint.x += dx;
       movePoint.y += dy;
       updatePath();
-      return true;
     }
-    return false;
   }
 
   @Override
