@@ -1,4 +1,6 @@
 
+import jssc.SerialPortException;
+
 import javax.swing.*;
 import javax.swing.text.DefaultCaret;
 import java.awt.*;
@@ -749,7 +751,7 @@ abstract class GRBLBase {
   /**
    *  GRBLRunner - used by GUI functions, such as Settings and Jog Menu
    */
-  private class GRBLRunner implements Runnable, JSSCPort.RXEvent {
+  private class GRBLRunner implements JSSCPort.RXEvent {
     private final StringBuilder   buf = new StringBuilder();
     private final StringBuilder   line = new StringBuilder();
     private int                   timeoutCount;
@@ -762,7 +764,11 @@ abstract class GRBLBase {
 
     void connect () throws Exception {
       // Wait for startup response from GRBL
-      jPort.open(this);
+      try {
+        jPort.open(this);
+      } catch (SerialPortException ex) {
+        laserCut.showErrorDialog("Unable to connect");
+      }
       int timeout = 100 * 10;
       while (!ready) {
         if (--timeout <= 0) {
@@ -783,12 +789,30 @@ abstract class GRBLBase {
       timeout = false;
       done = false;
       running = true;
-      new Thread(this).start();
+
+      new Thread(new Runnable() {
+        @Override
+        public void run () {
+          while (running) {
+            try {
+              Thread.sleep(100);
+              if (timeoutCount-- < 0) {
+                timeout = true;
+                break;
+              }
+            } catch (InterruptedException ex) {
+              ex.printStackTrace();
+            }
+          }
+          done = true;
+        }
+      }).start();
       jPort.sendString(cmd + '\n');
       while (!done && !timeout) {
         Thread.sleep(10);
       }
       if (timeout) {
+        laserCut.showErrorDialog("Serial port timeout");
         throw new IllegalStateException("Serial port timeout");
       }
       return buf.toString();
@@ -809,21 +833,6 @@ abstract class GRBLBase {
         line.append((char) cc);
         buf.append((char) cc);
       }
-    }
-
-    public void run () {
-      while (running) {
-        try {
-          Thread.sleep(100);
-          if (timeoutCount-- < 0) {
-            timeout = true;
-            break;
-          }
-        } catch (InterruptedException ex) {
-          ex.printStackTrace();
-        }
-      }
-      done = true;
     }
 
     void close () {
@@ -929,10 +938,11 @@ abstract class GRBLBase {
             grbl.append(".");
           } catch (InterruptedException ex) {
             ex.printStackTrace();
+            return;
           }
         }
         grbl.append("\nConnected\n");
-        paint(getGraphics());     // Kludge to get JTextArea to update
+        paint(getGraphics());                 // Kludge to get JTextArea to update
         response.setLength(0);
         for (int ii = 0; (ii < cmds.length) && !doAbort; ii++) {
           String gcode = cmds[ii].trim();

@@ -1250,7 +1250,7 @@ public class DrawSurface extends JPanel {
         }
       };
       // Run every second for 100 milliseconds'with initial an delay of 0 seconds
-      final ScheduledFuture<?> beeperHandle = scheduler.scheduleAtFixedRate(periodic, 0, 100, TimeUnit.MILLISECONDS);
+      final ScheduledFuture<?> handle = scheduler.scheduleAtFixedRate(periodic, 0, 100, TimeUnit.MILLISECONDS);
     }
   }
 
