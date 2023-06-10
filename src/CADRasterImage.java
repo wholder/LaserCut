@@ -23,7 +23,7 @@ import java.util.prefs.Preferences;
 
 import static javax.swing.JOptionPane.*;
 
-class CADRasterImage extends CADShape implements Serializable, LaserCut.Resizable, LaserCut.Rotatable {
+class CADRasterImage extends CADShape implements Serializable {
   private static final long serialVersionUID = 2309856254388651139L;
   private static final int  IMG_WID = 200;
   private static final int  IMG_HYT = 200;
@@ -187,7 +187,7 @@ class CADRasterImage extends CADShape implements Serializable, LaserCut.Resizabl
     return "Raster Image";
   }
 
-  // Implement Resizable interface
+  @Override
   public void resize (double dx, double dy) {
     double newWid = dx * 2;
     double newHyt = dy * 2;

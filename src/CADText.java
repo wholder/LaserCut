@@ -9,7 +9,7 @@ import java.io.Serializable;
 import java.util.*;
 import java.util.List;
 
-class CADText extends CADShape implements Serializable, LaserCut.Rotatable, LaserCut.Resizable {
+class CADText extends CADShape implements Serializable {
   private static final long serialVersionUID = 4314642313295298841L;
   public String text, fontName, fontStyle;
   public int    fontSize;
@@ -87,7 +87,8 @@ class CADText extends CADShape implements Serializable, LaserCut.Rotatable, Lase
     setLocationAndOrientation(xLoc, yLoc, rotation);
   }
 
-  public void resize (double dx, double dy) {
+  @Override
+  void resize (double dx, double dy) {
     double width = dx * 2;
     int newPnts = fontSize;
     boolean changed = false;

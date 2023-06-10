@@ -1,5 +1,6 @@
 import java.awt.*;
 import java.awt.geom.AffineTransform;
+import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -10,9 +11,14 @@ import java.util.List;
  * by the "Import from SVG" and "Import from DXF" features.
  * Note: scale is in percent (%)
  */
-class CADScaledShape extends CADShape implements Serializable, LaserCut.Resizable, LaserCut.Rotatable {
+class CADScaledShape extends CADShape implements Serializable {
   private static final long serialVersionUID = -8732521357598212914L;
   public double             scale = 100.0;
+  transient public double   lastScale;
+
+  CADScaledShape () {
+    lastScale = scale;
+  }
 
   CADScaledShape (Shape shape, double xLoc, double yLoc, double rotation) {
     super(shape, xLoc, yLoc, rotation);
@@ -46,9 +52,19 @@ class CADScaledShape extends CADShape implements Serializable, LaserCut.Resizabl
     return list;
   }
 
-  // Implement Resizable interface
+  @Override
   public void resize (double dx, double dy) {
     Rectangle2D bnds = shape.getBounds2D();
-    scale = (Math.min(dx / bnds.getWidth(), dy / bnds.getHeight())) * 100;
+    scale = (Math.min(dx / bnds.getWidth(), dy / bnds.getHeight())) * 200;
+    if (scale != lastScale) {
+      lastScale = scale;
+    }
+  }
+
+  @Override
+  protected Point2D.Double getResizeOrRotateHandle () {
+    Rectangle2D bnds = shape.getBounds2D();
+    double sFactor = scale / 100;
+    return new Point2D.Double(xLoc + bnds.getWidth() / 2 * sFactor, yLoc + bnds.getHeight() / 2 * sFactor);
   }
 }

@@ -190,7 +190,7 @@ public class DrawSurface extends JPanel {
             }
           } else if (keyShift) {
             // Check for click on resize point (used to drag a CADShape to new size, or orientation)
-            if (selected instanceof LaserCut.Resizable && selected.isResizeOrRotateHandleClicked(newLoc)) {
+            if (selected != null && selected.isResizeOrRotateHandleClicked(newLoc)) {
               return;
             } else {
               // Add or remove clicked CADShape from dragList
@@ -240,7 +240,7 @@ public class DrawSurface extends JPanel {
                 return;
               }
               // Check for click on Resize or Rotate point (used to drag CADShape to new size or orientation)
-              if (selected instanceof LaserCut.Resizable || selected instanceof LaserCut.Rotatable) {
+              if (selected != null) {
                 if (selected.isResizeOrRotateHandleClicked(newLoc) && (keyShift || keyCtrl)) {
                   repaint();
                   return;
@@ -389,7 +389,7 @@ public class DrawSurface extends JPanel {
             pushedToStack = true;
             pushToUndoStack();
           }
-          selected.rotateShape(newLoc, workSize);   // Do rotate
+          selected.rotateShape(newLoc);   // Do rotate
           repaint();
         } else if (scrollPoint != null) {
           // Drag the mouse to move the JScrollPane
@@ -439,11 +439,16 @@ public class DrawSurface extends JPanel {
         super.keyTyped(ev);
         int key = ev.getExtendedKeyCode();
         if (key == KeyEvent.VK_ESCAPE) {
+          setSelected(null);
           if (placer != null) {
             placer = null;
             setPlacerActive(false);
-            setSelected(null);
             repaint();
+          }
+        } else if (key == KeyEvent.VK_ENTER) {
+          System.out.println();
+          for (CADShape shape : shapes) {
+            System.out.println(shape.getMenuName());
           }
         }
       }
@@ -849,7 +854,7 @@ public class DrawSurface extends JPanel {
   void roundSelected (double radius) {
     pushToUndoStack();
     Shape oldShape = selected.buildShape();
-    CADShape tmp = new CADShape(CornerFinder.roundCorners(oldShape, radius), selected.xLoc, selected.yLoc, 0);
+    CADShape tmp = new CADScaledShape(CornerFinder.roundCorners(oldShape, radius), selected.xLoc, selected.yLoc, 0);
     shapes.remove(selected);
     shapes.add(tmp);
     setSelected(tmp);
@@ -875,7 +880,7 @@ public class DrawSurface extends JPanel {
           shapes.remove(gItem);
         }
       }
-      CADShape tmp = new CADShape(newShape, selected.xLoc, selected.yLoc, 0);
+      CADShape tmp = new CADScaledShape(newShape, selected.xLoc, selected.yLoc, 0);
       shapes.add(tmp);
       setSelected(tmp);
       repaint();
@@ -1039,8 +1044,8 @@ public class DrawSurface extends JPanel {
       AffineTransform at2 = AffineTransform.getTranslateInstance(-xLoc - bnds.getWidth() / 2, -yLoc - bnds.getHeight() / 2);
       Shape nPath = at2.createTransformedShape(path);
       // Move back to original center x/y
-      CADShape cShape;
-      shapes.add(cShape = new CADShape(nPath, xLoc + bnds.getWidth() / 2, yLoc + bnds.getHeight() / 2, 0));
+      CADScaledShape cShape;
+      shapes.add(cShape = new CADScaledShape(nPath, xLoc + bnds.getWidth() / 2, yLoc + bnds.getHeight() / 2, 0));
       setSelected(cShape);
 /*
       List<Shape> opt = ShapeOptimizer.optimizeShape(path);
@@ -1225,7 +1230,7 @@ public class DrawSurface extends JPanel {
                   if (selected.isPositionClicked(tipLoc, getZoomFactor())) {
                     tipText = "Click and drag to\nreposition the " + selected.getMenuName() + ".";
                   } else if (selected.isResizeOrRotateHandleClicked(tipLoc)) {
-                    if (selected instanceof LaserCut.Resizable) {
+                    if (selected != null) {
                       tipText = "Click and drag to resize the " + selected.getMenuName() + ".\n" +
                         "Hold shift and drag to rotate it.";
                     } else if (selected != null) {

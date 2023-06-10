@@ -2,7 +2,7 @@ import java.awt.*;
 import java.awt.geom.Path2D;
 import java.io.Serializable;
 
-class CADPolygon extends CADShape implements Serializable, LaserCut.Resizable, LaserCut.Rotatable {
+class CADPolygon extends CADShape implements Serializable {
   private static final long serialVersionUID = 973284612591842108L;
   public int                sides;
   public double             diameter;
@@ -28,7 +28,7 @@ class CADPolygon extends CADShape implements Serializable, LaserCut.Resizable, L
     return "Regular Polygon";
   }
 
-  // Implement Resizable interface
+  @Override
   public void resize (double dx, double dy) {
     diameter = Math.max(Math.sqrt(dx * dx + dy + dy), .1);
   }

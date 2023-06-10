@@ -73,7 +73,7 @@ import java.util.prefs.Preferences;
  * String[] 	getParameterNames ()
  * void 			hookParameters (Map<String, ParameterDialog.ParmItem> pNames)
  */
-class CADShape implements Serializable, LaserCut.Rotatable {
+class CADShape implements Serializable {
   private static final long serialVersionUID = 3716741066289930874L;
   public double             xLoc, yLoc, rotation;   // Note: must be public for reflection
   public boolean            engrave;                // Note: must be public for reflection
@@ -556,7 +556,8 @@ class CADShape implements Serializable, LaserCut.Rotatable {
    * Get location of unrotated point for resize/rotate control
    * @return unrotated location of grab point
    */
-  private Point2D.Double getResizeOrRotateHandle () {
+  // Override, as needed
+  protected Point2D.Double getResizeOrRotateHandle () {
     Rectangle2D bnds = getShapeBounds();
     return new Point2D.Double(xLoc + bnds.getX() + bnds.getWidth(), yLoc + bnds.getY() + bnds.getHeight());
   }
@@ -575,10 +576,13 @@ class CADShape implements Serializable, LaserCut.Rotatable {
     return dist < 5;
   }
 
+  // Implement in subclass, as needed
+  void resize (double dx, double dy) {}
+
   /**
-   * Implement Resizeble to resize cadShape using newLoc to compute change
+   * Resize cadShape using newLoc to compute change
    *
-   * @param newLoc   new x/y position (in workspace coordinates, inches)
+   * @param newLoc new x/y position (in workspace coordinates, inches)
    * @param workSize size of workspace in screen units
    */
   public void resizeShape (Point2D.Double newLoc, Dimension workSize) {
@@ -588,19 +592,16 @@ class CADShape implements Serializable, LaserCut.Rotatable {
     Point2D.Double grab = Utils2D.rotateAroundPoint(getShapeMoveHandle(), new Point2D.Double(tx, ty), -rotation);
     double dx = grab.x - xLoc;
     double dy = grab.y - yLoc;
-    if (this instanceof LaserCut.Resizable){
-      ((LaserCut.Resizable) this).resize(dx, dy);
-    }
+    resize(dx, dy);
     updateShape();
   }
 
   /**
-   * Implement Resizeble to resize cadShape using newLoc to compute change
+   * Rotate cadShape using newLoc to compute change
    *
-   * @param newLoc   new x/y position (in workspace coordinates, inches)
-   * @param workSize size of workspace in screen units
+   * @param newLoc new x/y position (in workspace coordinates, inches)
    */
-  public void rotateShape (Point2D.Double newLoc, Dimension workSize) {
+  public void rotateShape (Point2D.Double newLoc) {
     Point2D.Double anchor = getShapeMoveHandle();
     Point2D.Double grab = getResizeOrRotateHandle();
     double angle1 = Math.toDegrees(Math.atan2(anchor.y - newLoc.y, anchor.x - newLoc.x));
@@ -641,7 +642,7 @@ class CADShape implements Serializable, LaserCut.Rotatable {
       double my = rGrab.y * zoom * LaserCut.SCREEN_PPI;
       g2d.setColor(new Color(0, 153, 0));
       if (keyRotate) {
-        // Draw circle for Rotatable interface
+        // Draw circle for rotate interface
         g2d.draw(Utils2D.getCircleShape(new Point2D.Double(mx, my), 4));
         // Draw dashed line to connect axis if rotation to grap point
         g2d.setStroke(Utils2D.getDashedStroke(1, 5.0f, 9.0f));
@@ -652,8 +653,8 @@ class CADShape implements Serializable, LaserCut.Rotatable {
         int angle = (int) rotation;
         g2d.setFont(new Font("Arial", Font.PLAIN, 14));
         g2d.drawString("(θ=" + angle + ")", (float) mx + 10, (float) my + 4);
-      } else if (keyResize && this instanceof LaserCut.Resizable) {
-        // Draw diamond grap point for Resizable interface
+      } else if (keyResize && !(this instanceof LaserCut.NorResizable)) {
+        // Draw diamond grap point for resize interface
         g2d.draw(Utils2D.getDiamondShape(new Point2D.Double(mx, my), 4));
         // Draw text indicating current angle of rotation
         int angle = (int) rotation;

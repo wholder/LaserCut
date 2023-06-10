@@ -2,7 +2,7 @@ import java.awt.*;
 import java.awt.geom.Ellipse2D;
 import java.io.Serializable;
 
-class CADGear extends CADShape implements Serializable, LaserCut.Rotatable {
+class CADGear extends CADShape implements Serializable, LaserCut.NorResizable {
   private static final long serialVersionUID = 2334548672295293845L;
   public double module;
   public double pressAngle;

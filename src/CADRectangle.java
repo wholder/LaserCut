@@ -3,7 +3,7 @@ import java.awt.geom.Rectangle2D;
 import java.awt.geom.RoundRectangle2D;
 import java.io.Serializable;
 
-class CADRectangle extends CADShape implements Serializable, LaserCut.Resizable, LaserCut.Rotatable {
+class CADRectangle extends CADShape implements Serializable {
   private static final long serialVersionUID = 5415641155292738232L;
   public double             width, height, radius;
 
@@ -29,7 +29,7 @@ class CADRectangle extends CADShape implements Serializable, LaserCut.Resizable,
     return "Rectangle";
   }
 
-  // Implement Resizable interface
+  @Override
   public void resize (double dx, double dy) {
     width = Math.max(dx * 2, .1);
     height = Math.max(dy * 2, .1);

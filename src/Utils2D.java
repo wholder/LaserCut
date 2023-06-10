@@ -446,8 +446,10 @@ public class Utils2D {
     Point2D.Double[] pnts = points.toArray(new Point2D.Double[0]);
     if (!close) {
       // Duplicate last point so we can draw a curve through all points in the path
-      pnts = new Point2D.Double[points.size() + 1];
-      pnts[pnts.length - 1] = pnts[pnts.length - 2];
+      Point2D.Double[] newpnts = new Point2D.Double[pnts.length + 1];
+      System.arraycopy(pnts, 0, newpnts, 0, pnts.length);
+      newpnts[newpnts.length - 1] = pnts[pnts.length - 1];
+      pnts = newpnts;
     }
     Path2D.Double path = new Path2D.Double();
     path.moveTo(pnts[0].x, pnts[0].y);

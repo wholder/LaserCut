@@ -2,7 +2,7 @@ import java.awt.*;
 import java.awt.geom.Ellipse2D;
 import java.io.Serializable;
 
-class CADOval extends CADShape implements Serializable, LaserCut.Resizable, LaserCut.Rotatable {
+class CADOval extends CADShape implements Serializable {
   private static final long serialVersionUID = 2518641166287730832L;
   public                    double width, height;
 
@@ -27,7 +27,7 @@ class CADOval extends CADShape implements Serializable, LaserCut.Resizable, Lase
     return "Oval";
   }
 
-  // Implement Resizable interface
+  @Override
   public void resize (double dx, double dy) {
     width = Math.max(dx * 2, .1);
     height = Math.max(dy * 2, .1);

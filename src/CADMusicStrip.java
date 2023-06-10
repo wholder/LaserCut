@@ -21,7 +21,7 @@ import java.util.List;
  *    www.youtube.com/watch?v=apcsggbbBFw
  */
 
-class CADMusicStrip extends CADShape implements Serializable, LaserCut.Updatable {
+class CADMusicStrip extends CADShape implements Serializable, LaserCut.Updatable, LaserCut.NorResizable {
   private static final long serialVersionUID = 7398125917619364676L;
   private static final Map<String, Integer> noteIndex = new HashMap<>();
   private static final double   xStep = 4.0;

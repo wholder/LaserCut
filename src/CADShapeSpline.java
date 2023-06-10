@@ -7,7 +7,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.prefs.Preferences;
 
-class CADShapeSpline extends CADShape implements Serializable, LaserCut.StateMessages, LaserCut.Resizable, LaserCut.Rotatable {
+class CADShapeSpline extends CADShape implements Serializable, LaserCut.StateMessages {
   private static final long           serialVersionUID = 1175193935200692376L;
   private List<Point2D.Double>        points = new ArrayList<>();
   private Point2D.Double              movePoint;
@@ -15,8 +15,6 @@ class CADShapeSpline extends CADShape implements Serializable, LaserCut.StateMes
   private Path2D.Double               path = new Path2D.Double();
   public double                       scale = 100.0;
   transient public double             lastScale;
-
-
 
   CADShapeSpline () {
     lastScale = scale;
@@ -180,7 +178,7 @@ class CADShapeSpline extends CADShape implements Serializable, LaserCut.StateMes
     updateShape();
   }
 
-  // Implement Resizable interface
+  @Override
   public void resize (double dx, double dy) {
     Rectangle2D.Double bnds = Utils2D.boundsOf(points);
     scale = (Math.min(dx / bnds.getWidth(), dy / bnds.getHeight())) * 200;

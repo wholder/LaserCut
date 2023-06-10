@@ -7,7 +7,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.prefs.Preferences;
 
-class CADArbitraryPolygon extends CADShape implements Serializable, LaserCut.StateMessages, LaserCut.Resizable, LaserCut.Rotatable {
+class CADArbitraryPolygon extends CADShape implements Serializable, LaserCut.StateMessages {
   private static final long           serialVersionUID = 1175193935200692376L;
   private List<Point2D.Double>        points = new ArrayList<>();
   private Point2D.Double              movePoint;
@@ -186,7 +186,7 @@ class CADArbitraryPolygon extends CADShape implements Serializable, LaserCut.Sta
     updateShape();
   }
 
-  // Implement Resizable interface
+  @Override
   public void resize (double dx, double dy) {
     Rectangle2D.Double bnds = Utils2D.boundsOf(points);
     scale = (Math.min(dx / bnds.getWidth(), dy / bnds.getHeight())) * 200;

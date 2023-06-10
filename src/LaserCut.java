@@ -1072,11 +1072,8 @@ public class LaserCut extends JFrame {
    * CADShape interfaces
    */
 
-  interface Resizable {   // Interface for CADShape subclasses that support resizing
-    void resize(double dx, double dy);
-  }
-
-  interface Rotatable {}  // Marker inteface for CADShape subclasses that support rotation
+  // Marker interface for CADShape subclasses that can't use the graphical resize interface, such as CADGear
+  interface NorResizable {};
 
   interface ChangeListener {
     void shapeChanged (CADShape cadShape);
