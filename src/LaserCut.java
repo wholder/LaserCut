@@ -1,8 +1,6 @@
 import jssc.SerialNativeInterface;
 
 import javax.swing.*;
-import javax.swing.border.EmptyBorder;
-import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
 //import java.awt.desktop.*;
 import java.awt.event.*;
@@ -50,6 +48,8 @@ public class LaserCut extends JFrame {
   private OutputDevice                outputDevice;
   private final int                   deviceMenuSlot;
   private final List<CADShape>        shapeClasses = new ArrayList<>();
+  static final boolean                isUser = USER.equals(System.getProperty("user.name"));
+
 
   {
     try {
@@ -64,7 +64,7 @@ public class LaserCut extends JFrame {
       shapeClasses.add(new CADGear());
       shapeClasses.add(new CADNemaMotor());
       shapeClasses.add(new CADBobbin());
-      if (USER.equals(System.getProperty("user.name"))) {
+      if (isUser) {
         shapeClasses.add(new CADMusicStrip());
       }
     } catch (Exception ex) {
@@ -138,7 +138,7 @@ public class LaserCut extends JFrame {
     items.put("useMouseWheel", new ParameterDialog.ParmItem("Mouse Wheel Scrolling", prefs.getBoolean("useMouseWheel", false)));
     items.put("useDblClkZoom", new ParameterDialog.ParmItem("Double-click Zoom{Dbl click to Zoom 2x, Shift + dbl click to unZoom}",
       prefs.getBoolean("useDblClkZoom", false)));
-    if (USER.equals(System.getProperty("user.name"))) {
+    if (isUser) {
       items.put("enableGerber", new ParameterDialog.ParmItem("Enable Gerber ZIP Import",
                 prefs.getBoolean("gerber.import", false)));
     }
@@ -699,7 +699,7 @@ public class LaserCut extends JFrame {
     //
     // Add "Import Gerber Zip" menu item
     //
-    if (USER.equals(System.getProperty("user.name"))) {
+    if (isUser) {
       importMenu.add(gerberZip = new FileChooserMenu(this, "Import Gerber Zip file", "zip", 0, false, false) {
         void processFile (File sFile) throws Exception {
           GerberZip gerber = new GerberZip(sFile);
@@ -710,7 +710,7 @@ public class LaserCut extends JFrame {
     /*
      *  Add "Import Notes to MusicBox Strip" Menu
      */
-    if (USER.equals(System.getProperty("user.name"))) {
+    if (isUser) {
       importMenu.add(new FileChooserMenu(this, "Import MusicBox file", "mus", 0, false, false) {
         void processFile (File sFile) throws Exception {
           CADMusicStrip mStrip = new CADMusicStrip();
@@ -787,6 +787,24 @@ public class LaserCut extends JFrame {
       uItem.addActionListener(ev -> {
         prefs.put("displayUnits", parts[1]);
         surface.setUnits(parts[1]);
+      });
+    }
+    /*
+     *  Add Test Menu (Test User only)
+     */
+    if (isUser) {
+      JMenu testMenu = new JMenu("Test");
+      menuBar.add(testMenu);
+      MyMenuItem listShapes = new MyMenuItem("Toggle Shapes List", KeyEvent.VK_ENTER, 0);
+      listShapes.setToolTipText("Opens a wndow that shows a list of active shapes");
+      testMenu.add(listShapes);
+      TestWindow testWindow = new TestWindow(surface);
+      listShapes.addActionListener(ev -> {
+        if (testWindow.windowIsOpen()) {
+          testWindow.closeWindow();
+        } else {
+          testWindow.openWindow(getBounds());
+        }
       });
     }
     /*
@@ -1007,7 +1025,6 @@ public class LaserCut extends JFrame {
     //System.out.println(settings);
     return settings;
   }
-
 
   /**
    * This class attempts to fix loading of serialized CADScaledShape objects that did not have

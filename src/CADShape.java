@@ -629,7 +629,7 @@ class CADShape implements Serializable {
     g2.setStroke(new BasicStroke(getStrokeWidth()));
     g2.setColor(getShapeColor());
     g2.draw(dShape);
-    if (isSelected || this instanceof CADReference || this instanceof CADShapeSpline) {
+    if (isSelected || this instanceof CADReference) {
       // Draw (+) grab point for move option
       g2.draw(Utils2D.getPlusShape(new Point2D.Double(xLoc * zoom * LaserCut.SCREEN_PPI, yLoc * zoom * LaserCut.SCREEN_PPI), 4));
     }

@@ -7,6 +7,15 @@ import java.util.ArrayList;
 class CADShapeGroup implements Serializable {
   private static final long         serialVersionUID = 3210128656295452345L;
   private final ArrayList<CADShape> shapesInGroup = new ArrayList<>();
+  private transient int             id = 0;
+  private static int                counter = 0;
+
+  public int getId () {
+    if (id == 0) {
+      id = ++counter;
+    }
+    return id;
+  }
 
   void addToGroup (CADShape shape) {
     CADShapeGroup old = shape.getGroup();

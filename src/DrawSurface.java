@@ -22,6 +22,7 @@ public class DrawSurface extends JPanel {
   private CADShape                            selected, dragged;
   private Placer                              placer;
   private PlacerListener                      placerListener;
+  private DrawSurfaceListener                 shapeListListener;
   private double                              gridSpacing = 0.1;
   private int                                 gridMajor;
   private JMenu                               gridMenu;
@@ -57,32 +58,40 @@ public class DrawSurface extends JPanel {
    *    Meta:     Drag workspace (when zoomed)
    */
 
+  interface DrawSurfaceListener {
+    void listUpdated ();
+  }
+
+  void setShaoeListListener (DrawSurfaceListener shapeListListener) {
+    this.shapeListListener = shapeListListener;
+  }
+
   static class Placer {
-    private final List<CADShape>    shapes;
+    private final List<CADShape>    placedShapes;
     private Point2D.Double          curLoc = new Point2D.Double(0, 0);
 
-    Placer (List<CADShape> shapes) {
-      this.shapes = shapes;
+    Placer (List<CADShape> placedShapes) {
+      this.placedShapes = placedShapes;
     }
 
     void setPlacePosition (Point2D.Double newLoc) {
       Point2D.Double delta = new Point2D.Double(newLoc.getX() - curLoc.getX(), newLoc.getY() - curLoc.getY());
-      for (CADShape shape : shapes) {
+      for (CADShape shape : placedShapes) {
         shape.movePosition(delta);
       }
       curLoc = newLoc;
     }
 
     void draw (Graphics2D g2, double scale) {
-      for (CADShape shape : shapes) {
+      for (CADShape shape : placedShapes) {
         shape.draw(g2, scale, false, false, false);
       }
     }
 
     void addToSurface (DrawSurface surface) {
-      surface.addShapes(shapes);
-      if (shapes.size() > 0) {
-        surface.setSelected(shapes.get(0));
+      surface.addShapes(placedShapes);
+      if (placedShapes.size() > 0) {
+        surface.setSelected(placedShapes.get(0));
       }
     }
   }
@@ -236,6 +245,7 @@ public class DrawSurface extends JPanel {
               // Check for click inside CADShape if it implements Updatable (used by CADMusicStrip)
               if (selected instanceof LaserCut.Updatable && ((LaserCut.Updatable) selected).updateInternalState(newLoc)) {
                 pushToUndoStack();
+                shapeListChanged();
                 repaint();
                 return;
               }
@@ -247,7 +257,7 @@ public class DrawSurface extends JPanel {
                 }
               }
               // Check for click on anchor point (used to drag CADShape to new location)
-              if (selected.isControlPoint(DrawSurface.this, newLoc, toGrid(newLoc))) {
+              if (selected != null && selected.isControlPoint(DrawSurface.this, newLoc, toGrid(newLoc))) {
                 dragged = selected;
                 repaint();
                 return;
@@ -345,6 +355,7 @@ public class DrawSurface extends JPanel {
             for (LaserCut.ShapeDragSelectListener listener : dragSelectListerners) {
               listener.shapeDragSelect(dragList.size() > 0);
             }
+            shapeListChanged();
             repaint();
           }
           dragStart = null;
@@ -389,7 +400,7 @@ public class DrawSurface extends JPanel {
             pushedToStack = true;
             pushToUndoStack();
           }
-          selected.rotateShape(newLoc);   // Do rotate
+          selected.rotateShape(newLoc);           // Do rotate
           repaint();
         } else if (scrollPoint != null) {
           // Drag the mouse to move the JScrollPane
@@ -444,11 +455,6 @@ public class DrawSurface extends JPanel {
             placer = null;
             setPlacerActive(false);
             repaint();
-          }
-        } else if (key == KeyEvent.VK_ENTER) {
-          System.out.println();
-          for (CADShape shape : shapes) {
-            System.out.println(shape.getMenuName());
           }
         }
       }
@@ -697,11 +703,19 @@ public class DrawSurface extends JPanel {
           for (LaserCut.ActionRedoListener lst : redoListerners) {
             lst.redoEnable(redoStack.size() > 0);
           }
+          shapeListChanged();
           repaint();
         } catch (Exception ex) {
           ex.printStackTrace();
         }
       }
+    }
+  }
+
+  private void shapeListChanged () {
+    // Notify listeners
+    if (shapeListListener != null) {
+      shapeListListener.listUpdated();
     }
   }
 
@@ -715,6 +729,7 @@ public class DrawSurface extends JPanel {
       for (LaserCut.ActionRedoListener lst : redoListerners) {
         lst.redoEnable(redoStack.size() > 0);
       }
+      shapeListChanged();
       repaint();
     } catch (Exception ex) {
       ex.printStackTrace();
@@ -766,18 +781,21 @@ public class DrawSurface extends JPanel {
     this.shapes = settings.getDesign();
     setZoomFactor(settings.zoomFactor);
     setGridSize(settings.gridStep, settings.gridMajor);
+    shapeListChanged();
     repaint();
   }
 
   void addShape (CADShape addShape) {
     pushToUndoStack();
     shapes.add(addShape);
+    shapeListChanged();
     repaint();
   }
 
   private void addShapes (List<CADShape> addShapes) {
     pushToUndoStack();
     shapes.addAll(addShapes);
+    shapeListChanged();
     repaint();
   }
 
@@ -848,6 +866,7 @@ public class DrawSurface extends JPanel {
     shapes.clear();
     setZoomFactor(1);
     setGridSize(0.1, 10);
+    shapeListChanged();
     repaint();
   }
 
@@ -858,6 +877,7 @@ public class DrawSurface extends JPanel {
     shapes.remove(selected);
     shapes.add(tmp);
     setSelected(tmp);
+    shapeListChanged();
     repaint();
   }
 
@@ -883,6 +903,7 @@ public class DrawSurface extends JPanel {
       CADShape tmp = new CADScaledShape(newShape, selected.xLoc, selected.yLoc, 0);
       shapes.add(tmp);
       setSelected(tmp);
+      shapeListChanged();
       repaint();
     }
   }
@@ -1001,6 +1022,7 @@ public class DrawSurface extends JPanel {
       pushToUndoStack();
       shapes.removeAll(dragList);
       clearDragList();
+      shapeListChanged();
       repaint();
     } else  if (selected != null) {
       pushToUndoStack();
@@ -1010,6 +1032,7 @@ public class DrawSurface extends JPanel {
         shapes.removeAll(group.getGroupList());
       }
       setSelected(null);
+      shapeListChanged();
       repaint();
     }
   }
@@ -1062,6 +1085,7 @@ public class DrawSurface extends JPanel {
       }
 */
       clearDragList();
+      shapeListChanged();
       repaint();
     }
   }
@@ -1118,6 +1142,7 @@ public class DrawSurface extends JPanel {
         setSelected(dup);
         placeShape(dup);
       }
+      shapeListChanged();
       repaint();
     }
   }
@@ -1126,10 +1151,21 @@ public class DrawSurface extends JPanel {
     return selected;
   }
 
-  private void setSelected (CADShape newSelected) {
-    selected = newSelected;
+  public void setSelected (CADShape shape) {
+    selected = shape;
     for (LaserCut.ShapeSelectListener listener : selectListerners) {
       listener.shapeSelected(selected, selected != null);
+    }
+    repaint();
+  }
+
+  public void setUnselected (CADShape shape) {
+    if (selected == shape) {
+      selected = null;
+      shape.isSelected = false;
+      for (LaserCut.ShapeSelectListener listener : selectListerners) {
+        listener.shapeSelected(shape, false);
+      }
     }
     repaint();
   }
@@ -1143,6 +1179,7 @@ public class DrawSurface extends JPanel {
           group.removeAllFromGroup();
         }
       }
+      shapeListChanged();
       repaint();
       dragList.clear();
     } else if (selected != null) {
@@ -1150,6 +1187,7 @@ public class DrawSurface extends JPanel {
       CADShapeGroup group = selected.getGroup();
       if (group != null) {
         group.removeAllFromGroup();
+        shapeListChanged();
         repaint();
       }
     }
@@ -1219,7 +1257,7 @@ public class DrawSurface extends JPanel {
         } else if (tipTimer == 10) {
           if (!mouseDown) {
             if (placer != null) {
-              tipText = "Click to place " + placer.shapes.get(0).getMenuName() + "\n - - \n" + "or ESC to cancel";
+              tipText = "Click to place " + placer.placedShapes.get(0).getMenuName() + "\n - - \n" + "or ESC to cancel";
               repaint();
             } else {
               tipTimer = 0;
@@ -1230,10 +1268,10 @@ public class DrawSurface extends JPanel {
                   if (selected.isPositionClicked(tipLoc, getZoomFactor())) {
                     tipText = "Click and drag to\nreposition the " + selected.getMenuName() + ".";
                   } else if (selected.isResizeOrRotateHandleClicked(tipLoc)) {
-                    if (selected != null) {
+                    if (keyShift) {
                       tipText = "Click and drag to resize the " + selected.getMenuName() + ".\n" +
                         "Hold shift and drag to rotate it.";
-                    } else if (selected != null) {
+                    } else if (keyCtrl) {
                       tipText = "Click and drag to rotate the " + selected.getMenuName() + ".";
                     }
                   } else if (selected.isShapeClicked(tipLoc, getZoomFactor())) {
@@ -1343,9 +1381,5 @@ public class DrawSurface extends JPanel {
       double scale = getScreenScale();
       g2.draw(new Rectangle2D.Double(dragBox.x * scale, dragBox.y * scale, dragBox.width * scale, dragBox.height * scale));
     }
-  }
-
-  public void showInfoDialog (String msg) {
-    showMessageDialog(this, msg);
   }
 }
