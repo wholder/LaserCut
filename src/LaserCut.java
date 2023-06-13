@@ -798,7 +798,7 @@ public class LaserCut extends JFrame {
       MyMenuItem listShapes = new MyMenuItem("Toggle Shapes List", KeyEvent.VK_ENTER, 0);
       listShapes.setToolTipText("Opens a wndow that shows a list of active shapes");
       testMenu.add(listShapes);
-      TestWindow testWindow = new TestWindow(surface);
+      ShapeList testWindow = new ShapeList(surface);
       listShapes.addActionListener(ev -> {
         if (testWindow.windowIsOpen()) {
           testWindow.closeWindow();

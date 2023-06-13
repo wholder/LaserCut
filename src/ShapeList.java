@@ -17,7 +17,7 @@ import java.util.List;
  *    [X] Update list when list in DrawSurface changes (List listener)
  */
 
-public class TestWindow implements DrawSurface.DrawSurfaceListener{
+public class ShapeList implements DrawSurface.DrawSurfaceListener{
   Map<Integer, CADShape>        shapeLookup = new HashMap<>();
   Map<Integer, CADShapeGroup>   groupLookup = new HashMap<>();
   JEditorPane                   text = new JEditorPane();
@@ -26,7 +26,7 @@ public class TestWindow implements DrawSurface.DrawSurfaceListener{
   DrawSurface                   surface;
   private static final int      WIDTH = 150;
 
-  public TestWindow (DrawSurface surface) {
+  public ShapeList (DrawSurface surface) {
     this.surface = surface;
     surface.setShaoeListListener(this);
     text.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
