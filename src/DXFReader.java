@@ -53,20 +53,20 @@ import java.util.prefs.Preferences;
  */
 
 public class DXFReader {
-  private static final boolean DEBUG = false;
-  private static final boolean INFO = false;
-  private static final boolean ANIMATE = false;
-  private boolean drawText;
-  private boolean drawMText;
-  private boolean drawDimen;
+  private static final boolean      DEBUG = false;
+  private static final boolean      INFO = false;
+  private static final boolean      ANIMATE = false;
+  private boolean                   drawText;
+  private boolean                   drawMText;
+  private boolean                   drawDimen;
   private final ArrayList<DrawItem> entities = new ArrayList<>();
-  private ArrayList<Entity> stack = new ArrayList<>();
-  private final Map<String, Block> blockDict = new TreeMap<>();
-  private Entity cEntity = null;
-  private Rectangle2D bounds;
-  private double uScale = 0.039370078740157; // default to millimeters as units
-  private String units = "millimeters";
-  private boolean scaled;
+  private ArrayList<Entity>         stack = new ArrayList<>();
+  private final Map<String, Block>  blockDict = new TreeMap<>();
+  private Entity                    cEntity = null;
+  private Rectangle2D               bounds;
+  private double                    uScale = 0.039370078740157; // default to millimeters as units
+  private String                    units = "millimeters";
+  private boolean                   scaled;
 
   interface AutoPop {
   }
@@ -1573,11 +1573,11 @@ public class DXFReader {
 
   static class DXFViewer extends JPanel implements Runnable {
     private final DecimalFormat df = new DecimalFormat("#0.0#");
-    private final double  SCREEN_PPI = Toolkit.getDefaultToolkit().getScreenResolution();
+    private final double        SCREEN_PPI = Toolkit.getDefaultToolkit().getScreenResolution();
     private final Shape[]       shapes;
     private final double        border = 0.125;
     private final DXFReader     dxf;
-    private Rectangle2D   bounds;
+    private Rectangle2D         bounds;
 
     DXFViewer (String fileName, double maxSize, double minSize) throws IOException {
       dxf = new DXFReader();

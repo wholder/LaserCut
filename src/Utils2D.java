@@ -1,3 +1,4 @@
+import javax.swing.*;
 import java.awt.*;
 import java.awt.geom.*;
 import java.awt.image.BufferedImage;
@@ -5,6 +6,8 @@ import java.io.InputStream;
 import java.io.StringReader;
 import java.util.*;
 import java.util.List;
+
+import static java.awt.ComponentOrientation.getOrientation;
 
 public class Utils2D {
   /**

@@ -12,7 +12,7 @@ import java.util.List;
  *
  *  TODO:
  *    [ ] Remember window position (need prefs as a parameter)
- *    [ ] Handle selecting and unselecting groups and shapes better
+ *    [-] Handle selecting and unselecting groups and shapes better
  *    [X] Allow Menu/keyCode toggle window on and off
  *    [X] Update list when list in DrawSurface changes (List listener)
  */

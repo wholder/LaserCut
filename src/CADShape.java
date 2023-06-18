@@ -269,7 +269,8 @@ class CADShape implements Serializable {
         if (engrave) {
           return new Color(255, 170, 45);       // isSelected, InGroup and engrave color
         } else {
-          return new Color(57, 108, 255);       // Selected and ingroup color
+          //return new Color(57, 108, 255);       // Selected and ingroup color
+          return new Color(238, 54, 199);
         }
       } else {
         if (engrave) {
