@@ -24,6 +24,10 @@ import static javax.swing.JOptionPane.*;
 
   Marlin Renderer: https://github.com/bourgesl/marlin-renderer
 
+  https://www.aliexpress.us/item/2255800519423473.html
+
+  https://www.aliexpress.us/item/2255801092687231.html
+
   Fun with Java2D - Strokes:
     http://www.jhlabs.com/java/java2d/strokes/
   */

@@ -471,6 +471,7 @@ abstract class GRBLBase {
           dro.setDroPosition(runner.sendCmd("?"));                                         // Show initial position
           topPanel.add(dro, BorderLayout.NORTH);
           JSlider speed = new JSlider(10, 100, 100);
+          topPanel.add(new JLabel("Speed", SwingConstants.CENTER), BorderLayout.CENTER);
           topPanel.add(speed, BorderLayout.SOUTH);
           speed.setMajorTickSpacing(10);
           speed.setPaintTicks(true);
